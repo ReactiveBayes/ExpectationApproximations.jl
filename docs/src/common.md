@@ -3,4 +3,5 @@
 ```@docs
 ExpectationApproximations.Points
 ExpectationApproximations.Weights
+ExpectationApproximations.RescaleArguments
 ```
