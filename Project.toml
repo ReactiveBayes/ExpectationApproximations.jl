@@ -1,9 +1,13 @@
 name = "ExpectationApproximations"
 uuid = "9cdca625-6a81-42ba-9f59-d0fb182fc17f"
-authors = ["Bagaev Dmitry <bvdmitri@gmail.com> and contributors"]
+authors = ["Bagaev Dmitry <d.v.bagaev@tue.nl> and contributors"]
 version = "1.0.0"
 
+[deps]
+FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
+
 [compat]
+FastGaussQuadrature = "0.4"
 julia = "1.6"
 
 [extras]

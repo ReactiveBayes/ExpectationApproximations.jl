@@ -1,5 +1,7 @@
 module ExpectationApproximations
 
-# Write your package code here.
+    include("common.jl")
+    include("interfaces.jl")
+    include("approximate.jl")
 
 end

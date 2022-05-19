@@ -8,7 +8,3 @@ Documentation for [ExpectationApproximations](https://github.com/bvdmitri/Expect
 
 ```@index
 ```
-
-```@autodocs
-Modules = [ExpectationApproximations]
-```
