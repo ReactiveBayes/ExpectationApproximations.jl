@@ -10,4 +10,5 @@ ExpectationApproximations.RescaleArguments
 ExpectationApproximations.RescaleOutput
 ExpectationApproximations.ShiftOutput
 ExpectationApproximations.Decay
+ExpectationApproximations.Displace
 ```

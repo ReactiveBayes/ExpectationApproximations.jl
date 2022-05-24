@@ -239,6 +239,26 @@ module TestsCommon
         end
 
     end
+
+    @testset "Displace" begin 
+        import ExpectationApproximations: Displace
+
+        for ucallable in (sin, cos, abs2, (x) -> x + 1)
+            displaced = Displace(ucallable)
+            for value in rand(Float64, 5)
+                @test ucallable(value) - value ≈ displaced(value)  
+            end
+        end
+
+        for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
+            for displaced in (Displace(ucallable, scale), )
+                for value in rand(eltype(scale), 5)
+                    @test ucallable(value) + scale * value ≈ displaced(value)
+                end
+            end
+        end
+
+    end
     
 
 end

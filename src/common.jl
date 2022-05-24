@@ -187,7 +187,7 @@ julia> r([ 1.0, 2.0 ], [ -1.0, -2.0 ]) == [ -3.0, -6.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
+See also: [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref), [`ExpectationApproximations.Displace`](@ref)
 """
 struct RescaleArguments{C, S}
     callable::C
@@ -239,7 +239,7 @@ julia> r([ 1.0, 2.0 ], [ -2.0, -3.0 ]) == [ 1.0, -2.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref), [`ExpectationApproximations.Displace`](@ref)
 """
 struct RescaleOutput{C, S}
     callable::C
@@ -284,7 +284,7 @@ julia> s([ 1.0, 2.0 ], [ -2.0, -3.0 ]) == [ -2.0, 1.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.Decay`](@ref), [`ExpectationApproximations.Displace`](@ref)
 """
 struct ShiftOutput{C, S}
     callable::C
@@ -322,7 +322,7 @@ julia> d(2.0) === 1.0 / 2.0
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`], [`ExpectationApproximations.ShiftOutput`](@ref)
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`], [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Displace`](@ref)
 """
 struct Decay{C, D}
     callable::C
@@ -335,3 +335,44 @@ Decay(f::F) where { F <: Function } = Decay(f, nothing)
 
 decay(::Decay, decay::Nothing, callable, x::Real) = callable(x) / x
 decay(::Decay, decay::Real, callable, x::Real)    = callable(x) / (x^decay)
+
+"""
+    Displace(f, a = nothing)
+
+Returns a modified callable `d` , such that new behaviour is defined as `d(x) = f(x) + a * x`. 
+
+# Fields
+- `f` - base callable object
+- `a` - scale for displacment, in case if `a` is set to `nothing`, then `a = -1` is assumed
+
+```jldoctest displace
+julia> import ExpectationApproximations: Displace
+```
+
+```jldoctest displace
+julia> d = Displace((x) -> x^2);
+
+julia> d(3.0) === 6.0
+true
+```
+
+```jldoctest displace
+julia> d = Displace((x) -> x^2, 3.0);
+
+julia> d(3.0) === 0.0
+true
+```
+
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`], [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
+"""
+struct Displace{C, S}
+    callable::C
+    scale::S
+end
+
+Displace(f::F) where { F <: Function } = Displace(f, nothing)
+
+(displaced::Displace)(x::Real) = displace(displaced, displaced.scale, displaced.callable, x)
+
+displace(::Displace, scale::Nothing, callable, x::Real) = callable(x) - x
+displace(::Displace, scale::Real, callable, x::Real)    = callable(x) + scale * x
