@@ -186,4 +186,24 @@ module TestsCommon
         end
     end
 
+    @testset "RescaleOutput" begin 
+        import ExpectationApproximations: Decay
+
+        for ucallable in (sin, cos, abs2, (x) -> x + 1)
+            rescaled = Decay(ucallable)
+            for value in rand(Float64, 5)
+                @test ucallable(value) / value ≈ rescaled(value)  
+            end
+        end
+
+        for ucallable in (sin, cos, abs2, (x) -> x + 1), decay in (1, 2.0, 0.5)
+            for rescaled in (Decay(ucallable, decay), )
+                for value in rand(eltype(decay), 5)
+                    @test ucallable(value) / (value^decay) ≈ rescaled(value)
+                end
+            end
+        end
+
+    end
+
 end

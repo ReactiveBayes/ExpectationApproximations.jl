@@ -159,7 +159,7 @@ end
 Returns a modified callable `r` , such that new behaviour is defined as `r(x) = f(x / scale)`.
 
 # Fields 
-- `f` - base callable (single argument) object
+- `f` - base callable object
 - `scale` - scaling parameter, may be a number or a tuple (for multiple argument callables)
 
 ```jldoctest rescale_arguments
@@ -187,7 +187,7 @@ julia> r([ 1.0, 2.0 ], [ -1.0, -2.0 ]) == [ -3.0, -6.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleOutput`]
+See also: [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
 """
 struct RescaleArguments{C, S}
     callable::C
@@ -211,7 +211,7 @@ end
 Returns a modified callable `r` , such that new behaviour is defined as `r(x) = scale * f(x)`.
 
 # Fields 
-- `f` - base callable (single argument) object
+- `f` - base callable object
 - `scale` - scaling parameter, may be a number or a tuple (for multiple argument callables)
 
 ```jldoctest rescale_output
@@ -228,7 +228,7 @@ true
 ```jldoctest rescale_output
 julia> r = RescaleOutput(+, -1.0);
 
-julia> f(1.0, 1.0) === -2.0
+julia> r(1.0, 1.0) === -2.0
 true
 ```
 
@@ -239,7 +239,7 @@ julia> r([ 1.0, 2.0 ], [ -2.0, -3.0 ]) == [ 1.0, -2.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleArguments`](@ref)
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.Decay`](@ref)
 """
 struct RescaleOutput{C, S}
     callable::C
@@ -251,3 +251,44 @@ end
 function rescale_arguments(::RescaleOutput, scale, callable, args)
     return scale .* callable(args...)
 end
+
+"""
+    Decay(f, a = nothing)
+
+Returns a modified callable `r` , such that new behaviour is defined as `r(x) = f(x) / x ^ a`. 
+
+# Fields
+- `f` - base callable object
+- `a` - degree of decaying, in case if `a` is set to `nothing`, then `a = 1` is assumed
+
+```jldoctest decay
+julia> import ExpectationApproximations: Decay
+```
+
+```jldoctest decay
+julia> d = Decay((x) -> x^2);
+
+julia> d(2.0) === 2.0
+true
+```
+
+```jldoctest decay
+julia> d = Decay((x) -> x^2, 3.0);
+
+julia> d(2.0) === 1.0 / 2.0
+true
+```
+
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`]
+"""
+struct Decay{C, D}
+    callable::C
+    degree::D
+end
+
+Decay(f::F) where { F <: Function } = Decay(f, nothing)
+
+(decayed::Decay)(x::Real) = decay(decayed, decayed.degree, decayed.callable, x)
+
+decay(::Decay, decay::Nothing, callable, x::Real) = callable(x) / x
+decay(::Decay, decay::Real, callable, x::Real)    = callable(x) / (x^decay)

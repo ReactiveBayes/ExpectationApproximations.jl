@@ -7,5 +7,6 @@ AutoDomain
 ExpectationApproximations.Points
 ExpectationApproximations.Weights
 ExpectationApproximations.RescaleArguments
-ExpectationApproximarions.RescaleOutput
+ExpectationApproximations.RescaleOutput
+ExpectationApproximations.Decay
 ```
