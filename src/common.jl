@@ -187,7 +187,7 @@ julia> r([ 1.0, 2.0 ], [ -1.0, -2.0 ]) == [ -3.0, -6.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
+See also: [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
 """
 struct RescaleArguments{C, S}
     callable::C
@@ -212,7 +212,7 @@ Returns a modified callable `r` , such that new behaviour is defined as `r(x) = 
 
 # Fields 
 - `f` - base callable object
-- `scale` - scaling parameter, may be a number or a tuple (for multiple argument callables)
+- `scale` - scaling parameter, may be a number or a tuple (for callables that return vector or a tuple)
 
 ```jldoctest rescale_output
 julia> import ExpectationApproximations: RescaleOutput
@@ -239,18 +239,61 @@ julia> r([ 1.0, 2.0 ], [ -2.0, -3.0 ]) == [ 1.0, -2.0 ]
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.Decay`](@ref)
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.ShiftOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
 """
 struct RescaleOutput{C, S}
     callable::C
     scale::S
 end
 
-(rescaled::RescaleOutput)(args...) = rescale_arguments(rescaled, rescaled.scale, rescaled.callable, args)
+(rescaled::RescaleOutput)(args...) = rescale_output(rescaled, rescaled.scale, rescaled.callable, args)
 
-function rescale_arguments(::RescaleOutput, scale, callable, args)
-    return scale .* callable(args...)
+rescale_output(::RescaleOutput, scale, callable, args) = scale .* callable(args...)
+
+"""
+   ShiftOutput(f, shift)
+
+Returns a modified callable `s` , such that new behaviour is defined as `s(x) = f(x) + shift`.
+
+# Fields 
+- `f` - base callable object
+- `shift` - shifting parameter, may be a number or a tuple (for callables that return vector or tuple)
+
+```jldoctest shift_output
+julia> import ExpectationApproximations: ShiftOutput
+```
+
+```jldoctest shift_output
+julia> s = ShiftOutput(sin, 1.0 / 2.0);
+
+julia> s(1.0) === sin(1.0) + 1.0 / 2.0
+true
+```
+
+```jldoctest shift_output
+julia> s = ShiftOutput(+, -1.0);
+
+julia> s(1.0, 1.0) === 1.0
+true
+```
+
+```jldoctest shift_output
+julia> s = ShiftOutput(.+, (-1.0, 2.0));
+
+julia> s([ 1.0, 2.0 ], [ -2.0, -3.0 ]) == [ -2.0, 1.0 ]
+true
+```
+
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`](@ref), [`ExpectationApproximations.Decay`](@ref)
+"""
+struct ShiftOutput{C, S}
+    callable::C
+    shift::S
 end
+
+(shifted::ShiftOutput)(args...) = shift_output(shifted, shifted.shift, shifted.callable, args)
+
+shift_output(::ShiftOutput, shift, callable, args) = callable(args...) .+ shift
 
 """
     Decay(f, a = nothing)
@@ -279,7 +322,7 @@ julia> d(2.0) === 1.0 / 2.0
 true
 ```
 
-See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`]
+See also: [`ExpectationApproximations.RescaleArguments`](@ref), [`ExpectationApproximations.RescaleOutput`], [`ExpectationApproximations.ShiftOutput`](@ref)
 """
 struct Decay{C, D}
     callable::C

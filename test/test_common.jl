@@ -186,7 +186,41 @@ module TestsCommon
         end
     end
 
-    @testset "RescaleOutput" begin 
+    @testset "ShiftOutput" begin 
+        import ExpectationApproximations: ShiftOutput
+
+        for ucallable in (sin, cos, abs2, (x) -> x + 1), shift in (1, -2.0, 0.5)
+            for shifted in (ShiftOutput(ucallable, shift), )
+                for value in rand(eltype(shift), 5)
+                    @test ucallable(value) + shift === shifted(value)
+                end
+            end
+        end
+
+        for ubcallable in (+, -, *), shift in (1, -2.0, 0.5)
+            shifted = ShiftOutput(ubcallable, shift)
+            for left in rand(3), right in rand(3)
+                @test ubcallable(left, right) + shift === shifted(left, right)
+            end
+        end
+
+        for n in (2, 3), mcallable in ((x) -> x .+ 1, ), shift in (1, -2.0, 0.5)
+            for shifted in (ShiftOutput(mcallable, shift), ShiftOutput(mcallable, fill(shift, n)))
+                for value in map(_ -> rand(eltype(shift), n), 1:5)
+                    @test mcallable(value) .+ shift == shifted(value)
+                end
+            end
+        end
+
+        for mbcallable in ((x, y) -> sum(x) + sum(y), ), shift in (1, 2.0, 0.5, )
+            shifted = ShiftOutput(mbcallable, shift)
+            for left in map(_ -> rand(eltype(shift), 2), 1:3), right in map(_ -> rand(eltype(shift), 2), 1:3)
+                @test mbcallable(left, right) .+ shift == shifted(left, right)
+            end
+        end
+    end
+
+    @testset "Decay" begin 
         import ExpectationApproximations: Decay
 
         for ucallable in (sin, cos, abs2, (x) -> x + 1)
@@ -205,5 +239,6 @@ module TestsCommon
         end
 
     end
+    
 
 end

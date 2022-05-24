@@ -8,5 +8,6 @@ ExpectationApproximations.Points
 ExpectationApproximations.Weights
 ExpectationApproximations.RescaleArguments
 ExpectationApproximations.RescaleOutput
+ExpectationApproximations.ShiftOutput
 ExpectationApproximations.Decay
 ```
