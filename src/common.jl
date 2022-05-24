@@ -359,7 +359,7 @@ true
 ```jldoctest displace
 julia> d = Displace((x) -> x^2, 3.0);
 
-julia> d(3.0) === 0.0
+julia> d(3.0) === 18.0
 true
 ```
 
