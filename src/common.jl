@@ -1,5 +1,6 @@
+export AutoDomain, Pdf, LogPdf
 
-import Base: iterate, IteratorSize, IteratorEltype, eltype, length, size
+import Base: iterate, IteratorSize, IteratorEltype, eltype, length, size, in
 
 """ 
     Points
@@ -82,6 +83,75 @@ Base.eltype(wrapper::Weights) = eltype(wrapper.weights)
 Base.IteratorSize(::Type{Weights{W}}) where {W} = IteratorSize(W)
 Base.IteratorEltype(::Type{Weights{W}}) where {W} = IteratorEltype(W)
 Base.eltype(::Type{Weights{W}}) where {W} = eltype(W)
+
+"""
+    AutoDomain
+
+Auto domain specification that can be used to create `Pdf` or `LogPdf` structures with "automatic" domain. 
+With this domain specification most of the approximation functions would assume that domain of `Pdf` (or `LogPdf`) matches 
+domain of other arguments to the approximation function.
+
+See also: [`Pdf`](@ref), [`LogPdf`](@ref)
+"""
+struct AutoDomain end
+
+Base.in(x, ::AutoDomain) = true
+
+"""
+    Pdf
+
+# Fields
+- `domain` - domain (e.g. from DomainSets.jl) of probability density function, defaults to `AutoDomain`
+- `callable` - base callable object that represents some (potentially unnormalized) probability density function 
+
+```jldoctest pdf
+julia> pdf = Pdf((x) -> exp(-(x - 1.0)^2));
+
+julia> pdf(1.0)
+1.0
+```
+
+See also: [`LogPdf`](@ref), [`AutoDomain`](@ref)
+"""
+struct Pdf{D, F}
+    domain   :: D
+    callable :: F
+end
+
+Pdf(f::F) where { F <: Function } = Pdf(AutoDomain(), f)
+
+function (pdf::Pdf)(x)
+    @assert x ∈ pdf.domain "Value x = $x does not belong to the domain = $(pdf.domain)"
+    return pdf.callable(x)
+end
+
+"""
+    LogPdf
+
+# Fields
+- `domain` - domain (e.g. from DomainSets.jl) of log probability density function, defaults to `AutoDomain`
+- `callable` - base callable object that represents some (potentially unnormalized) log probability density function 
+
+```jldoctest logpdf
+julia> logpdf = Pdf((x) -> -(x - 1.0)^2);
+
+julia> logpdf(1.0)
+0.0
+```
+
+See also: [`Pdf`](@ref), [`AutoDomain`](@ref)
+"""
+struct LogPdf{D, F}
+    domain   :: D
+    callable :: F
+end
+
+LogPdf(f::F) where { F <: Function } = LogPdf(AutoDomain(), f)
+
+function (logpdf::LogPdf)(x)
+    @assert x ∈ logpdf.domain "Value x = $x does not belong to the domain = $(logpdf.domain)"
+    return logpdf.callable(x)
+end
 
 """
    RescaleArguments
