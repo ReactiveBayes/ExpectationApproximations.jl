@@ -133,10 +133,10 @@ end
 - `callable` - base callable object that represents some (potentially unnormalized) log probability density function 
 
 ```jldoctest logpdf
-julia> logpdf = Pdf((x) -> -(x - 1.0)^2);
+julia> logpdf = Pdf((x) -> -(x - 2.0)^2);
 
 julia> logpdf(1.0)
-0.0
+-1.0
 ```
 
 See also: [`Pdf`](@ref), [`AutoDomain`](@ref)
