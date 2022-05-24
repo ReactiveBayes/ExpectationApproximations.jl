@@ -115,7 +115,7 @@ module TestsCommon
         @test_throws AssertionError logpdf([ -1.0, -1.0  ]) 
     end
 
-    @testset "ScaleArguments" begin 
+    @testset "RescaleArguments" begin 
         import ExpectationApproximations: RescaleArguments
 
         for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
@@ -150,6 +150,40 @@ module TestsCommon
 
         @test_throws AssertionError RescaleArguments((x, y) -> x + y, (1.0, 2.0, 3.0))(1.0, 2.0)
         @test_throws AssertionError RescaleArguments((x, y) -> x + y, (1.0, ))(1.0, 2.0)
+    end
+
+    @testset "RescaleOutput" begin 
+        import ExpectationApproximations: RescaleOutput
+
+        for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
+            for rescaled in (RescaleOutput(ucallable, scale), )
+                for value in rand(eltype(scale), 5)
+                    @test scale * ucallable(value) === rescaled(value)
+                end
+            end
+        end
+
+        for ubcallable in (+, -, *), scale in (1, 2.0, 0.5)
+            rescaled = RescaleOutput(ubcallable, scale)
+            for left in rand(3), right in rand(3)
+                @test scale * ubcallable(left, right) === rescaled(left, right)
+            end
+        end
+
+        for n in (2, 3), mcallable in ((x) -> x .+ 1, ), scale in (1, 2.0, 0.5)
+            for rescaled in (RescaleOutput(mcallable, scale), RescaleOutput(mcallable, fill(scale, n)))
+                for value in map(_ -> rand(eltype(scale), n), 1:5)
+                    @test scale .* mcallable(value) == rescaled(value)
+                end
+            end
+        end
+
+        for mbcallable in ((x, y) -> sum(x) + sum(y), ), scale in (1, 2.0, 0.5, )
+            rescaled = RescaleOutput(mbcallable, scale)
+            for left in map(_ -> rand(eltype(scale), 2), 1:3), right in map(_ -> rand(eltype(scale), 2), 1:3)
+                @test scale .* mbcallable(left, right) == rescaled(left, right)
+            end
+        end
     end
 
 end

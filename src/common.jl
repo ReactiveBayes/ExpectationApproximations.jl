@@ -154,38 +154,40 @@ function (logpdf::LogPdf)(x)
 end
 
 """
-   RescaleArguments
+   RescaleArguments(f, scale)
+
+Returns a modified callable `r` , such that new behaviour is defined as `r(x) = f(x / scale)`.
 
 # Fields 
-- `callable` - base callable (single argument) object
+- `f` - base callable (single argument) object
 - `scale` - scaling parameter, may be a number or a tuple (for multiple argument callables)
 
-```jldoctest rescale
+```jldoctest rescale_arguments
 julia> import ExpectationApproximations: RescaleArguments
 ```
 
-```jldoctest rescale
-julia> f = RescaleArguments(sin, 1.0 / 2.0);
+```jldoctest rescale_arguments
+julia> r = RescaleArguments(sin, 1.0 / 2.0);
 
-julia> f(1.0) === sin(1.0 / 2.0)
+julia> r(1.0) === sin(1.0 / 2.0)
 true
 ```
 
-```jldoctest rescale
-julia> f = RescaleArguments(+, (-1.0, 2.0));
+```jldoctest rescale_arguments
+julia> r = RescaleArguments(+, (-1.0, 2.0));
 
-julia> f(1.0, 1.0) === -1.0 + 2.0
+julia> r(1.0, 1.0) === -1.0 + 2.0
 true
 ```
 
-```jldoctest rescale
-julia> f = RescaleArguments(.+, (-1.0, 2.0));
+```jldoctest rescale_arguments
+julia> r = RescaleArguments(.+, (-1.0, 2.0));
 
-julia> f([ 1.0, 2.0 ], [ -1.0, -2.0 ]) == [ -3.0, -6.0 ]
+julia> r([ 1.0, 2.0 ], [ -1.0, -2.0 ]) == [ -3.0, -6.0 ]
 true
 ```
 
-Returns a callable object that is equivalent to (x...) -> callable((scale .* x)...).
+See also: [`ExpectationApproximations.RescaleOutput`]
 """
 struct RescaleArguments{C, S}
     callable::C
@@ -201,4 +203,51 @@ end
 function rescale_arguments(::RescaleArguments, scale::Tuple, callable, args) 
     @assert length(scale) === length(args) "Length of the scaling parameter $(scale) does not equal to the number of arguments."
     return callable(map(.*, scale, args)...)
+end
+
+"""
+   RescaleOutput(f, scale)
+
+Returns a modified callable `r` , such that new behaviour is defined as `r(x) = scale * f(x)`.
+
+# Fields 
+- `f` - base callable (single argument) object
+- `scale` - scaling parameter, may be a number or a tuple (for multiple argument callables)
+
+```jldoctest rescale_output
+julia> import ExpectationApproximations: RescaleOutput
+```
+
+```jldoctest rescale_output
+julia> r = RescaleOutput(sin, 1.0 / 2.0);
+
+julia> r(1.0) === (1.0 / 2.0) * sin(1.0)
+true
+```
+
+```jldoctest rescale_output
+julia> r = RescaleOutput(+, -1.0);
+
+julia> f(1.0, 1.0) === -2.0
+true
+```
+
+```jldoctest rescale_output
+julia> r = RescaleOutput(.+, (-1.0, 2.0));
+
+julia> r([ 1.0, 2.0 ], [ -2.0, -3.0 ]) == [ 1.0, -2.0 ]
+true
+```
+
+See also: [`ExpectationApproximations.RescaleArguments`](@ref)
+"""
+struct RescaleOutput{C, S}
+    callable::C
+    scale::S
+end
+
+(rescaled::RescaleOutput)(args...) = rescale_arguments(rescaled, rescaled.scale, rescaled.callable, args)
+
+function rescale_arguments(::RescaleOutput, scale, callable, args)
+    return scale .* callable(args...)
 end
