@@ -1,9 +1,18 @@
-
+export Unscented, GaussLaguerre
 struct Unscented{R}
     rule :: R
 end
 
-struct SupportsLogApproximation end
-struct LogApproximationSupportUndefined end
+call_approximate(method::Unscented, q, f) = call_approximate(method, method.rule, q, f)
 
-rule_log_approximation_support(rule) = LogApproximationSupportUndefined()
+using FastGaussQuadrature
+
+struct GaussLaguerre{P, W, L}
+    points     :: P
+    weights    :: W
+    logweights :: L
+end
+
+function call_approximate(::Unscented, sigma::GaussLaguerre, q, f::LogPdf)
+    error(1)
+end
