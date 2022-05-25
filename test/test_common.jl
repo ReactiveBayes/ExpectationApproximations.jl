@@ -246,7 +246,7 @@ module TestsCommon
         for ucallable in (sin, cos, abs2, (x) -> x + 1)
             displaced = Displace(ucallable)
             for value in rand(Float64, 5)
-                @test ucallable(value) - value ≈ displaced(value)  
+                @test ucallable(value) + value ≈ displaced(value)  
             end
         end
 

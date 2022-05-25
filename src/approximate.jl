@@ -1,4 +1,4 @@
-
+export approximate
 
 function approximate(method, q, f)
     error("`f` should be either `Pdf` or `LogPdf`")

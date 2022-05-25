@@ -156,7 +156,7 @@ end
 """
    RescaleArguments(f, scale)
 
-Returns a modified callable `r` , such that new behaviour is defined as `r(x) = f(x / scale)`.
+Returns a modified callable `r` , such that new behaviour is defined as `r(x) = f(x * scale)`.
 
 # Fields 
 - `f` - base callable object
@@ -343,7 +343,7 @@ Returns a modified callable `d` , such that new behaviour is defined as `d(x) = 
 
 # Fields
 - `f` - base callable object
-- `a` - scale for displacment, in case if `a` is set to `nothing`, then `a = -1` is assumed
+- `a` - scale for displacment, in case if `a` is set to `nothing`, then `a = 1` is assumed
 
 ```jldoctest displace
 julia> import ExpectationApproximations: Displace
@@ -374,5 +374,8 @@ Displace(f::F) where { F <: Function } = Displace(f, nothing)
 
 (displaced::Displace)(x::Real) = displace(displaced, displaced.scale, displaced.callable, x)
 
-displace(::Displace, scale::Nothing, callable, x::Real) = callable(x) - x
-displace(::Displace, scale::Real, callable, x::Real)    = callable(x) + scale * x
+displace(::Displace, scale::Nothing, callable, x::Real)     = callable(x) + x
+displace(::Displace, scale::Real, callable, x::Real)        = callable(x) + scale * x
+displace(::Displace, ::Val{S}, callable, x::Real) where {S} = callable(x) + S * x
+displace(::Displace, ::Val{1}, callable, x::Real)           = callable(x) + x
+displace(::Displace, ::Val{-1}, callable, x::Real)          = callable(x) - x

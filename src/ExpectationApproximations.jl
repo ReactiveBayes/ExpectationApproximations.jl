@@ -1,7 +1,9 @@
 module ExpectationApproximations
 
     include("common.jl")
-    include("interfaces.jl")
+    
     include("approximate.jl")
+
+    include("methods/unscented.jl")
 
 end
