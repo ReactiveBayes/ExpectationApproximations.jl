@@ -352,7 +352,7 @@ julia> import ExpectationApproximations: Displace
 ```jldoctest displace
 julia> d = Displace((x) -> x^2);
 
-julia> d(3.0) === 6.0
+julia> d(3.0) === 12.0
 true
 ```
 
