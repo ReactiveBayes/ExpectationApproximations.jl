@@ -6,7 +6,7 @@ using LogarithmicNumbers
 
 import Base: length
 import StatsFuns: logsumexp
-import SpecialFunctions: loggamma
+import SpecialFunctions: loggamma, gamma
 
 struct Unscented{R}
     rule::R
@@ -33,7 +33,7 @@ Base.length(method::EvaluatedGaussLaguerre) = length(method.points)
 
 function evaluate(rule::GaussLaguerre, q::Gamma)
     points, weights = gausslaguerre(length(rule), shape(q))
-    return EvaluatedGaussLaguerre(points, weights, map(log, weights))
+    return EvaluatedGaussLaguerre(points, weights, Iterators.map(log, weights))
 end
 
 """
@@ -88,7 +88,9 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f)
     end
 
     # return result in form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
-    return exp(Logarithmic, log(result) - loggamma(α))
+    # return exp(Logarithmic, log(result) - loggamma(α))
+    # return @show real(exp(log(Complex(result)) - loggamma(α)))
+    return result / gamma(α)
 end
 
 # TODO for testing pusposes only
