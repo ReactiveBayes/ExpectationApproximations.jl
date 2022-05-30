@@ -49,70 +49,15 @@ module TestsCommon
         end
     end
 
-    @testset "Pdf wrapper" begin 
-        import DomainSets: HalfLine
+    @testset "LogFn wrapper" begin 
+        f   = (x) -> -(x - 1.0)^2
+        pdf = LogFn(f)
 
-        f   = (x) -> exp(-(x - 1.0)^2)
-        pdf = Pdf(f)
+        @test pdf(1.0) == exp(f(1.0))
+        @test pdf(2.0) == exp(f(2.0))
 
-        @test pdf(1.0) == f(1.0)
-        @test pdf(2.0) == f(2.0)
-
-        f   = (x) -> exp(-(x - 1.0)^2)
-        pdf = Pdf(HalfLine(), f)
-
-        @test pdf(1.0) == f(1.0)
-        @test pdf(2.0) == f(2.0)
-        @test_throws AssertionError pdf(-1.0)
-        @test_throws AssertionError pdf(-2.0)
-
-        f   = (x) -> exp(-(x .- 1.0)' * (x .- 1.0))
-        pdf = Pdf(f)
-
-        @test pdf(ones(2)) == f(ones(2))
-        @test pdf(zeros(2)) == f(zeros(2))
-        
-        f   = (x) -> exp(-(x .- 1.0)' * (x .- 1.0))
-        pdf = Pdf(HalfLine() ^ 2, f)
-
-        @test pdf(ones(2)) == f(ones(2))
-        @test pdf(zeros(2)) == f(zeros(2))
-        @test_throws AssertionError pdf([ -1.0, 1.0  ])
-        @test_throws AssertionError pdf([ 1.0, -1.0  ])
-        @test_throws AssertionError pdf([ -1.0, -1.0  ]) 
-    end
-
-    @testset "Pdf wrapper" begin 
-        import DomainSets: HalfLine
-
-        f      = (x) -> -(x - 1.0)^2
-        logpdf = LogPdf(f)
-
-        @test logpdf(1.0) == f(1.0)
-        @test logpdf(2.0) == f(2.0)
-
-        f      = (x) -> -(x - 1.0)^2
-        logpdf = LogPdf(HalfLine(), f)
-
-        @test logpdf(1.0) == f(1.0)
-        @test logpdf(2.0) == f(2.0)
-        @test_throws AssertionError logpdf(-1.0)
-        @test_throws AssertionError logpdf(-2.0)
-
-        f      = (x) -> -(x .- 1.0)' * (x .- 1.0)
-        logpdf = LogPdf(f)
-
-        @test logpdf(ones(2)) == f(ones(2))
-        @test logpdf(zeros(2)) == f(zeros(2))
-        
-        f      = (x) -> -(x .- 1.0)' * (x .- 1.0)
-        logpdf = LogPdf(HalfLine() ^ 2, f)
-
-        @test logpdf(ones(2)) == f(ones(2))
-        @test logpdf(zeros(2)) == f(zeros(2))
-        @test_throws AssertionError logpdf([ -1.0, 1.0  ])
-        @test_throws AssertionError logpdf([ 1.0, -1.0  ])
-        @test_throws AssertionError logpdf([ -1.0, -1.0  ]) 
+        @test log(pdf)(1.0) == f(1.0)
+        @test log(pdf)(2.0) == f(2.0)
     end
 
     @testset "RescaleArguments" begin 

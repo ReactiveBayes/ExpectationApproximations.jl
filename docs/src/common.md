@@ -1,9 +1,7 @@
 # Common structures and routines 
 
 ```@docs
-Pdf
-LogPdf
-AutoDomain
+LogFn
 ExpectationApproximations.Points
 ExpectationApproximations.Weights
 ExpectationApproximations.RescaleArguments

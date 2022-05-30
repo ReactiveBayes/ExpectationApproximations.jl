@@ -2,6 +2,7 @@ export Unscented, GaussLaguerre
 
 using FastGaussQuadrature
 using Distributions
+using LogarithmicNumbers
 
 import Base: length
 import StatsFuns: logsumexp
@@ -11,12 +12,13 @@ struct Unscented{R}
     rule::R
 end
 
-call_approximate(method::Unscented, q, f) = call_approximate(method, method.rule, q, f)
+call_approximate(method::Unscented, q, f) = call_approximate(evaluate(method.rule, q), q, f)
+call_mean_var(method::Unscented, q, f)    = call_mean_var(evaluate(method.rule, q), q, f)
 
 ## Gauss Laguerre ##
 
 struct GaussLaguerre
-    length :: Int
+    length::Int
 end
 
 Base.length(method::GaussLaguerre) = method.length
@@ -27,71 +29,59 @@ struct EvaluatedGaussLaguerre{P, W, L}
     logweights :: L
 end
 
-function call_approximate(base::Unscented, method::GaussLaguerre, q::Gamma, logf::LogPdf)
-    α = shape(q)
-    β = rate(q)
+Base.length(method::EvaluatedGaussLaguerre) = length(method.points)
 
-    # logg(x) = logf(x/β) - log(x) - log(Γ(α))
-    logg = ShiftOutput(Displace(RescaleArguments(logf, inv(β)), Val(-1), log), -loggamma(α))
-
-    points, weights = gausslaguerre(length(method), α)
-
-    evaluated = EvaluatedGaussLaguerre(points, weights, Iterators.map(log, weights))
-
-    return call_approximate(base, evaluated, LogPdf(AutoDomain(), logg))
+function evaluate(rule::GaussLaguerre, q::Gamma)
+    points, weights = gausslaguerre(length(rule), shape(q))
+    return EvaluatedGaussLaguerre(points, weights, map(log, weights))
 end
 
-function call_approximate(::Unscented, method::EvaluatedGaussLaguerre, logf::LogPdf)
+"""
+    call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
 
+This function calculates the log of the Gauss-laguerre integral by making use of the log of the integrable function.
+    ln ( ∫ x^α * exp(-x) * f(x) dx ) 
+    ≈ ln ( ∑ wi * f(xi) ) 
+    = ln ( ∑ exp( ln(wi) + logf(xi) ) )
+    = ln ( ∑ exp( yi ) )
+    = max(yi) + ln ( ∑ exp( yi - max(yi) ) )
+    where we make use of the numerically stable log-sum-exp trick: https://en.wikipedia.org/wiki/LogSumExp
+"""
+function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     points     = method.points
     logweights = method.logweights
-    
+    logf       = log(f)
+    α          = shape(q)
+    invβ       = inv(rate(q))
+    logg       = (x) -> logf(invβ * x) - log(x) - loggamma(α)
+
     # Iterators.map creates a lazy mapping
     logresult = Iterators.map(zip(points, logweights)) do (x, logw)
         # calculate the ln(wi) + logg(xi) terms
-        return logw + logf(x)
+        return logw + logg(x)
     end
 
     # return log sum exp
-    return logsumexp(logresult)
+    return exp(Logarithmic, logsumexp(logresult))
 end
 
 # TODO for testing pusposes only
-function mean_var(base::Unscented, method::GaussLaguerre, q::Gamma, logf::LogPdf)
-    α = shape(q)
-    β = rate(q)
-    iβ = inv(β)
-    liβ = log(iβ)
-    mlΓα = -loggamma(α)
-
-    points, weights = gausslaguerre(length(method), α)
-
-    # `map` here on purpose as we are going to reuse `logweights``
-    evaluated = EvaluatedGaussLaguerre(points, weights, map(log, weights))
+function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
+    logf = log(f)
 
     # First we compute a normalisation constant in log-domain
-    # logg(x) = logf(x/β) - log(x) - log(Γ(α))
-    loggC = (x) -> logf(iβ * x) - log(x) + mlΓα
-    logC  = call_approximate(base, evaluated, LogPdf(AutoDomain(), loggC))
+    C    = call_approximate(method, q, f)
+    logC = float(log(C))
 
     # Second we compute mean using previously computed normalisation constant in log domain
-    # loggm(x) = logf(x/β) - log(x) + log(x/b) - log(Γ(α)) - log(C) 
-    #          = logf(x/β) + log(1/b) - log(Γ(α)) - log(C)
-    loggm = let c = liβ + mlΓα - logC
-        (x) -> logf(iβ * x) + c
-    end
-    logm  = call_approximate(base, evaluated, LogPdf(AutoDomain(), loggm))
-    m     = exp(logm)
+    # logm(x) = logf(x) + log(x) - log(C)
+    logm = (x) -> logf(x) + log(x) - logC
+    m    = float(call_approximate(method, q, LogFn(logm)))
 
     # At third we compute var using previously computed C and m in log domain
     # loggv(x) = logf(x/β) - log(x) + 2log(abs(x/b - m)) - log(Γ(α)) - log(C) 
-    loggv = let c = mlΓα - logC
-        (x) -> begin 
-            iβx = iβ * x
-            logf(iβx) - log(x) + 2log(abs(iβx - m)) + c
-        end
-    end
-    logv  = call_approximate(base, evaluated, LogPdf(AutoDomain(), loggv))
-    v     = exp(logv)
+    logv = (x) -> logf(x) + 2log(abs(x - m)) - logC
+    v    = float(call_approximate(method, q, LogFn(logv)))
+
     return m, v
 end
