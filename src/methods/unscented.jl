@@ -46,6 +46,8 @@ This function calculates the log of the Gauss-laguerre integral by making use of
     = ln ( ∑ exp( yi ) )
     = max(yi) + ln ( ∑ exp( yi - max(yi) ) )
     where we make use of the numerically stable log-sum-exp trick: https://en.wikipedia.org/wiki/LogSumExp
+
+See also: [`LogFn`](@ref)
 """
 function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     points     = method.points
@@ -53,7 +55,10 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     logf       = log(f)
     α          = shape(q)
     invβ       = inv(rate(q))
-    logg       = (x) -> logf(invβ * x) - log(x) - loggamma(α)
+
+    # g(x)    = f(x) / (x * Γ(x))
+    # logg(x) = logf(x) - log(x) - loggamma(x)
+    logg = (x) -> logf(invβ * x) - log(x) - loggamma(α)
 
     # Iterators.map creates a lazy mapping
     logresult = Iterators.map(zip(points, logweights)) do (x, logw)
@@ -61,7 +66,7 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
         return logw + logg(x)
     end
 
-    # return log sum exp
+    # return log sum exp in form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
     return exp(Logarithmic, logsumexp(logresult))
 end
 
@@ -74,12 +79,14 @@ function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     logC = float(log(C))
 
     # Second we compute mean using previously computed normalisation constant in log domain
+    # m(x)    = x * f(x) / C
     # logm(x) = logf(x) + log(x) - log(C)
     logm = (x) -> logf(x) + log(x) - logC
     m    = float(call_approximate(method, q, LogFn(logm)))
 
     # At third we compute var using previously computed C and m in log domain
-    # loggv(x) = logf(x/β) - log(x) + 2log(abs(x/b - m)) - log(Γ(α)) - log(C) 
+    # v(x)    = f(x) * (x - m)^2 / C
+    # logv(x) = logf(x) + 2log(abs(x - m)) - log(C) 
     logv = (x) -> logf(x) + 2log(abs(x - m)) - logC
     v    = float(call_approximate(method, q, LogFn(logv)))
 
