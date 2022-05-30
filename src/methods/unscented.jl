@@ -55,10 +55,11 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     logf       = log(f)
     α          = shape(q)
     invβ       = inv(rate(q))
+    logΓα      = loggamma(α)
 
     # g(x)    = f(x) / (x * Γ(x))
-    # logg(x) = logf(x) - log(x) - loggamma(x)
-    logg = (x) -> logf(invβ * x) - log(x) - loggamma(α)
+    # logg(x) = logf(x) - log(x) - loggamma(α)
+    logg = (x) -> logf(invβ * x) - log(x) - logΓα
 
     # Iterators.map creates a lazy mapping
     logresult = Iterators.map(zip(points, logweights)) do (x, logw)
@@ -68,6 +69,26 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
 
     # return log sum exp in form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
     return exp(Logarithmic, logsumexp(logresult))
+end
+
+function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f)
+    points  = method.points
+    weights = method.weights
+    α        = shape(q)
+    invβ     = inv(rate(q))
+
+    # g(x)    = f(x) / (x * Γ(x))
+    # logg(x) = logf(x) - log(x) - loggamma(α)
+    g = (x) -> (f(invβ * x) / x) # we divide by Γ(α) later on
+
+    # Iterators.map creates a lazy mapping
+    result = mapreduce(+, zip(points, weights)) do (x, w)
+        # calculate the ln(wi) + logg(xi) terms
+        return w * g(x)
+    end
+
+    # return result in form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
+    return exp(Logarithmic, log(result) - loggamma(α))
 end
 
 # TODO for testing pusposes only
@@ -89,6 +110,25 @@ function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     # logv(x) = logf(x) + 2log(abs(x - m)) - log(C) 
     logv = (x) -> logf(x) + 2log(abs(x - m)) - logC
     v    = float(call_approximate(method, q, LogFn(logv)))
+
+    return m, v
+end
+
+# TODO for testing pusposes only
+function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f)
+
+    # First we compute a normalisation constant
+    C = float(call_approximate(method, q, f))
+
+    # Second we compute mean using previously computed normalisation constant
+    # m(x)    = x * f(x) / C
+    mf = (x) -> x * f(x) / C
+    m  = float(call_approximate(method, q, mf))
+
+    # At third we compute var using previously computed C and m
+    # v(x)    = f(x) * (x - m)^2 / C
+    vf = (x) -> (x - m)^2 * f(x) / C
+    v  = float(call_approximate(method, q, vf))
 
     return m, v
 end
