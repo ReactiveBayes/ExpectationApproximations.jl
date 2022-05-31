@@ -4,6 +4,6 @@ module ExpectationApproximations
     
     include("approximate.jl")
 
-    include("methods/unscented.jl")
+    include("methods/unscented/unscented.jl")
 
 end
