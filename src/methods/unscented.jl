@@ -5,7 +5,7 @@ using Distributions
 using LogarithmicNumbers
 
 import Base: length
-import StatsFuns: logsumexp
+import LogExpFunctions: logsumexp
 import SpecialFunctions: loggamma, gamma
 
 struct Unscented{R}
@@ -17,23 +17,33 @@ call_mean_var(method::Unscented, q, f)    = call_mean_var(evaluate(method.rule, 
 
 ## Gauss Laguerre ##
 
-struct GaussLaguerre
-    length::Int
+struct GaussLaguerre{ForceLogComputations, P, W, L}
+    length     :: Int
+    points     :: P
+    weights    :: W
+    logweights :: L
+
+    GaussLaguerre(::Val{ForceLogComputations}, length::Int, points::P, weights::W, logweights::L) where { ForceLogComputations, P, W, L } = begin 
+        return new{ForceLogComputations, P, W, L}(length, points, weights, logweights)
+    end
+end
+
+GaussLaguerre(length::Int) = GaussLaguerre(length, Val(false))
+
+function GaussLaguerre(length::Int, ::Val{ForceLogComputations}) where { ForceLogComputations }
+    points, weights = gausslaguerre(length, 0.0)
+    logweights      = map(log, weights)
+    return GaussLaguerre(Val{ForceLogComputations}(), length, points, weights, logweights)
 end
 
 Base.length(method::GaussLaguerre) = method.length
 
-struct EvaluatedGaussLaguerre{P, W, L}
-    points     :: P
-    weights    :: W
-    logweights :: L
+function evaluate(rule::GaussLaguerre, q)
+    return rule
 end
 
-Base.length(method::EvaluatedGaussLaguerre) = length(method.points)
-
-function evaluate(rule::GaussLaguerre, q::Gamma)
-    points, weights = gausslaguerre(length(rule), shape(q))
-    return EvaluatedGaussLaguerre(points, weights, Iterators.map(log, weights))
+function call_approximate(method::GaussLaguerre{ForceLogComputations}, q, f) where { ForceLogComputations }
+    return call_approximate(Val{ForceLogComputations}(), method, q, f)
 end
 
 """
@@ -49,7 +59,7 @@ This function calculates the log of the Gauss-laguerre integral by making use of
 
 See also: [`LogFn`](@ref)
 """
-function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
+function call_approximate(_, method::GaussLaguerre, q::Gamma, f::LogFn)
     points     = method.points
     logweights = method.logweights
     logf       = log(f)
@@ -59,7 +69,7 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
 
     # g(x)    = f(x) / (x * Γ(x))
     # logg(x) = logf(x) - log(x) - loggamma(α)
-    logg = (x) -> logf(invβ * x) - log(x) - logΓα
+    logg = (x) -> logf(invβ * x) + (α - 1) * log(x)
 
     # Iterators.map creates a lazy mapping
     logresult = Iterators.map(zip(points, logweights)) do (x, logw)
@@ -68,33 +78,57 @@ function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
     end
 
     # return log sum exp in form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
-    return exp(Logarithmic, logsumexp(logresult))
+    return exp(Logarithmic, logsumexp(logresult) - logΓα)
 end
 
-function call_approximate(method::EvaluatedGaussLaguerre, q::Gamma, f)
-    points  = method.points
-    weights = method.weights
-    α        = shape(q)
-    invβ     = inv(rate(q))
+# Force log version with possibly complex numbers
+# TODO: remove ::Function constraint
+function call_approximate(::Val{true}, method::GaussLaguerre, q::Gamma, f::Function)
+    points     = method.points
+    logweights = method.logweights
+    α          = shape(q)
+    invβ       = inv(rate(q))
+    logΓα      = loggamma(α)
 
-    # g(x)    = f(x) / (x * Γ(x))
-    # logg(x) = logf(x) - log(x) - loggamma(α)
-    g = (x) -> (f(invβ * x) / x) # we divide by Γ(α) later on
+    # g(x) = f(invβ * x) * x ^ (α - 1) # we divide by Γ(α) later on
+    # logg(x) = real(exp(log(Complex(f(invβ * x))) + (α - 1) * log(x) - logΓα))
+    logg = (x) -> log(Complex(f(invβ * x))) + (α - 1) * log(x)
 
     # Iterators.map creates a lazy mapping
-    result = mapreduce(+, zip(points, weights)) do (x, w)
+    logresult = Iterators.map(zip(points, logweights)) do (x, logw)
         # calculate the ln(wi) + logg(xi) terms
-        return w * g(x)
+        return logw + logg(x)
     end
 
     # return result in form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
-    # return exp(Logarithmic, log(result) - loggamma(α))
-    # return @show real(exp(log(Complex(result)) - loggamma(α)))
-    return result / gamma(α)
+    result = exp(logsumexp(logresult) - logΓα)
+    if !(imag(result) < 1e-8)
+        error("GaussLaguerre failed to compute an approximation, result is a complex number: $(result)")
+    end
+    return real(result)
+end
+
+# TODO: remove ::Function constraint
+function call_approximate(::Val{false}, method::GaussLaguerre, q::Gamma, f::Function)
+    points     = method.points
+    weights    = method.weights
+    α          = shape(q)
+    invβ       = inv(rate(q))
+    logΓα      = loggamma(α)
+
+    # g(x)    = f(x) / (x * Γ(x))
+    # logg(x) = logf(x) - log(x) - loggamma(α)
+    g = (x) -> f(invβ * x) * x ^ (α - 1) # we divide by Γ(α) later on
+
+    result = Iterators.mapreduce(+, zip(points, weights)) do (x, w)
+        return w * g(x)
+    end
+
+    return exp(log(result) - logΓα)
 end
 
 # TODO for testing pusposes only
-function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
+function call_mean_var(method::GaussLaguerre, q::Gamma, f::LogFn)
     logf = log(f)
 
     # First we compute a normalisation constant in log-domain
@@ -117,7 +151,8 @@ function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f::LogFn)
 end
 
 # TODO for testing pusposes only
-function call_mean_var(method::EvaluatedGaussLaguerre, q::Gamma, f)
+# TODO: remove ::Function constraint
+function call_mean_var(method::GaussLaguerre, q::Gamma, f::Function)
 
     # First we compute a normalisation constant
     C = float(call_approximate(method, q, f))

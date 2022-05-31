@@ -26,8 +26,20 @@ module TestsUnscented
             @test isapprox(m, mean(p), rtol = 1e-1)
             @test isapprox(v, var(p), rtol = 1e-1)
 
+            # ForceLog version
+            m, v = mean_var(Unscented(GaussLaguerre(n, Val(true))), d1, (x) -> pdf(d2, x))
+            
+            @test isapprox(m, mean(p), rtol = 1e-1)
+            @test isapprox(v, var(p), rtol = 1e-1)
+
             # Log-Version 
             m, v = mean_var(Unscented(GaussLaguerre(n)), d1, LogFn((x) -> logpdf(d2, x)))
+                
+            @test isapprox(m, mean(p), rtol = 1e-1)
+            @test isapprox(v, var(p), rtol = 1e-1)
+
+            # ForceLog Log-Version 
+            m, v = mean_var(Unscented(GaussLaguerre(n, Val(true))), d1, LogFn((x) -> logpdf(d2, x)))
                 
             @test isapprox(m, mean(p), rtol = 1e-1)
             @test isapprox(v, var(p), rtol = 1e-1)
