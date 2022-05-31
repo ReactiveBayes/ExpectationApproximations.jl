@@ -77,6 +77,32 @@ function call_mean_var(method::GaussLaguerre, q::Any, f)
     return m, v
 end
 
+# Utility functions 
+
+_gausslaguerre_force_log(f::LogFn) = log(f)
+_gausslaguerre_force_log(f)        = (x) -> log(Complex(f(x)))
+
+_gausslaguerre_is_complex(x::Number)  = false
+_gausslaguerre_is_complex(x::Complex) = true
+
+function _gausslaguerre_force_log_process_result(f, logresult)
+    # In general case it might be that `logresult` is complex, but imaginary part should be almost zero
+    # Otherwise it indicates that something went wrong
+    result = exp(logresult)
+    if _gausslaguerre_is_complex(result) && !(imag(result) < 1e-8)
+        error("GaussLaguerre failed to compute an approximation, result is a complex number with non-zero imaginary part: $(result)")
+    end
+    return real(result)
+end
+
+function _gausslaguerre_force_log_process_result(::LogFn, logresult)
+    # In case of LogFn we assume that `logresult` is not complex
+    # Otherwise it indicates that something went wrong
+    # return `logresult` in a form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
+    return exp(Logarithmic, logresult)
+end
+
 # Specific implementations
 include("gausslaguerre_gamma.jl")
+include("gausslaguerre_exponential.jl")
 include("gausslaguerre_nothing.jl")

@@ -2,30 +2,7 @@ using Distributions
 
 ## Gauss Laguerre Optimized Rules for Gamma-shaped Distribution ##
 
-_force_log(f::LogFn) = log(f)
-_force_log(f)        = (x) -> log(Complex(f(x)))
-
-_is_complex(x::Number)  = false
-_is_complex(x::Complex) = true
-
 call_approximate(::Val{false}, method::GaussLaguerre, q::Gamma, f::LogFn) = call_approximate(Val(true), method, q, f)
-
-function __force_log_process_result(f, logresult)
-    # In general case it might be that `logresult` is complex, but imaginary part should be almost zero
-    # Otherwise it indicates that something went wrong
-    result = exp(logresult)
-    if _is_complex(result) && !(imag(result) < 1e-8)
-        error("GaussLaguerre failed to compute an approximation, result is a complex number with non-zero imaginary part: $(result)")
-    end
-    return real(result)
-end
-
-function __force_log_process_result(::LogFn, logresult)
-    # In case of LogFn we assume that `logresult` is not complex
-    # Otherwise it indicates that something went wrong
-    # return `logresult` in a form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
-    return exp(Logarithmic, logresult)
-end
 
 """
     call_approximate(::Val{true}, method::EvaluatedGaussLaguerre, q::Gamma, f)
@@ -48,7 +25,7 @@ See also: [`LogFn`](@ref)
 function call_approximate(::Val{true}, method::GaussLaguerre, q::Gamma, f)
     points     = method.points
     logweights = method.logweights
-    logf       = _force_log(f)
+    logf       = _gausslaguerre_force_log(f)
     α          = shape(q)
     invβ       = inv(rate(q))
     logΓα      = loggamma(α)
@@ -63,7 +40,7 @@ function call_approximate(::Val{true}, method::GaussLaguerre, q::Gamma, f)
         return logw + logg(x)
     end
 
-    return __force_log_process_result(f, logsumexp(logresult) - logΓα)
+    return _gausslaguerre_force_log_process_result(f, logsumexp(logresult) - logΓα)
 end
 
 """
