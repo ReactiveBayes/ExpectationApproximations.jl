@@ -19,5 +19,6 @@ module TestsUnscentedGaussLaguerre
     end
 
     include("test_gausslaguerre_gamma.jl")
+    include("test_gausslaguerre_exponential.jl")
 
 end

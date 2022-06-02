@@ -29,11 +29,32 @@ end
 Base.length(method::GaussLaguerre)       = method.length
 Base.show(io::IO, method::GaussLaguerre) = print(io, "GaussLaguerre(", length(method), ")")
 
-evaluate(rule::GaussLaguerre, q) = rule
+evaluate(rule::GaussLaguerre, q) = rule # TODO revise, maybe `getpoints(rule, q)`?
 
 getpoints(method::GaussLaguerre)     = method.points
 getweights(method::GaussLaguerre)    = method.weights
 getlogweights(method::GaussLaguerre) = method.logweights
+
+## Gauss Laguerre without any distribution (::Nothing)
+
+adjust_logintegrand(::GaussLaguerre, ::Nothing, logf) = (x) -> logf(x) + x
+adjust_integrand(::GaussLaguerre, ::Nothing, f)       = (x) -> f(x) * exp(x)
+    
+adjust_logresult(::GaussLaguerre, ::Nothing, logresult) = logresult
+adjust_result(::GaussLaguerre, ::Nothing, result)       = result
+
+## Gauss Laguerre with some arbitrary distribution (::Distribution)
+
+adjust_logintegrand(::GaussLaguerre, q::Distribution, logf) = (x) -> logpdf(q, x) + logf(x) + x
+adjust_integrand(::GaussLaguerre, q::Distribution, f)       = (x) -> pdf(q, x) * f(x) * exp(x)
+    
+adjust_logresult(::GaussLaguerre, ::Distribution, logresult) = logresult
+adjust_result(::GaussLaguerre, ::Distribution, result)       = result
+
+# Specific tricks/implementations for distributions from Distributions.jl
+include("gausslaguerre_gamma.jl")
+include("gausslaguerre_exponential.jl")
+# include("gausslaguerre_nothing.jl")
 
 ##
 
@@ -80,7 +101,3 @@ getlogweights(method::GaussLaguerre) = method.logweights
 #     return m, v
 # end
 
-# Specific tricks/implementations for distributions from Distributions.jl
-include("gausslaguerre_gamma.jl")
-# include("gausslaguerre_exponential.jl")
-# include("gausslaguerre_nothing.jl")
