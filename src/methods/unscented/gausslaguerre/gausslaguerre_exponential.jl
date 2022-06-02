@@ -1,7 +1,5 @@
 using Distributions
 
-using Distributions
-
 # logg(x) = logf(x/λ)
 adjust_logintegrand(::GaussLaguerre, q::Exponential, logf) = let invλ = inv(rate(q))
     (x) -> logf(invλ * x)

@@ -3,20 +3,23 @@ module TestsUnscentedGaussLaguerreGamma
     using Test
     using ExpectationApproximations, Distributions, StableRNGs
 
+    import ExpectationApproximations: UnscentedStrategyAutomatic
+
     @testset "GaussLaguerre: Basic integrations/approximations when q is Gamma" begin
     
         irng = StableRNG(123)
-    
+
         btol(::UseLogWeights, n) = 1e-2 / log(n) # LogWeights should have better accuracy overall
         btol(::UseWeights, n) = 1e-2
+        btol(::UnscentedStrategyAutomatic, n) = 1e-2
         
-        strategies = (UseLogWeights(), UseWeights())
+        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
         npoints = (10, 20, 100, 200)
         qs = (Gamma(20rand(irng) + 1, 20rand(irng) + 1) for _ in 1:50)
         
         for strategy in strategies, n in npoints, q in qs
         
-            method = Unscented(strategy, GaussLaguerre(n))
+            method = Unscented(GaussLaguerre(n), strategy)
             
             # base rel tolerance 
             brtol = btol(strategy, n)
@@ -35,48 +38,42 @@ module TestsUnscentedGaussLaguerreGamma
         end
     end
 
-    # @testset "GaussLaguerre" begin
+    @testset "GaussLaguerre moments calculation when q is Gamma" begin
 
-    #     import ExpectationApproximations: mean_var
+        btol(::UseLogWeights, n) = 1e-1 / log(n) # LogWeights should have better accuracy overall
+        btol(::UseWeights, n) = 1e-1
+        btol(::UnscentedStrategyAutomatic, n) = 1e-1
 
-    #     for α1 in (1.3, 2.1, 10.1, ), 
-    #         α2 in (1.3, 2.1, 10.1, ),
-    #         β1 in (1.3, 2.1, 10.1, ),
-    #         β2 in (1.3, 2.1, 10.1, ),
-    #         n in (61, 121, 1121, 5121)
+        vals = (1.3, 2.1, 10.1, )
+        npoints = (61, 121, 1121, 5121) 
+        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
 
-    #         d1 = Gamma(α1, β1)
-    #         d2 = Gamma(α2, β2)
+        for α1 in vals, α2 in vals, β1 in vals, β2 in vals, n in npoints, strategy in strategies 
 
-    #         pα = α1 + α2 - 1
-    #         pβ = (β1 * β2) / (β1 + β2)
-    #         p  = Gamma(pα, pβ)
+            d1 = Gamma(α1, 1 / β1)
+            d2 = Gamma(α2, 1 / β2)
 
-    #         m, v = mean_var(Unscented(GaussLaguerre(n)), d1, (x) -> pdf(d2, x))
-            
-    #         @test isapprox(m, mean(p), rtol = 1e-1 / log(n))
-    #         @test isapprox(v, var(p), rtol = 1e-1 / log(n))
+            pα = α1 + α2 - 1
+            pβ = β1 + β2
+            p  = Gamma(pα, 1 / pβ)
 
-    #         # ForceLog version
-    #         m, v = mean_var(Unscented(GaussLaguerre(n, Val(true))), d1, (x) -> pdf(d2, x))
-            
-    #         @test isapprox(m, mean(p), rtol = 1e-1 / log(n))
-    #         @test isapprox(v, var(p), rtol = 1e-1 / log(n))
+            for f in ((x) -> pdf(d2, x), LogFn((x) -> logpdf(d2, x)))
 
-    #         # Log-Version 
-    #         m, v = mean_var(Unscented(GaussLaguerre(n)), d1, LogFn((x) -> logpdf(d2, x)))
+                method = Unscented(GaussLaguerre(n), strategy)
+                C      = approximate(Expectation(), method, d1, f)
+                m      = approximate(RawMoment(Val(1), C), method, d1, f)
+                v      = approximate(CentralMoment(Val(2), C, m), method, d1, f)
+
+                # base rel tolerance 
+                brtol = btol(strategy, n)
                 
-    #         @test isapprox(m, mean(p), rtol = 1e-1 / log(n))
-    #         @test isapprox(v, var(p), rtol = 1e-1 / log(n))
+                @test isapprox(m, mean(p), rtol = brtol)
+                @test isapprox(v, var(p), rtol = brtol)
 
-    #         # ForceLog Log-Version 
-    #         m, v = mean_var(Unscented(GaussLaguerre(n, Val(true))), d1, LogFn((x) -> logpdf(d2, x)))
-                
-    #         @test isapprox(m, mean(p), rtol = 1e-1 / log(n))
-    #         @test isapprox(v, var(p), rtol = 1e-1 / log(n))
+            end
 
-    #     end
+        end
 
-    # end
+    end
 
 end

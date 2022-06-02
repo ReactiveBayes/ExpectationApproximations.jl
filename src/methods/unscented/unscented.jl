@@ -1,4 +1,4 @@
-export Unscented, GaussLaguerre, UseLogWeights, UseWeights
+export Unscented, UseLogWeights, UseWeights
 
 using FastGaussQuadrature
 using Distributions
@@ -19,28 +19,31 @@ end
 struct UseWeights end
 struct UseLogWeights end
 
-struct Unscented{S, R}
-    strategy :: S
+struct Unscented{R <: UnscentedRule, S}
     rule     :: R
+    strategy :: S
 end
 
-Unscented(npoints::Int)        = Unscented(UnscentedStrategyAutomatic(), UnscentedRuleAutomatic(npoints))
-Unscented(rule::UnscentedRule) = Unscented(UnscentedStrategyAutomatic(), rule)
+Unscented(npoints::Int)        = Unscented(UnscentedRuleAutomatic(npoints), UnscentedStrategyAutomatic())
+Unscented(rule::UnscentedRule) = Unscented(rule, UnscentedStrategyAutomatic())
 
-Base.show(io::IO, method::Unscented) = print(io, "Unscented(", getstrategy(method), ", ", getrule(method), ")")
+Base.show(io::IO, method::Unscented) = print(io, "Unscented(", method.rule, ", ",  method.strategy, ")")
 
-getstrategy(method::Unscented, f)       = method.strategy
-getstrategy(method::Unscented, ::LogFn) = UseLogWeights() # In case if input is a `LogFn` we always use log weights
+getstrategy(method::Unscented, q, ::LogFn) = UseLogWeights() # In case if input is a `LogFn` we always use log weights
+getstrategy(method::Unscented, q, f)       = getstrategy(method.strategy, q, f)
 
-getrule(method::Unscented)     = method.rule
+getstrategy(strategy::Union{UseLogWeights, UseWeights}, q, f) = strategy
+getstrategy(::UnscentedStrategyAutomatic, q, f)               = UseWeights()
 
-function call_approximate(method::Unscented, q, f) 
-    compatibility = iscompatible(getrule(method), q)
+getrule(method::Unscented) = method.rule
+
+function approximate_expectation(method::Unscented, q, f) 
+    # compatibility = iscompatible(getrule(method), q)
     # TODO Check compatibility
-    strategy      = getstrategy(method, f)
+    strategy      = getstrategy(method, q, f)
     # TODO Check evaluate(rule, q) -> getpoints(rule, q)
     rule          = evaluate(getrule(method), q)
-    return unscented_approximate(strategy, rule, q, f)
+    return unscented_approximate_expectation(strategy, rule, q, f)
 end
 
 call_mean_var(method::Unscented, q, f) = unscented_mean_var(evaluate(method.rule, q), q, f)
@@ -51,7 +54,7 @@ getlogweights(method::Unscented) = getlogweights(method.rule)
 
 ## Generic implementation
 
-function unscented_approximate(::UseWeights, rule, q, f)
+function unscented_approximate_expectation(::UseWeights, rule, q, f)
     points  = getpoints(rule)
     weights = getweights(rule)
     g       = adjust_integrand(rule, q, f)
@@ -63,7 +66,7 @@ function unscented_approximate(::UseWeights, rule, q, f)
     return adjust_result(rule, q, result)
 end
 
-function unscented_approximate(::UseLogWeights, rule, q, f)
+function unscented_approximate_expectation(::UseLogWeights, rule, q, f)
     points     = getpoints(rule)
     logweights = getlogweights(rule)
     logf       = log(convert(LogFn, f))
