@@ -15,6 +15,11 @@ function adjust_integrand end
 function adjust_logresult end
 function adjust_result end
 
+## TODO 
+
+adjust(some, f)           = adjust_integrand(some, f)
+adjust(some, logf::LogFn) = LogFn(adjust_logintegrand(some, log(logf)))
+
 ##
 
 struct Expectation end
@@ -46,12 +51,15 @@ adjust_integrand(moment::CentralMoment{N}, f) where {N}       = (x) -> (x - mome
 
 ##
 
+as_integrand(f::Function)     = f
+as_integrand(f::LogFn)        = f
+as_integrand(f::Distribution) = LogFn((x) -> logpdf(f, x))
+
+##
+
 approximate(method, f)    = approximate(method, nothing, f)
 approximate(method, q, f) = approximate(Expectation(), method, q, f)
 
-approximate(method, q, f::Distribution) = approximate(method, q, LogFn((x) -> logpdf(f, x)))
+approximate(::Expectation, method, q, f)  = approximate_expectation(method, q, as_integrand(f))
+approximate(moment::Moment, method, q, f) = approximate_expectation(method, q, adjust(moment, as_integrand(f)))
 
-approximate(::Expectation, method, q, f) = approximate_expectation(method, q, f)
-
-approximate(moment::Moment, method, q, f)        = approximate(method, q, adjust_integrand(moment, f))
-approximate(moment::Moment, method, q, f::LogFn) = approximate(method, q, LogFn(adjust_logintegrand(moment, log(f))))
