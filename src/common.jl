@@ -114,11 +114,11 @@ end
 
 Base.log(f::LogFn) = f.callable
 
-Base.convert(::Type{LogFn}, input::LogFn) = input
-Base.convert(::Type{LogFn}, input)        = LogFn(_convert_logfn(input))
+Base.convert(::Type{LogFn}, input::LogFn)     = input
+Base.convert(::Type{LogFn}, input::F) where F = LogFn(_convert_logfn(input))
 
-_convert_logfn(f::LogFn) = log(f)
-_convert_logfn(f)        = (x) -> _convert_logfn_number(f(x))
+_convert_logfn(f::LogFn)     = log(f)
+_convert_logfn(f::F) where F = (x) -> _convert_logfn_number(f(x))
 
 _convert_logfn_number(r::Number)      = log(Complex(r))
 _convert_logfn_number(r::Logarithmic) = log(r)

@@ -17,8 +17,8 @@ function adjust_result end
 
 ## TODO 
 
-adjust(some, f)           = adjust_integrand(some, f)
-adjust(some, logf::LogFn) = LogFn(adjust_logintegrand(some, log(logf)))
+adjust(some, f::F) where {F} = adjust_integrand(some, f)
+adjust(some, logf::LogFn)    = LogFn(adjust_logintegrand(some, log(logf)))
 
 ##
 
@@ -34,8 +34,8 @@ end
 
 RawMoment(::Val{N}, c::C) where { N, C } = RawMoment{N, C}(c)
 
-adjust_logintegrand(moment::RawMoment{N}, logf) where { N } = (x) -> N * log(abs(x)) + logf(x) - log(moment.c)
-adjust_integrand(moment::RawMoment{N}, f)       where { N } = (x) -> x^N * f(x) / moment.c
+adjust_logintegrand(moment::RawMoment{N}, logf::F) where { N, F } = (x) -> N * log(abs(x)) + logf(x) - log(moment.c)
+adjust_integrand(moment::RawMoment{N}, f::F)       where { N, F } = (x) -> x^N * f(x) / moment.c
 
 ## 
 
@@ -46,20 +46,20 @@ end
 
 CentralMoment(::Val{N}, c::C, μ::M) where {N, C, M} = CentralMoment{N, C, M}(c, μ)
 
-adjust_logintegrand(moment::CentralMoment{N}, logf) where {N} = (x) -> N * log(abs(x - moment.μ)) + logf(x) - log(moment.c)
-adjust_integrand(moment::CentralMoment{N}, f) where {N}       = (x) -> (x - moment.μ)^N * f(x) / moment.c
+adjust_logintegrand(moment::CentralMoment{N}, logf::F) where {N, F} = (x) -> N * log(abs(x - moment.μ)) + logf(x) - log(moment.c)
+adjust_integrand(moment::CentralMoment{N}, f::F) where {N, F}       = (x) -> (x - moment.μ)^N * f(x) / moment.c
 
 ##
 
-as_integrand(f::Function)     = f
-as_integrand(f::LogFn)        = f
-as_integrand(f::Distribution) = LogFn((x) -> logpdf(f, x))
+as_integrand(f::F) where { F <: Function } = f
+as_integrand(f::LogFn)                     = f
+as_integrand(f::Distribution)              = LogFn((x) -> logpdf(f, x))
 
 ##
 
-approximate(method, f)    = approximate(method, nothing, f)
-approximate(method, q, f) = approximate(Expectation(), method, q, f)
+approximate(method, f::F) where F    = approximate(method, nothing, f)
+approximate(method, q, f::F) where F = approximate(Expectation(), method, q, f)
 
-approximate(::Expectation, method, q, f)  = approximate_expectation(method, q, as_integrand(f))
-approximate(moment::Moment, method, q, f) = approximate_expectation(method, q, adjust(moment, as_integrand(f)))
+approximate(::Expectation, method, q, f::F) where F  = approximate_expectation(method, q, as_integrand(f))
+approximate(moment::Moment, method, q, f::F) where F = approximate_expectation(method, q, adjust(moment, as_integrand(f)))
 

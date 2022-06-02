@@ -37,16 +37,16 @@ getlogweights(method::GaussLaguerre) = method.logweights
 
 ## Gauss Laguerre without any distribution (::Nothing)
 
-adjust_logintegrand(::GaussLaguerre, ::Nothing, logf) = (x) -> logf(x) + x
-adjust_integrand(::GaussLaguerre, ::Nothing, f)       = (x) -> f(x) * exp(x)
+adjust_logintegrand(::GaussLaguerre, ::Nothing, logf::F) where F = (x) -> logf(x) + x
+adjust_integrand(::GaussLaguerre, ::Nothing, f::F) where F       = (x) -> f(x) * exp(x)
     
 adjust_logresult(::GaussLaguerre, ::Nothing, logresult) = logresult
 adjust_result(::GaussLaguerre, ::Nothing, result)       = result
 
 ## Gauss Laguerre with some arbitrary distribution (::Distribution)
 
-adjust_logintegrand(::GaussLaguerre, q::Distribution, logf) = (x) -> logpdf(q, x) + logf(x) + x
-adjust_integrand(::GaussLaguerre, q::Distribution, f)       = (x) -> pdf(q, x) * f(x) * exp(x)
+adjust_logintegrand(::GaussLaguerre, q::Distribution, logf::F) where F = (x) -> logpdf(q, x) + logf(x) + x
+adjust_integrand(::GaussLaguerre, q::Distribution, f::F) where F       = (x) -> pdf(q, x) * f(x) * exp(x)
     
 adjust_logresult(::GaussLaguerre, ::Distribution, logresult) = logresult
 adjust_result(::GaussLaguerre, ::Distribution, result)       = result
@@ -54,50 +54,3 @@ adjust_result(::GaussLaguerre, ::Distribution, result)       = result
 # Specific tricks/implementations for distributions from Distributions.jl
 include("gausslaguerre_gamma.jl")
 include("gausslaguerre_exponential.jl")
-# include("gausslaguerre_nothing.jl")
-
-##
-
-# TODO for testing pusposes only
-# function call_mean_var(method::GaussLaguerre, q::Any, f::LogFn)
-#     logf = log(f)
-
-#     # First we compute a normalisation constant in log-domain
-#     C    = call_approximate(method, q, f)
-#     logC = float(log(C))
-
-#     # Second we compute mean using previously computed normalisation constant in log domain
-#     # m(x)    = x * f(x) / C
-#     # logm(x) = logf(x) + log(x) - log(C)
-#     logm = (x) -> logf(x) + log(x) - logC
-#     m    = float(call_approximate(method, q, LogFn(logm)))
-
-#     # At third we compute var using previously computed C and m in log domain
-#     # v(x)    = f(x) * (x - m)^2 / C
-#     # logv(x) = logf(x) + 2log(abs(x - m)) - log(C) 
-#     logv = (x) -> logf(x) + 2log(abs(x - m)) - logC
-#     v    = float(call_approximate(method, q, LogFn(logv)))
-
-#     return m, v
-# end
-
-# TODO for testing pusposes only
-# TODO: remove ::Function constraint
-# function call_mean_var(method::GaussLaguerre, q::Any, f)
-
-#     # First we compute a normalisation constant
-#     C = float(call_approximate(method, q, f))
-
-#     # Second we compute mean using previously computed normalisation constant
-#     # m(x)    = x * f(x) / C
-#     mf = (x) -> x * f(x) / C
-#     m  = float(call_approximate(method, q, mf))
-
-#     # At third we compute var using previously computed C and m
-#     # v(x)    = f(x) * (x - m)^2 / C
-#     vf = (x) -> (x - m)^2 * f(x) / C
-#     v  = float(call_approximate(method, q, vf))
-
-#     return m, v
-# end
-

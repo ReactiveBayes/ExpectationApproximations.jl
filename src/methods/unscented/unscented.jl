@@ -29,15 +29,15 @@ Unscented(rule::UnscentedRule) = Unscented(rule, UnscentedStrategyAutomatic())
 
 Base.show(io::IO, method::Unscented) = print(io, "Unscented(", method.rule, ", ",  method.strategy, ")")
 
-getstrategy(method::Unscented, q, ::LogFn) = UseLogWeights() # In case if input is a `LogFn` we always use log weights
-getstrategy(method::Unscented, q, f)       = getstrategy(method.strategy, q, f)
+getstrategy(method::Unscented, q, ::LogFn)      = UseLogWeights() # In case if input is a `LogFn` we always use log weights
+getstrategy(method::Unscented, q, f::F) where F = getstrategy(method.strategy, q, f)
 
 getstrategy(strategy::Union{UseLogWeights, UseWeights}, q, f) = strategy
 getstrategy(::UnscentedStrategyAutomatic, q, f)               = UseWeights()
 
 getrule(method::Unscented) = method.rule
 
-function approximate_expectation(method::Unscented, q, f) 
+function approximate_expectation(method::Unscented, q, f::F) where F 
     # compatibility = iscompatible(getrule(method), q)
     # TODO Check compatibility
     strategy      = getstrategy(method, q, f)
@@ -46,15 +46,13 @@ function approximate_expectation(method::Unscented, q, f)
     return unscented_approximate_expectation(strategy, rule, q, f)
 end
 
-call_mean_var(method::Unscented, q, f) = unscented_mean_var(evaluate(method.rule, q), q, f)
-
 getpoints(method::Unscented)     = getpoints(method.rule)
 getweights(method::Unscented)    = getweights(method.rule) 
 getlogweights(method::Unscented) = getlogweights(method.rule)
 
 ## Generic implementation
 
-function unscented_approximate_expectation(::UseWeights, rule, q, f)
+function unscented_approximate_expectation(::UseWeights, rule, q, f::F) where F
     points  = getpoints(rule)
     weights = getweights(rule)
     g       = adjust_integrand(rule, q, f)
@@ -66,7 +64,7 @@ function unscented_approximate_expectation(::UseWeights, rule, q, f)
     return adjust_result(rule, q, result)
 end
 
-function unscented_approximate_expectation(::UseLogWeights, rule, q, f)
+function unscented_approximate_expectation(::UseLogWeights, rule, q, f::F) where F
     points     = getpoints(rule)
     logweights = getlogweights(rule)
     logf       = log(convert(LogFn, f))
