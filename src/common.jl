@@ -1,6 +1,8 @@
 export LogFn
 
-import Base: iterate, IteratorSize, IteratorEltype, eltype, length, size, in
+using LogarithmicNumbers
+
+import Base: iterate, IteratorSize, IteratorEltype, eltype, length, size, in, convert, log
 
 """ 
     Points
@@ -91,6 +93,8 @@ Base.eltype(::Type{Weights{W}}) where {W} = eltype(W)
 - `callable` - base callable object that represents "log"-version of function `f`, such that `f(x) = exp(callable(x))`. 
 
 By default `LogFn` exponentiates the result, use `log` function to get an access to the "log"-version of the function `f.
+For any callable object it is also possible to just call `convert(LogFn, f)` (the result of the modified function might be a `Complex` number).
+`convert` does nothing if `f` is already an instance of `LogFn`.
 
 ```jldoctest logfn
 julia> f = LogFn((x) -> log(x));
@@ -109,6 +113,15 @@ end
 (f::LogFn)(x) = exp(f.callable(x))
 
 Base.log(f::LogFn) = f.callable
+
+Base.convert(::Type{LogFn}, input::LogFn) = input
+Base.convert(::Type{LogFn}, input)        = LogFn(_convert_logfn(input))
+
+_convert_logfn(f::LogFn) = log(f)
+_convert_logfn(f)        = (x) -> _convert_logfn_number(f(x))
+
+_convert_logfn_number(r::Number)      = log(Complex(r))
+_convert_logfn_number(r::Logarithmic) = log(r)
 
 """
    RescaleArguments(f, scale)

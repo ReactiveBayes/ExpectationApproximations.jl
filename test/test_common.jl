@@ -50,14 +50,35 @@ module TestsCommon
     end
 
     @testset "LogFn wrapper" begin 
-        f   = (x) -> -(x - 1.0)^2
-        pdf = LogFn(f)
 
-        @test pdf(1.0) == exp(f(1.0))
-        @test pdf(2.0) == exp(f(2.0))
+        import LogarithmicNumbers: Logarithmic
 
-        @test log(pdf)(1.0) == f(1.0)
-        @test log(pdf)(2.0) == f(2.0)
+        testfn = (
+            (x) -> -(x - 1.0)^2, 
+            (x) -> exp(Logarithmic, -x), 
+        )
+
+        vals = (1.0, 2.0, 3.0)
+
+        for f in testfn, v in vals
+            logf = LogFn(f)
+
+            @test logf(v) == exp(f(v))
+            @test log(logf)(v) == f(v)
+
+            logf = convert(LogFn, LogFn(f))
+
+            @test logf(v) == exp(f(v))
+            @test log(logf)(v) == f(v)
+
+            logf = convert(LogFn, (x) -> exp(f(x)))
+
+            @test real(logf(v)) ≈ exp(f(v))
+            @test imag(logf(v)) ≈ 0.0
+
+            @test real(log(logf)(v)) ≈ float(f(v))
+            @test imag(log(logf)(v)) ≈ 0.0
+        end
     end
 
     @testset "RescaleArguments" begin 
