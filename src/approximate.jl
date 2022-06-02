@@ -1,6 +1,8 @@
 export approximate
 export Expectation, RawMoment, CentralMoment
 
+using Distributions
+
 # TODO revise later on
 # struct Compatible end
 # struct CompatibilityUnknown end
@@ -46,6 +48,8 @@ adjust_integrand(moment::CentralMoment{N}, f) where {N}       = (x) -> (x - mome
 
 approximate(method, f)    = approximate(method, nothing, f)
 approximate(method, q, f) = approximate(Expectation(), method, q, f)
+
+approximate(method, q, f::Distribution) = approximate(method, q, LogFn((x) -> logpdf(f, x)))
 
 approximate(::Expectation, method, q, f) = approximate_expectation(method, q, f)
 
