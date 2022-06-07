@@ -15,11 +15,10 @@ function GaussLaguerre(length::Int)
     points, weights = gausslaguerre(length, 0.0) 
 
     # Filter out zero weights
-    nonzeroweights = map(>(zero(eltype(weights))), weights)
+    zeroweights = map(<=(zero(eltype(weights))), weights)
 
-    # `keepat!` exists only in 1.7 :(
-    keepat!(points, nonzeroweights)
-    keepat!(weights, nonzeroweights)
+    deleteat!(points, zeroweights)
+    deleteat!(weights, zeroweights)
 
     logweights = map(log, weights)
 
