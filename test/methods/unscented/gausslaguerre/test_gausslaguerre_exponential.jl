@@ -26,15 +26,15 @@ module TestsUnscentedGaussLaguerreExponential
             
             @test isapprox(approximate(method, q, (x) -> 1), 1.0, rtol = brtol)
             @test isapprox(approximate(method, q, (x) -> -1), -1.0, rtol = brtol)
-            @test isapprox(approximate(method, q, LogFn((x) -> 0.0)), 1.0, rtol = brtol)
+            @test isapprox(approximate(method, q, LogIntegrand((x) -> 0.0)), 1.0, rtol = brtol)
             
             @test isapprox(approximate(method, q, (x) -> x), mean(q), rtol = brtol)
             @test isapprox(approximate(method, q, (x) -> -x), -mean(q), rtol = brtol)
-            @test isapprox(approximate(method, q, LogFn((x) -> log(x))), mean(q), rtol = brtol)
+            @test isapprox(approximate(method, q, LogIntegrand((x) -> log(x))), mean(q), rtol = brtol)
             
             @test isapprox(approximate(method, q, (x) -> (x - mean(q))^2), var(q), rtol = brtol)
             @test isapprox(approximate(method, q, (x) -> -(x - mean(q))^2), -var(q), rtol = brtol)
-            @test isapprox(approximate(method, q, LogFn((x) -> 2log(abs(x - mean(q))))), var(q), rtol = brtol)
+            @test isapprox(approximate(method, q, LogIntegrand((x) -> 2log(abs(x - mean(q))))), var(q), rtol = brtol)
         end
     end
 

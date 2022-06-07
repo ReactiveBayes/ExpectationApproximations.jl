@@ -29,8 +29,8 @@ Unscented(rule::UnscentedRule) = Unscented(rule, UnscentedStrategyAutomatic())
 
 Base.show(io::IO, method::Unscented) = print(io, "Unscented(", method.rule, ", ",  method.strategy, ")")
 
-getstrategy(method::Unscented, q, ::LogFn)      = UseLogWeights() # In case if input is a `LogFn` we always use log weights
-getstrategy(method::Unscented, q, f::F) where F = getstrategy(method.strategy, q, f)
+getstrategy(method::Unscented, q, ::LogIntegrand) = UseLogWeights() # In case if input is a `LogIntegrand` we always use log weights
+getstrategy(method::Unscented, q, f::F) where F   = getstrategy(method.strategy, q, f)
 
 getstrategy(strategy::Union{UseLogWeights, UseWeights}, q, f) = strategy
 getstrategy(::UnscentedStrategyAutomatic, q, f)               = UseWeights()
@@ -40,9 +40,9 @@ getrule(method::Unscented) = method.rule
 function approximate_expectation(method::Unscented, q, f::F) where F 
     # compatibility = iscompatible(getrule(method), q)
     # TODO Check compatibility
-    strategy      = getstrategy(method, q, f)
+    strategy = getstrategy(method, q, f)
     # TODO Check evaluate(rule, q) -> getpoints(rule, q)
-    rule          = evaluate(getrule(method), q)
+    rule     = evaluate(getrule(method), q)
     return unscented_approximate_expectation(strategy, rule, q, f)
 end
 
@@ -52,7 +52,7 @@ getlogweights(method::Unscented) = getlogweights(method.rule)
 
 ## Generic implementation
 
-function unscented_approximate_expectation(::UseWeights, rule, q, f::F) where F
+function unscented_approximate_expectation(strategy::UseWeights, rule, q, f::F) where F
     points  = getpoints(rule)
     weights = getweights(rule)
     g       = adjust_integrand(rule, q, f)
@@ -61,15 +61,14 @@ function unscented_approximate_expectation(::UseWeights, rule, q, f::F) where F
         return w * g(x)
     end
 
-    return adjust_result(rule, q, result)
+    return adjust_result(strategy, rule, q, result)
 end
 
-function unscented_approximate_expectation(::UseLogWeights, rule, q, f::F) where F
+function unscented_approximate_expectation(strategy::UseLogWeights, rule, q, f::F) where F
     points     = getpoints(rule)
     logweights = getlogweights(rule)
-    logf       = log(convert(LogFn, f))
-
-    logg = adjust_logintegrand(rule, q, logf)
+    g          = adjust_integrand(rule, q, convert(LogIntegrand, f))
+    logg       = log(g)
 
     # ln ( ∑ wi * g(xi) ) 
     # = ln ( ∑ exp( ln(wi) + logg(xi) ) )
@@ -82,7 +81,7 @@ function unscented_approximate_expectation(::UseLogWeights, rule, q, f::F) where
         return logw + logg(x)
     end
 
-    logadjusted = adjust_logresult(rule, q, logsumexp(logresult))
+    logadjusted = adjust_result(strategy, rule, q, logsumexp(logresult))
 
     return _unscented_force_log_process_result(f, rule, logadjusted)
 end
@@ -92,7 +91,7 @@ end
 _unscented_is_complex(x::Number)  = false
 _unscented_is_complex(x::Complex) = true
 
-function _unscented_force_log_process_result(f, rule, logresult)
+function _unscented_force_log_process_result(f::F, rule, logresult) where {F}
     # In general case it might be that `logresult` is complex, but imaginary part should be almost zero
     # Otherwise it indicates that something went wrong
     result = exp(logresult)
@@ -102,8 +101,8 @@ function _unscented_force_log_process_result(f, rule, logresult)
     return real(result)
 end
 
-function _unscented_force_log_process_result(::LogFn, rule, logresult)
-    # In case of LogFn we assume that `logresult` is not complex
+function _unscented_force_log_process_result(::LogIntegrand, rule, logresult)
+    # In case of `LogIntegrand` we assume that `logresult` is not complex
     # Otherwise it indicates that something went wrong, and `Logarithmic` will throw anyway
     # return `logresult` in a form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
     return exp(Logarithmic, logresult)

@@ -26,15 +26,15 @@ module TestsUnscentedGaussLaguerreGamma
             
             @test isapprox(approximate(method, q, (x) -> 1), 1.0, rtol = brtol)
             @test isapprox(approximate(method, q, (x) -> -1), -1.0, rtol = brtol)
-            @test isapprox(approximate(method, q, LogFn((x) -> 0.0)), 1.0, rtol = brtol)
+            @test isapprox(approximate(method, q, LogIntegrand((x) -> 0.0)), 1.0, rtol = brtol)
             
             @test isapprox(approximate(method, q, (x) -> x), mean(q), rtol = brtol)
             @test isapprox(approximate(method, q, (x) -> -x), -mean(q), rtol = brtol)
-            @test isapprox(approximate(method, q, LogFn((x) -> log(x))), mean(q), rtol = brtol)
+            @test isapprox(approximate(method, q, LogIntegrand((x) -> log(x))), mean(q), rtol = brtol)
             
             @test isapprox(approximate(method, q, (x) -> (x - mean(q))^2), var(q), rtol = brtol)
             @test isapprox(approximate(method, q, (x) -> -(x - mean(q))^2), -var(q), rtol = brtol)
-            @test isapprox(approximate(method, q, LogFn((x) -> 2log(abs(x - mean(q))))), var(q), rtol = brtol)
+            @test isapprox(approximate(method, q, LogIntegrand((x) -> 2log(abs(x - mean(q))))), var(q), rtol = brtol)
         end
     end
 
@@ -57,7 +57,7 @@ module TestsUnscentedGaussLaguerreGamma
             pβ = β1 + β2
             p  = Gamma(pα, 1 / pβ)
 
-            for f in ((x) -> pdf(d2, x), LogFn((x) -> logpdf(d2, x)), d2)
+            for f in ((x) -> pdf(d2, x), LogIntegrand((x) -> logpdf(d2, x)), d2)
 
                 method = Unscented(GaussLaguerre(n), strategy)
                 C      = approximate(Expectation(), method, d1, f)

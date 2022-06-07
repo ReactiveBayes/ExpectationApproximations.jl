@@ -1,7 +1,7 @@
 # Common structures and routines 
 
 ```@docs
-LogFn
+LogIntegrand
 ExpectationApproximations.Points
 ExpectationApproximations.Weights
 ExpectationApproximations.RescaleArguments

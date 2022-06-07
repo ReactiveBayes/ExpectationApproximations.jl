@@ -36,19 +36,33 @@ getlogweights(method::GaussLaguerre) = method.logweights
 
 ## Gauss Laguerre without any distribution (::Nothing)
 
-adjust_logintegrand(::GaussLaguerre, ::Nothing, logf::F) where F = (x) -> logf(x) + x
-adjust_integrand(::GaussLaguerre, ::Nothing, f::F) where F       = (x) -> f(x) * exp(x)
-    
-adjust_logresult(::GaussLaguerre, ::Nothing, logresult) = logresult
-adjust_result(::GaussLaguerre, ::Nothing, result)       = result
+function adjust_integrand(::GaussLaguerre, ::Nothing, f::F) where F
+    return (x) -> f(x) * exp(x)
+end
+
+function adjust_integrand(::GaussLaguerre, ::Nothing, f::LogIntegrand)
+    return let logf = log(f)
+        LogIntegrand((x) -> logf(x) + x)
+    end
+end
+
+adjust_result(::UseWeights, ::GaussLaguerre, ::Nothing, result)       = result   
+adjust_result(::UseLogWeights, ::GaussLaguerre, ::Nothing, logresult) = logresult
 
 ## Gauss Laguerre with some arbitrary distribution (::Distribution)
 
-adjust_logintegrand(::GaussLaguerre, q::Distribution, logf::F) where F = (x) -> logpdf(q, x) + logf(x) + x
-adjust_integrand(::GaussLaguerre, q::Distribution, f::F) where F       = (x) -> pdf(q, x) * f(x) * exp(x)
-    
-adjust_logresult(::GaussLaguerre, ::Distribution, logresult) = logresult
-adjust_result(::GaussLaguerre, ::Distribution, result)       = result
+function adjust_integrand(::GaussLaguerre, q::Distribution, f::F) where F 
+    return (x) -> pdf(q, x) * f(x) * exp(x)
+end
+
+function adjust_integrand(::GaussLaguerre, q::Distribution, f::LogIntegrand) 
+    return let logf = log(f)
+        LogIntegrand((x) -> logpdf(q, x) + logf(x) + x)
+    end
+end
+
+adjust_result(::UseWeights, ::GaussLaguerre, ::Distribution, result)       = result    
+adjust_result(::UseLogWeights, ::GaussLaguerre, ::Distribution, logresult) = logresult
 
 # Specific tricks/implementations for distributions from Distributions.jl
 include("gausslaguerre_gamma.jl")
