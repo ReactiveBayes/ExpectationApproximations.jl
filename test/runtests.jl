@@ -5,6 +5,6 @@ using Test
     
     include("test_common.jl")
 
-    include("methods/test_unscented.jl")
+    include("methods/unscented/test_unscented.jl")
 
 end
