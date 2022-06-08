@@ -12,7 +12,7 @@ end
 # logg(x) = logf(x/β) + (α - 1) * log(x) - loggamma(α)
 function adjust_integrand(::GaussLaguerre, q::Gamma, f::LogIntegrand) 
     return let α = shape(q), θ = scale(q), logf = log(f)
-        LogIntegrand((x) -> logf(θ * x) + (α - 1) * log(x)) # We subtract `loggamma(α)` later on, see `adjust_logresult`
+        LogIntegrand((x) -> logf(θ * x) + (α - 1) * log(x)) # We subtract `loggamma(α)` later on, see `adjust_result`
     end
 end
 

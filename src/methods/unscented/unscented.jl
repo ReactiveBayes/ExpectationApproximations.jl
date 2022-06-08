@@ -102,12 +102,20 @@ function _unscented_force_log_process_result(f::F, rule, logresult) where {F}
 end
 
 function _unscented_force_log_process_result(::LogIntegrand, rule, logresult)
-    # In case of `LogIntegrand` we assume that `logresult` is not complex
-    # Otherwise it indicates that something went wrong, and `Logarithmic` will throw anyway
-    # return `logresult` in a form of the `Logarithmic` number from `LogarithmicNumbers.jl` package
     return exp(Logarithmic, logresult)
+end
+
+function _unscented_force_log_process_result(::LogIntegrand, rule, logresult::Complex)
+    # TODO! same with f::F
+    sign = real(exp(complex(0, imag(logresult))))
+    if !(abs(sign) ≈ 1)
+        error("Unscented failed to compute an approximation with $(name(rule)) rule, result is a complex number with non-zero imaginary part: $(result)")
+    end
+    return sign * exp(Logarithmic, real(logresult))
 end
 
 ##
 
 include("gausslaguerre/gausslaguerre.jl")
+include("gausshermite/gausshermite.jl")
+

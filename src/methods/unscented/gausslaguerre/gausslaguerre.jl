@@ -1,5 +1,7 @@
 export GaussLaguerre
 
+using FastGaussQuadrature
+
 import Base: show
 
 struct GaussLaguerre{P, W, L} <: UnscentedRule
