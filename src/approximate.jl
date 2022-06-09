@@ -27,13 +27,13 @@ end
 RawMoment(::Val{N}, c::C) where { N, C } = RawMoment{N, C}(c)
 
 function adjust_integrand(moment::RawMoment{N}, f::F) where { N, F }
-    return let c = moment.c 
+    return let c = float(moment.c)
         (x) -> x^N * f(x) / c
     end
 end
 
 function adjust_integrand(moment::RawMoment{N}, f::LogIntegrand) where { N } 
-    return let logf = log(f), logC = log(moment.c)
+    return let logf = log(f), logC = float(log(moment.c))
         LogIntegrand((x) -> N * log(Complex(x)) + logf(x) - logC)
     end
 end
@@ -48,13 +48,13 @@ end
 CentralMoment(::Val{N}, c::C, μ::M) where {N, C, M} = CentralMoment{N, C, M}(c, μ)
 
 function adjust_integrand(moment::CentralMoment{N}, f::F) where {N, F} 
-    return let μ = moment.μ, c = moment.c 
+    return let μ = moment.μ, c = float(moment.c)
         (x) -> (x - μ)^N * f(x) / c
     end
 end
 
 function adjust_integrand(moment::CentralMoment{N}, f::LogIntegrand) where {N} 
-    return let μ = moment.μ, logf = log(f), logC = log(moment.c)
+    return let μ = moment.μ, logf = log(f), logC = float(log(moment.c))
         LogIntegrand((x) -> N * log(Complex(x - μ)) + logf(x) - logC)
     end
 end

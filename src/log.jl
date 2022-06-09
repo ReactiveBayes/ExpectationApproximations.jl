@@ -59,9 +59,9 @@ function Base.convert(::Type{Logarithmic}, result::LogResult)
     expimag   = real(exp(complex(0, imag(logresult)))) # Exponentiate imaginary part only 
     
     # Check sign of the result, slight deviations are acceptable
-    if !(isapprox(abs(expimag), 1, rtol = 0.1, atol = 0.1))
+    if !(isapprox(abs(expimag), 1, rtol = 0.01, atol = 0.01))
         error("Failed to convert a result of the approximation, result is a complex number with non-zero imaginary part: $(logresult)")
     end
 
-    return sign(expimag) * exp(Logarithmic, abs(logresult))
+    return sign(expimag) * exp(Logarithmic, real(logresult))
 end

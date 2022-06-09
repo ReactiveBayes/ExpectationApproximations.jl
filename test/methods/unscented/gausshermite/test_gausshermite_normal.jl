@@ -40,15 +40,15 @@ module TestsUnscentedGaussHermiteNormal
 
     @testset "GaussHermite moments calculation when q is Normal" begin
 
-        btol(::UseLogWeights, n) = 1e-1 / log(n) # LogWeights should have better accuracy overall
-        btol(::UseWeights, n) = 1e-1
-        btol(::UnscentedStrategyAutomatic, n) = 1e-1
+        btol(::UseLogWeights, n) = 5e-1 / log(n) # LogWeights should have better accuracy overall
+        btol(::UseWeights, n) = 5e-1
+        btol(::UnscentedStrategyAutomatic, n) = 5e-1
 
         m1s = (1.3, -2.1, 10.1, )
-        m2s = (1.3, -2.1, 10.1, )
-        v1s = (0.1, 1.0, 10.0, )
-        v2s = (0.1, 1.0, 10.0, )
-        npoints = (61, 121, 1121, 2121) 
+        m2s = (1.3, -2.1, 10.1 )
+        v1s = (0.1, 1.0, 4.0, )
+        v2s = (0.1, 1.0, 4.0, )
+        npoints = (121, 1121, 2121) 
         strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
 
         for m1 in m1s, m2 in m2s, v1 in v1s, v2 in v2s, n in npoints, strategy in strategies 
@@ -60,7 +60,7 @@ module TestsUnscentedGaussHermiteNormal
             v = (v1 * v2) / (v1 + v2)
             p = Normal(m, sqrt(v))
 
-            for f in ((x) -> pdf(d2, x), )#LogIntegrand((x) -> logpdf(d2, x)), d2)
+            for f in ((x) -> pdf(d2, x), LogIntegrand((x) -> logpdf(d2, x)), d2)
 
                 method = Unscented(GaussHermite(n), strategy)
                 C      = approximate(Expectation(), method, d1, f)
