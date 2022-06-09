@@ -14,5 +14,4 @@ function adjust_integrand(::GaussLaguerre, q::Exponential, f::LogIntegrand)
     end
 end
 
-adjust_result(::UseWeights, ::GaussLaguerre, q::Exponential, result)       = result
-adjust_result(::UseLogWeights, ::GaussLaguerre, q::Exponential, logresult) = logresult
+adjust_result(::GaussLaguerre, q::Exponential, result) = result

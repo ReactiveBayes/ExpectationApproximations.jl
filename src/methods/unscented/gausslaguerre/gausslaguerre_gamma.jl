@@ -17,6 +17,6 @@ function adjust_integrand(::GaussLaguerre, q::Gamma, f::LogIntegrand)
 end
 
 # Computing `gamma(α)` prone to overflowing
-adjust_result(::UseWeights, ::GaussLaguerre, q::Gamma, result)       = real(exp(log(Complex(result)) - loggamma(shape(q))))
-adjust_result(::UseLogWeights, ::GaussLaguerre, q::Gamma, logresult) = logresult - loggamma(shape(q))
+adjust_result(::GaussLaguerre, q::Gamma, result)            = convert(Logarithmic, LogResult(log(Complex(result)) - loggamma(shape(q))))
+adjust_result(::GaussLaguerre, q::Gamma, result::LogResult) = LogResult(log(result) - loggamma(shape(q)))
 

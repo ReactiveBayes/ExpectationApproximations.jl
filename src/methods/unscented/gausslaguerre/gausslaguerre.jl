@@ -11,6 +11,8 @@ struct GaussLaguerre{P, W, L} <: UnscentedRule
     logweights :: L
 end
 
+name(::GaussLaguerre) = "GaussLaguerre"
+
 function GaussLaguerre(length::Int)
     # α = 0.0 is on purpose as it is nicely computed and numerically stable
     # Revise `α` as a parameter later on, but we observed that with `α > 30.0` sigma points and weights are extremelly unstable
@@ -48,8 +50,7 @@ function adjust_integrand(::GaussLaguerre, ::Nothing, f::LogIntegrand)
     end
 end
 
-adjust_result(::UseWeights, ::GaussLaguerre, ::Nothing, result)       = result   
-adjust_result(::UseLogWeights, ::GaussLaguerre, ::Nothing, logresult) = logresult
+adjust_result(::GaussLaguerre, ::Nothing, result) = result   
 
 ## Gauss Laguerre with some arbitrary distribution (::Distribution)
 
@@ -63,8 +64,7 @@ function adjust_integrand(::GaussLaguerre, q::Distribution, f::LogIntegrand)
     end
 end
 
-adjust_result(::UseWeights, ::GaussLaguerre, ::Distribution, result)       = result    
-adjust_result(::UseLogWeights, ::GaussLaguerre, ::Distribution, logresult) = logresult
+adjust_result(::GaussLaguerre, ::Distribution, result) = result    
 
 # Specific tricks/implementations for distributions from Distributions.jl
 include("gausslaguerre_gamma.jl")

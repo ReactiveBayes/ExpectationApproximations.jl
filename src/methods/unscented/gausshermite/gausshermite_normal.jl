@@ -14,6 +14,6 @@ function adjust_integrand(::GaussHermite, q::Normal, f::LogIntegrand)
     end
 end
 
-adjust_result(::UseWeights, ::GaussLaguerre, q::Normal, result)       = invsqrtπ * result
-adjust_result(::UseLogWeights, ::GaussLaguerre, q::Normal, logresult) = logresult - logsqrtπ
+adjust_result(::GaussHermite, q::Normal, result)            = invsqrtπ * result
+adjust_result(::GaussHermite, q::Normal, result::LogResult) = LogResult(log(result) - logsqrtπ)
 

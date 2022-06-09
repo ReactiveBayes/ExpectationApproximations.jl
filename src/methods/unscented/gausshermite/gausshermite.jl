@@ -15,6 +15,8 @@ struct GaussHermite{P, W, L} <: UnscentedRule
     logweights :: L
 end
 
+name(::GaussHermite) = "GaussHermite"
+
 function GaussHermite(length::Int)
 
     points, weights = gausshermite(length) 
@@ -51,8 +53,7 @@ function adjust_integrand(::GaussHermite, ::Nothing, f::LogIntegrand)
     end
 end
 
-adjust_result(::UseWeights, ::GaussHermite, ::Nothing, result)       = invsqrtπ * result   
-adjust_result(::UseLogWeights, ::GaussHermite, ::Nothing, logresult) = logresult - logsqrtπ
+adjust_result(::GaussHermite, ::Nothing, result) = result   
 
 ## Gauss Hermite with some arbitrary distribution (::Distribution)
 
@@ -66,8 +67,7 @@ function adjust_integrand(::GaussHermite, q::Distribution, f::LogIntegrand)
     end
 end
 
-adjust_result(::UseWeights, ::GaussHermite, ::Distribution, result)       = invsqrtπ * result    
-adjust_result(::UseLogWeights, ::GaussHermite, ::Distribution, logresult) = logresult - logsqrtπ
+adjust_result(::GaussHermite, ::Distribution, result) = result    
 
 # Specific tricks/implementations for distributions from Distributions.jl
 include("gausshermite_normal.jl")

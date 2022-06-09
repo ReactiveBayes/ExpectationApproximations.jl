@@ -45,7 +45,7 @@ module TestsUnscentedGaussLaguerreGamma
         btol(::UnscentedStrategyAutomatic, n) = 1e-1
 
         vals = (1.3, 2.1, 10.1, )
-        npoints = (61, 121, 1121, 5121) 
+        npoints = (61, 121, 1121, 2121) 
         strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
 
         for α1 in vals, α2 in vals, β1 in vals, β2 in vals, n in npoints, strategy in strategies 

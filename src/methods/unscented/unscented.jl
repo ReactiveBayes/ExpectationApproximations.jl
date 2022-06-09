@@ -52,7 +52,7 @@ getlogweights(method::Unscented) = getlogweights(method.rule)
 
 ## Generic implementation
 
-function unscented_approximate_expectation(strategy::UseWeights, rule, q, f::F) where F
+function unscented_approximate_expectation(::UseWeights, rule, q, f::F) where F
     points  = getpoints(rule)
     weights = getweights(rule)
     g       = adjust_integrand(rule, q, f)
@@ -61,10 +61,10 @@ function unscented_approximate_expectation(strategy::UseWeights, rule, q, f::F) 
         return w * g(x)
     end
 
-    return adjust_result(strategy, rule, q, result)
+    return adjust_result(rule, q, result)
 end
 
-function unscented_approximate_expectation(strategy::UseLogWeights, rule, q, f::F) where F
+function unscented_approximate_expectation(::UseLogWeights, rule, q, f::F) where F
     points     = getpoints(rule)
     logweights = getlogweights(rule)
     g          = adjust_integrand(rule, q, convert(LogIntegrand, f))
@@ -81,37 +81,9 @@ function unscented_approximate_expectation(strategy::UseLogWeights, rule, q, f::
         return logw + logg(x)
     end
 
-    logadjusted = adjust_result(strategy, rule, q, logsumexp(logresult))
+    logadjusted = adjust_result(rule, q, LogResult(logsumexp(logresult)))
 
-    return _unscented_force_log_process_result(f, rule, logadjusted)
-end
-
-# Utility functions
-
-_unscented_is_complex(x::Number)  = false
-_unscented_is_complex(x::Complex) = true
-
-function _unscented_force_log_process_result(f::F, rule, logresult) where {F}
-    # In general case it might be that `logresult` is complex, but imaginary part should be almost zero
-    # Otherwise it indicates that something went wrong
-    result = exp(logresult)
-    if _unscented_is_complex(result) && !(imag(result) < 1e-8) # 1e-8 is sort of arbitrary
-        error("Unscented failed to compute an approximation with $(name(rule)) rule, result is a complex number with non-zero imaginary part: $(result)")
-    end
-    return real(result)
-end
-
-function _unscented_force_log_process_result(::LogIntegrand, rule, logresult)
-    return exp(Logarithmic, logresult)
-end
-
-function _unscented_force_log_process_result(::LogIntegrand, rule, logresult::Complex)
-    # TODO! same with f::F
-    sign = real(exp(complex(0, imag(logresult))))
-    if !(abs(sign) ≈ 1)
-        error("Unscented failed to compute an approximation with $(name(rule)) rule, result is a complex number with non-zero imaginary part: $(result)")
-    end
-    return sign * exp(Logarithmic, real(logresult))
+    return convert(Logarithmic, logadjusted)
 end
 
 ##
