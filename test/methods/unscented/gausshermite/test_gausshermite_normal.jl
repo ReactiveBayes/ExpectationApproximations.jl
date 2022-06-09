@@ -15,7 +15,7 @@ module TestsUnscentedGaussHermiteNormal
         
         strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
         npoints = (10, 20, 100, 200)
-        qs = (Normal(20randn(irng) + 1, 20rand(irng) + 1) for _ in 1:2)
+        qs = (Normal(20randn(irng) + 1, 20rand(irng) + 1) for _ in 1:50)
         
         for strategy in strategies, n in npoints, q in qs
         
