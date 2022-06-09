@@ -64,8 +64,8 @@ module TestsUnscentedGaussHermiteNormal
 
                 method = Unscented(GaussHermite(n), strategy)
                 C      = approximate(Expectation(), method, d1, f)
-                m      = float(approximate(RawMoment(Val(1), C), method, d1, f))
-                v      = float(approximate(CentralMoment(Val(2), C, m), method, d1, f))
+                m      = approximate(RawMoment(Val(1), C), method, d1, f)
+                v      = approximate(CentralMoment(Val(2), C, m), method, d1, f)
 
                 # base rel tolerance 
                 brtol = btol(strategy, n)
