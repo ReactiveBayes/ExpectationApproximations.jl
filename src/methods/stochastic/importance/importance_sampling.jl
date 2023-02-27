@@ -105,12 +105,6 @@ function ImportanceSampling_approximate_expectation(approximation::ImportanceSam
     return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples)) 
 end
 
-
-# function approximate_expectation(method::ImportanceSampling, q::Distribution, f::F) where F 
-#     g = (x) -> f(x)*pdf(q,x)
-#     return ImportanceSampling_approximate_expectation(method,g)
-# end
-
 function approximate_expectation(method::ImportanceSampling, q, f::F) where F  
     return ImportanceSampling_approximate_expectation(method, q,f)
 end
