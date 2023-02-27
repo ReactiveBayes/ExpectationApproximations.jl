@@ -8,7 +8,7 @@ import StatsFuns: sqrtπ, sqrt2
 const invsqrtπ = inv(sqrtπ)
 const logsqrtπ = log(sqrtπ)
 
-struct GaussHermite{P, W, L} <: UnscentedRule
+struct GaussHermite{P, W, L} <: ClassicalQuadratureRule
     length     :: Int
     points     :: P
     weights    :: W

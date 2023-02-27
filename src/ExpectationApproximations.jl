@@ -7,6 +7,6 @@ module ExpectationApproximations
     include("kernels/raw_moment.jl")
     include("kernels/central_moment.jl")
 
-    include("methods/unscented/unscented.jl")
-
+    include("methods/deterministic/quadrature/classical/classical_quadrature.jl")
+    include("methods/stochastic/importance/importance_sampling.jl")
 end

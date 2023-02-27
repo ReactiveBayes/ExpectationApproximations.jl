@@ -1,9 +1,9 @@
-module TestsUnscentedGaussLaguerreGamma
+module TestsClassicalQuadratureGaussLaguerreGamma
 
     using Test
     using ExpectationApproximations, Distributions, StableRNGs
 
-    import ExpectationApproximations: UnscentedStrategyAutomatic
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
     @testset "GaussLaguerre: Basic integrations/approximations when q is Gamma" begin
     
@@ -11,15 +11,15 @@ module TestsUnscentedGaussLaguerreGamma
 
         btol(::UseLogWeights, n) = 1e-2 / log(n) # LogWeights should have better accuracy overall
         btol(::UseWeights, n) = 1e-2
-        btol(::UnscentedStrategyAutomatic, n) = 1e-2
+        btol(::ClassicalQuadratureStrategyAutomatic, n) = 1e-2
         
-        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
+        strategies = (UseLogWeights(), UseWeights(), ClassicalQuadratureStrategyAutomatic())
         npoints = (10, 20, 100, 200)
         qs = (Gamma(20rand(irng) + 1, 20rand(irng) + 1) for _ in 1:50)
         
         for strategy in strategies, n in npoints, q in qs
         
-            method = Unscented(GaussLaguerre(n), strategy)
+            method = ClassicalQuadrature(GaussLaguerre(n), strategy)
             
             # base rel tolerance 
             brtol = btol(strategy, n)
@@ -42,11 +42,11 @@ module TestsUnscentedGaussLaguerreGamma
 
         btol(::UseLogWeights, n) = 1e-1 / log(n) # LogWeights should have better accuracy overall
         btol(::UseWeights, n) = 1e-1
-        btol(::UnscentedStrategyAutomatic, n) = 1e-1
+        btol(::ClassicalQuadratureStrategyAutomatic, n) = 1e-1
 
         vals = (1.3, 2.1, 10.1, )
         npoints = (61, 121, 1121, 2121) 
-        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
+        strategies = (UseLogWeights(), UseWeights(), ClassicalQuadratureStrategyAutomatic())
 
         for α1 in vals, α2 in vals, β1 in vals, β2 in vals, n in npoints, strategy in strategies 
 
@@ -59,7 +59,7 @@ module TestsUnscentedGaussLaguerreGamma
 
             for f in ((x) -> pdf(d2, x), LogIntegrand((x) -> logpdf(d2, x)), d2)
 
-                method = Unscented(GaussLaguerre(n), strategy)
+                method = ClassicalQuadrature(GaussLaguerre(n), strategy)
                 C      = approximate(Expectation(), method, d1, f)
                 m      = approximate(RawMoment(Val(1), C), method, d1, f)
                 v      = approximate(CentralMoment(Val(2), C, m), method, d1, f)

@@ -1,4 +1,4 @@
-module TestsUnscentedGaussLaguerre
+module TestsClassicalQuadratureGaussLaguerre
 
     using Test
     using ExpectationApproximations
@@ -9,7 +9,7 @@ module TestsUnscentedGaussLaguerre
         for npoints in (10, 20, 100)
             gl = GaussLaguerre(npoints)
 
-            @test getrule(Unscented(gl)) === gl
+            @test getrule(ClassicalQuadrature(gl)) === gl
 
             @test length(gl) === npoints
             @test length(getpoints(gl)) === npoints

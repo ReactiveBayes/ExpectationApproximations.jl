@@ -1,4 +1,4 @@
-module TestsUnscentedGaussHermite
+module TestsClassicalQuadratureGaussHermite
 
     using Test
     using ExpectationApproximations
@@ -9,7 +9,7 @@ module TestsUnscentedGaussHermite
         for npoints in (10, 20, 100)
             gl = GaussHermite(npoints)
 
-            @test getrule(Unscented(gl)) === gl
+            @test getrule(ClassicalQuadrature(gl)) === gl
 
             @test length(gl) === npoints
             @test length(getpoints(gl)) === npoints

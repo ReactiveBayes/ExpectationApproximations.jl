@@ -1,9 +1,9 @@
-module TestsUnscentedGaussHermiteNormal
+module TestsClassicalQuadratureGaussHermiteNormal
 
     using Test
     using ExpectationApproximations, Distributions, StableRNGs
 
-    import ExpectationApproximations: UnscentedStrategyAutomatic
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
     @testset "GaussHermite: Basic integrations/approximations when q is Normal" begin
     
@@ -11,15 +11,15 @@ module TestsUnscentedGaussHermiteNormal
 
         btol(::UseLogWeights, n) = 1e-2 / log(n) # LogWeights should have better accuracy overall
         btol(::UseWeights, n) = 1e-2
-        btol(::UnscentedStrategyAutomatic, n) = 1e-2
+        btol(::ClassicalQuadratureStrategyAutomatic, n) = 1e-2
         
-        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
+        strategies = (UseLogWeights(), UseWeights(), ClassicalQuadratureStrategyAutomatic())
         npoints = (10, 20, 100, 200)
         qs = (Normal(20randn(irng) + 1, 20rand(irng) + 1) for _ in 1:50)
         
         for strategy in strategies, n in npoints, q in qs
         
-            method = Unscented(GaussHermite(n), strategy)
+            method = ClassicalQuadrature(GaussHermite(n), strategy)
             
             # base rel tolerance 
             brtol = btol(strategy, n)
@@ -42,14 +42,14 @@ module TestsUnscentedGaussHermiteNormal
 
         btol(::UseLogWeights, n) = 5e-1 / log(n) # LogWeights should have better accuracy overall
         btol(::UseWeights, n) = 5e-1
-        btol(::UnscentedStrategyAutomatic, n) = 5e-1
+        btol(::ClassicalQuadratureStrategyAutomatic, n) = 5e-1
 
         m1s = (1.3, -2.1, 10.1, )
         m2s = (1.3, -2.1, 10.1 )
         v1s = (0.1, 1.0, 4.0, )
         v2s = (0.1, 1.0, 4.0, )
         npoints = (121, 1121, 2121) 
-        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
+        strategies = (UseLogWeights(), UseWeights(), ClassicalQuadratureStrategyAutomatic())
 
         for m1 in m1s, m2 in m2s, v1 in v1s, v2 in v2s, n in npoints, strategy in strategies 
 
@@ -62,7 +62,7 @@ module TestsUnscentedGaussHermiteNormal
 
             for f in ((x) -> pdf(d2, x), LogIntegrand((x) -> logpdf(d2, x)), d2)
 
-                method = Unscented(GaussHermite(n), strategy)
+                method = ClassicalQuadrature(GaussHermite(n), strategy)
                 C      = approximate(Expectation(), method, d1, f)
                 m      = approximate(RawMoment(Val(1), C), method, d1, f)
                 v      = approximate(CentralMoment(Val(2), C, m), method, d1, f)

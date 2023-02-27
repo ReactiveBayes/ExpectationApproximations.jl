@@ -1,9 +1,9 @@
-module TestsUnscentedGaussLaguerreExponential
+module TestsClassicalQuadratureGaussLaguerreExponential
 
     using Test
     using ExpectationApproximations, Distributions, StableRNGs
 
-    import ExpectationApproximations: UnscentedStrategyAutomatic
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
     @testset "GaussLaguerre: Basic integrations/approximations when q is Exponential" begin
     
@@ -11,15 +11,15 @@ module TestsUnscentedGaussLaguerreExponential
     
         btol(::UseLogWeights, n) = 1e-10 / log(n) # LogWeights should have better accuracy overall
         btol(::UseWeights, n) = 1e-10
-        btol(::UnscentedStrategyAutomatic, n) = 1e-10
+        btol(::ClassicalQuadratureStrategyAutomatic, n) = 1e-10
         
-        strategies = (UseLogWeights(), UseWeights(), UnscentedStrategyAutomatic())
+        strategies = (UseLogWeights(), UseWeights(), ClassicalQuadratureStrategyAutomatic())
         npoints = (10, 20, 100, 200)
         qs = (Exponential(20rand(irng)) for _ in 1:50)
         
         for strategy in strategies, n in npoints, q in qs
         
-            method = Unscented(GaussLaguerre(n), strategy)
+            method = ClassicalQuadrature(GaussLaguerre(n), strategy)
             
             # base rel tolerance 
             brtol = btol(strategy, n)
