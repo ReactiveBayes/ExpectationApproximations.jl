@@ -33,12 +33,12 @@ getsamples(approximation::ImportanceSampling)           = getsamples(approximati
 getsamples(approximation::ImportanceSampling, nsamples) = rand(approximation.rng, approximation.distribution, nsamples)
 
 
-function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling, f::F) where F
+function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling, q::Distribution, f::F) where F
 
     # We use preallocated arrays to sample and compute transformed samples and weightd
     rand!(approximation.rng, approximation.distribution, approximation.bsamples)  
     # modify function f
-    g = (x) -> f(x) / pdf(approximation.distribution, x)
+    g = (x) -> pdf(q,x)/ pdf(approximation.distribution, x)
     map!(g, approximation.bweights, approximation.bsamples)
    
     if approximation.resampling
@@ -66,15 +66,52 @@ function ImportanceSampling_approximate_expectation(approximation::ImportanceSam
     map!(f, approximation.bsamples, approximation.bsamples)
 
 
-    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples))
+    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples)) 
 end
 
-function approximate_expectation(method::ImportanceSampling, q::Distribution, f::F) where F 
-    g = (x) -> f(x)*pdf(q,x)
-    return ImportanceSampling_approximate_expectation(method,g)
+function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling,q, f::F) where F
+
+    # We use preallocated arrays to sample and compute transformed samples and weightd
+    rand!(approximation.rng, approximation.distribution, approximation.bsamples)  
+    # modify function f
+    g = (x) -> q(x)/ pdf(approximation.distribution, x)
+    map!(g, approximation.bweights, approximation.bsamples)
+   
+    if approximation.resampling
+        n_eff = 1 / sum(Base.Generator(abs2, approximation.bweights))
+
+        # Here we assume that lengths of bweights ans bsamples vectors are the same
+        N = length(approximation.bweights)
+
+        if n_eff < N / 10
+            # We use rsamples as a temporary buffer here
+            copyto!(approximation.rsamples, 1, approximation.bsamples, 1, N)
+            # Here rsamples are equal to bsamples, but during sampling bsamples will be overwritten
+            sample!(approximation.rng, approximation.rsamples, Weights(approximation.bweights), approximation.bsamples)
+            fill!(approximation.bweights, 1 / N)
+        end
+    end
+
+    normalization = sum(approximation.bweights)
+
+    if isnan(normalization) || iszero(normalization)
+        error("Importance sampling either encountered NaN or weights are zero!!")
+    end
+
+    map!(Base.Fix2(/, normalization), approximation.bweights, approximation.bweights)
+    map!(f, approximation.bsamples, approximation.bsamples)
+
+
+    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples)) 
 end
 
-function approximate(method::ImportanceSampling, f::F) where F  
-    return ImportanceSampling_approximate_expectation(method, f)
+
+# function approximate_expectation(method::ImportanceSampling, q::Distribution, f::F) where F 
+#     g = (x) -> f(x)*pdf(q,x)
+#     return ImportanceSampling_approximate_expectation(method,g)
+# end
+
+function approximate_expectation(method::ImportanceSampling, q, f::F) where F  
+    return ImportanceSampling_approximate_expectation(method, q,f)
 end
 
