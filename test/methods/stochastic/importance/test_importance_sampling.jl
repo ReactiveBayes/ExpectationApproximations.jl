@@ -48,7 +48,7 @@ module TestsImportancecSampling
     end
 
 
-    @testset "ImportanceSampling: Basic integration with unnormalized distribution: Gamma"  begin 
+    @testset "ImportanceSampling: Basic integration with normalized distribution: Gamma"  begin 
         irng            = StableRNG(123)
         alpha           = 5
         beta            = 4
@@ -69,6 +69,25 @@ module TestsImportancecSampling
         end
     end
 
+    @testset "ImportanceSampling: Basic integration with unnormalized distribution: Beta"  begin 
+        irng            = StableRNG(123)
+        alpha           = 5
+        beta            = 4
+        true_dist       = x -> x^(4)*(1-x)^3
+        npoints         = [10000]
+        alphas          = [3,4,5,6,7]
+        betas           = [3,4,5,6,7]
+        brtol           = 0.1
+        resampling      = [true, false]
+        for a in alphas, b in betas, n in npoints, resample in resampling
+            importance_dist = Beta(a, b)
+            method = ImportanceSampling(irng, n,  importance_dist; resampling = resample)
+            @test isapprox(approximate(method, true_dist, (x) -> 1),1 , rtol = brtol)
+            tmp = approximate(method, true_dist, (x) -> x)
+            @test isapprox(tmp, alpha/(beta+alpha), rtol = brtol)
+            @test isapprox(approximate(method, true_dist, (x) -> log(x)), digamma(alpha)-digamma(alpha+beta), rtol = brtol)
 
+        end
+    end
 
 end
