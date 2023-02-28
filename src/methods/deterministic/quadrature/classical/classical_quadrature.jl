@@ -19,7 +19,7 @@ end
 struct UseWeights end
 struct UseLogWeights end
 
-struct ClassicalQuadrature{R <: ClassicalQuadratureRule, S}
+struct ClassicalQuadrature{R <: ClassicalQuadratureRule, S} <: AbstractApproximationMethod
     rule     :: R
     strategy :: S
 end

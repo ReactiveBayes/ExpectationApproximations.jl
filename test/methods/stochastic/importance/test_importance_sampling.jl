@@ -119,7 +119,7 @@ module TestsImportancecSampling
         true_dist       = x -> pdf(Beta(5,3),x)*pdf(Gamma(5,1/4),x)
         normalization_true = mapreduce(true_dist, +, trange)
         weights         = mapreduce(true_dist, +, trange)/normalization_true
-        m               = sum( weights .* trange)/length(trange)
+        m               = sum(weights .* trange)/length(trange)
         logm            = sum(weights .* log.(trange))/length(trange)
         npoints         = [10000]
         alphas          = [2,3,4,5,6,7,10,20]
