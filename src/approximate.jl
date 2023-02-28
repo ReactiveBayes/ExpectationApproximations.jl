@@ -7,7 +7,15 @@ using Distributions
 # struct CompatibilityUnknown end
 
 # iscompatible(method, q) = CompatibilityUnknown()
+
+export AbstractApproximationMethod
+export approximation_name, approximation_short_name
+
 abstract type AbstractApproximationMethod end
+
+function approximation_name end
+function approximation_short_name end
+
 abstract type Kernel end
 
 function adjust_integrand end
