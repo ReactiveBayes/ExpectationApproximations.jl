@@ -3,7 +3,8 @@ module ExpectationApproximations
     include("transforms.jl")
     include("log.jl")
     include("approximate.jl")
-    include("helpers.jl")
+    include("helpers/helpers.jl")
+    include("helpers/algebra/cholesky.jl")
 
     include("kernels/raw_moment.jl")
     include("kernels/central_moment.jl")
@@ -12,4 +13,5 @@ module ExpectationApproximations
     include("methods/stochastic/importance/importance_sampling.jl")
     include("methods/deterministic/series/linearization.jl")
     include("methods/deterministic/series/laplace.jl")
+    include("methods/deterministic/quadrature/classical/unscented.jl")
 end
