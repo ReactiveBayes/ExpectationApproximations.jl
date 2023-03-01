@@ -32,11 +32,12 @@ struct Unscented{A, B, K, E} <: AbstractApproximationMethod
     β::B
     κ::K
     e::E
+    cov::Bool 
 end
 
 # Structure constructor
-function Unscented(; alpha::A = default_alpha, beta::B = default_beta, kappa::K = default_kappa) where {A <: Real, B <: Real, K <: Real}
-    return Unscented{A, B, K, Nothing}(alpha, beta, kappa, nothing)
+function Unscented(; alpha::A = default_alpha, beta::B = default_beta, kappa::K = default_kappa,cov = false) where {A <: Real, B <: Real, K <: Real}
+    return Unscented{A, B, K, Nothing}(alpha, beta, kappa, nothing, cov)
 end
 
 function Unscented(dim::Int64; alpha::Real = default_alpha, beta::Real = default_beta, kappa::Real = default_kappa)
@@ -79,8 +80,9 @@ getWc(extra::UnscentedExtra) = extra.Wc
 
 # Copied and refactored from ForneyLab.jl
 
-function approximate_expectation(method::Unscented,q, f::F;return_covariance=false) where {F}
+function approximate_expectation(method::Unscented,q, f::F) where {F}
     res = Unscented_approximate(method,f,(mean(q),),(var(q),))
+    return_covariance = method.cov
     if return_covariance
         return res
     else
@@ -88,8 +90,9 @@ function approximate_expectation(method::Unscented,q, f::F;return_covariance=fal
     end
 end
 
-function approximate_expectation(method::Unscented,q::Tuple, f::F;return_covariance=false) where {F}
+function approximate_expectation(method::Unscented,q::Tuple, f::F) where {F}
     res = Unscented_approximate(method,f,mean.(q),var.(q))
+    return_covariance = method.cov
     if return_covariance
         return res
     else

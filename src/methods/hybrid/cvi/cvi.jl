@@ -45,7 +45,7 @@ Arguments
 """
 struct CVI{R, O, G, B} <: AbstractApproximationMethod
     rng::R
-    n_samples::Int
+    n_samples::Int ## to be used in ReactiveMP messsage computations. ExpectationApproximations do not use this field
     n_iterations::Int
     opt::O
     grad::G

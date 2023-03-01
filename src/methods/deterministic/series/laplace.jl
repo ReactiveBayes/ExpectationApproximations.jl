@@ -9,10 +9,13 @@ it approximates integrals of the following form ∫f(x)exp(Mq(x))dx where q(x) i
 - `dimension`: dimension of integration 
 """
 
-struct Laplace <: AbstractApproximationMethod 
+struct Laplace{T, R} <: AbstractApproximationMethod 
     dimension :: Int64
+    M         :: T 
+    point     :: R 
 end
-laplace(d::Int64) = Laplace(d)
+
+laplace(d, M ,point) = Laplace(d,M,point)  
 
 approximation_name(::Laplace)       = "Laplace"
 approximation_short_name(::Laplace) = "LP"
@@ -21,9 +24,10 @@ using ForwardDiff
 using Optim
 import LinearAlgebra: det
 
-function approximate_expectation(method::Laplace, q, f::F; M = 1, point=nothing) where F 
-    ## this function accepts q as it is in the above description
-    d = method.dimension
+function approximate_expectation(method::Laplace, q, f::F) where F 
+    M     = method.M
+    point = method.point
+    d     = method.dimension
     if point === nothing
         if d == 1
             point = 0.0
@@ -49,9 +53,9 @@ function approximate_expectation(method::Laplace, q, f::F; M = 1, point=nothing)
     end
 end
 
-function approximate_expectation(method::Laplace, q::Distribution, f::F; M = 1, point=nothing) where F 
+function approximate_expectation(method::Laplace, q::Distribution, f::F) where F 
     ## this function accepts q as a distribution and passes the logpdf to simulate
     ## expectation with respect to q
     dist = (x) -> logpdf(q,x)
-    return approximate_expectation(method,dist,f;M=M,point=point)
+    return approximate_expectation(method,dist,f)
 end
