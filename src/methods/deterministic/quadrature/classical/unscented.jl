@@ -20,13 +20,8 @@ More specifically, it contains the hyperparameters used for sigma points computa
 - `κ`: Spread parameter for unscented transform #2
 - `e`: Internal cache
 The `Unscented` structure with default parameters can be constructed as `Unscented()`.
-The `Unscented` structure is used inside the `DeltaMeta` or `FlowMeta` structure and can be included as: 
-```
-    y ~ f(x) where { meta = DeltaMeta(method = Unscented()) }
-    # or
-    y ~ Flow(x) where { meta = FlowMeta(flowmodel, Unscented()) }
-```
 """
+
 struct Unscented{A, B, K, E} <: AbstractApproximationMethod
     α::A
     β::B
@@ -221,4 +216,15 @@ function sigma_points_weights(method::Unscented, m::AbstractVector, V::AbstractM
     @inbounds weights_c[2:end] .= 1 / (2 * (d + lambda))
 
     return (sigma_points, weights_m, weights_c)
+end
+
+# This function extends the `Unscented` approximation method in case if all inputs are from the `NormalDistributionsFamily`
+function approximate(method::Unscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
+    statistics = mean_cov.(distributions)
+    means      = first.(statistics)
+    covs       = last.(statistics)
+
+    μ_tilde, Σ_tilde = approximate(method, f, means, covs)
+
+    return convert(promote_variate_type(variate_form(μ_tilde), NormalMeanVariance), μ_tilde, Σ_tilde)
 end

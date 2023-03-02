@@ -4,12 +4,6 @@ export Linearization
 The `Linearization` structure defines the approximation method of the `Delta` and `Flow` factor nodes. 
 This method performs a local linearization of f around expansion point x.
 The `Linearization` structure with default parameters can be constructed as `Linearization()`.
-The `Linearization` structure is used inside the `DeltaMeta` or `FlowMeta` structures and can be included as:
-```
-    y ~ f(x) where { meta = DeltaMeta(method = Linearization()) }
-    # or
-    y ~ Flow(x) where { meta = FlowMeta(flowmodel, Linearization()) }
-```
 """
 struct Linearization <: AbstractApproximationMethod end
 
@@ -68,4 +62,25 @@ function local_linearization(r, splitg::S, g::G, fA::F, x_hat) where {S, G, F}
     A = fA(splitg, lx_hat)
     b = r - A * lx_hat
     return (A, b)
+end
+
+# # This function extends the `ExpectationApproximations.Linearization` approximation method in case if all inputs are from the `NormalDistributionsFamily`
+function approximate(method::Linearization, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
+
+    # Collect statistics for the inputs of the function `f`
+    statistics = mean_cov.(distributions)
+    means      = first.(statistics)
+    covs       = last.(statistics)
+
+    # Compute the local approximation for the function `f`
+    (A, b) = approximate(method, f, means)
+
+    # Execute the 'joint' message in the linearized version of `f`
+    joint       = convert(JointNormal, means, covs)
+    jmean, jcov = mean_cov(joint)
+
+    m = A * jmean + b
+    V = A * jcov * A'
+
+    return convert(promote_variate_type(variate_form(m), NormalMeanVariance), m, V)
 end

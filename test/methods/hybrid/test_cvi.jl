@@ -1,7 +1,6 @@
 module ExpectationApproximationsCVITest
 
 using Test
-using ReactiveMP
 using Random
 using StableRNGs
 using Distributions
@@ -12,7 +11,7 @@ import StatsFuns: logistic
 using ExpectationApproximations
 
 import ExpectationApproximations: CVI, cvi_update!, ForwardDiffGrad, ZygoteGrad
-import ReactiveMP: AbstractContinuousGenericLogPdf, naturalparams, convert
+import ExponentialFamily: naturalparams, convert
 import Distributions: rand
 
 struct EmptyOptimizer end

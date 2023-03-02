@@ -7,6 +7,8 @@ it approximates integrals of the following form ∫f(x)exp(Mq(x))dx where q(x) i
 ∫f(x)exp(Mq(x))dx ≈ (2pi/M)^(d/2) \frac{f(x_0)exp(Mq(x_0))}{det(-H(f)(x_0))^{1/2}}
 # Fields
 - `dimension`: dimension of integration 
+- `M`        : constant in the exponent term multiplying the scalar valued function
+- `point`    : point of expansion, x_0. Often chosen as the point where gradient is zero
 """
 
 struct Laplace{T, R} <: AbstractApproximationMethod
