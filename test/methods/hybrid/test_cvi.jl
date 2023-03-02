@@ -12,7 +12,7 @@ import StatsFuns: logistic
 using ExpectationApproximations
 
 import ExpectationApproximations: CVI, cvi_update!, ForwardDiffGrad, ZygoteGrad
-import ReactiveMP: AbstractContinuousGenericLogPdf , naturalparams, convert
+import ReactiveMP: AbstractContinuousGenericLogPdf, naturalparams, convert
 import Distributions: rand
 
 struct EmptyOptimizer end
@@ -39,7 +39,6 @@ end
             @test all(mean_var(λ) .== mean_var(m_in))
         end
     end
-
 
     @testset "counting optimizer" begin
         for (m_in, m_out) in ((NormalMeanVariance(0, 1), NormalMeanVariance(0, 1)), (GammaShapeRate(2, 2), GammaShapeRate(2, 2)), (Bernoulli(0.5), Bernoulli(0.5)))

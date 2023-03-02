@@ -1,5 +1,5 @@
 using Distributions
-import Distributions: rand!,rand
+import Distributions: rand!, rand
 import StatsBase: Weights
 
 """
@@ -32,15 +32,14 @@ end
 getsamples(approximation::ImportanceSampling)           = getsamples(approximation, approximation.nsamples)
 getsamples(approximation::ImportanceSampling, nsamples) = rand(approximation.rng, approximation.distribution, nsamples)
 
-
-function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling, q::Distribution, f::F) where F
+function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling, q::Distribution, f::F) where {F}
 
     # We use preallocated arrays to sample and compute transformed samples and weightd
-    rand!(approximation.rng, approximation.distribution, approximation.bsamples)  
+    rand!(approximation.rng, approximation.distribution, approximation.bsamples)
     # modify function f
-    g = (x) -> pdf(q,x)/ pdf(approximation.distribution, x)
+    g = (x) -> pdf(q, x) / pdf(approximation.distribution, x)
     map!(g, approximation.bweights, approximation.bsamples)
-   
+
     if approximation.resampling
         n_eff = 1 / sum(Base.Generator(abs2, approximation.bweights))
 
@@ -65,18 +64,17 @@ function ImportanceSampling_approximate_expectation(approximation::ImportanceSam
     map!(Base.Fix2(/, normalization), approximation.bweights, approximation.bweights)
     map!(f, approximation.bsamples, approximation.bsamples)
 
-
-    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples)) 
+    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples))
 end
 
-function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling,q, f::F) where F
+function ImportanceSampling_approximate_expectation(approximation::ImportanceSampling, q, f::F) where {F}
 
     # We use preallocated arrays to sample and compute transformed samples and weightd
-    rand!(approximation.rng, approximation.distribution, approximation.bsamples)  
+    rand!(approximation.rng, approximation.distribution, approximation.bsamples)
     # modify function f
-    g = (x) -> q(x)/ pdf(approximation.distribution, x)
+    g = (x) -> q(x) / pdf(approximation.distribution, x)
     map!(g, approximation.bweights, approximation.bsamples)
-   
+
     if approximation.resampling
         n_eff = 1 / sum(Base.Generator(abs2, approximation.bweights))
 
@@ -101,11 +99,9 @@ function ImportanceSampling_approximate_expectation(approximation::ImportanceSam
     map!(Base.Fix2(/, normalization), approximation.bweights, approximation.bweights)
     map!(f, approximation.bsamples, approximation.bsamples)
 
-
-    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples)) 
+    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples))
 end
 
-function approximate_expectation(method::ImportanceSampling, q, f::F) where F  
-    return ImportanceSampling_approximate_expectation(method, q,f)
+function approximate_expectation(method::ImportanceSampling, q, f::F) where {F}
+    return ImportanceSampling_approximate_expectation(method, q, f)
 end
-

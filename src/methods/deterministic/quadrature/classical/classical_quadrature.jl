@@ -12,8 +12,8 @@ abstract type ClassicalQuadratureRule end
 
 struct ClassicalQuadratureStrategyAutomatic end
 
-struct ClassicalQuadratureRuleAutomatic 
-    npoints :: Int
+struct ClassicalQuadratureRuleAutomatic
+    npoints::Int
 end
 
 struct UseWeights end
@@ -24,35 +24,35 @@ struct ClassicalQuadrature{R <: ClassicalQuadratureRule, S} <: AbstractApproxima
     strategy :: S
 end
 
-ClassicalQuadrature(npoints::Int)        = ClassicalQuadrature(ClassicalQuadratureRuleAutomatic(npoints), ClassicalQuadratureStrategyAutomatic())
+ClassicalQuadrature(npoints::Int) = ClassicalQuadrature(ClassicalQuadratureRuleAutomatic(npoints), ClassicalQuadratureStrategyAutomatic())
 ClassicalQuadrature(rule::ClassicalQuadratureRule) = ClassicalQuadrature(rule, ClassicalQuadratureStrategyAutomatic())
 
-Base.show(io::IO, method::ClassicalQuadrature) = print(io, "ClassicalQuadrature(", method.rule, ", ",  method.strategy, ")")
+Base.show(io::IO, method::ClassicalQuadrature) = print(io, "ClassicalQuadrature(", method.rule, ", ", method.strategy, ")")
 
 getstrategy(method::ClassicalQuadrature, q, ::LogIntegrand) = UseLogWeights() # In case if input is a `LogIntegrand` we always use log weights
-getstrategy(method::ClassicalQuadrature, q, f::F) where F   = getstrategy(method.strategy, q, f)
+getstrategy(method::ClassicalQuadrature, q, f::F) where {F} = getstrategy(method.strategy, q, f)
 
 getstrategy(strategy::Union{UseLogWeights, UseWeights}, q, f) = strategy
-getstrategy(::ClassicalQuadratureStrategyAutomatic, q, f)               = UseWeights()
+getstrategy(::ClassicalQuadratureStrategyAutomatic, q, f) = UseWeights()
 
 getrule(method::ClassicalQuadrature) = method.rule
 
-function approximate_expectation(method::ClassicalQuadrature, q, f::F) where F 
+function approximate_expectation(method::ClassicalQuadrature, q, f::F) where {F}
     # compatibility = iscompatible(getrule(method), q)
     # TODO Check compatibility
     strategy = getstrategy(method, q, f)
     # TODO Check evaluate(rule, q) -> getpoints(rule, q)
-    rule     = evaluate(getrule(method), q)
+    rule = evaluate(getrule(method), q)
     return ClassicalQuadrature_approximate_expectation(strategy, rule, q, f)
 end
 
 getpoints(method::ClassicalQuadrature)     = getpoints(method.rule)
-getweights(method::ClassicalQuadrature)    = getweights(method.rule) 
+getweights(method::ClassicalQuadrature)    = getweights(method.rule)
 getlogweights(method::ClassicalQuadrature) = getlogweights(method.rule)
 
 ## Generic implementation
 
-function ClassicalQuadrature_approximate_expectation(::UseWeights, rule, q, f::F) where F
+function ClassicalQuadrature_approximate_expectation(::UseWeights, rule, q, f::F) where {F}
     points  = getpoints(rule)
     weights = getweights(rule)
     g       = adjust_integrand(rule, q, f)
@@ -64,7 +64,7 @@ function ClassicalQuadrature_approximate_expectation(::UseWeights, rule, q, f::F
     return adjust_result(rule, q, result)
 end
 
-function ClassicalQuadrature_approximate_expectation(::UseLogWeights, rule, q, f::F) where F
+function ClassicalQuadrature_approximate_expectation(::UseLogWeights, rule, q, f::F) where {F}
     points     = getpoints(rule)
     logweights = getlogweights(rule)
     g          = adjust_integrand(rule, q, convert(LogIntegrand, f))
@@ -90,4 +90,3 @@ end
 
 include("gausslaguerre/gausslaguerre.jl")
 include("gausshermite/gausshermite.jl")
-

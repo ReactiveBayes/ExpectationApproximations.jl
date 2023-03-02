@@ -41,11 +41,11 @@ end
 
 (rescaled::RescaleArguments)(args...) = rescale_arguments(rescaled, rescaled.scale, rescaled.callable, args)
 
-function rescale_arguments(::RescaleArguments, scale::Number, callable, args) 
+function rescale_arguments(::RescaleArguments, scale::Number, callable, args)
     return callable(map(Base.Broadcast.BroadcastFunction(Base.Fix1(*, scale)), args)...)
 end
 
-function rescale_arguments(::RescaleArguments, scale::Tuple, callable, args) 
+function rescale_arguments(::RescaleArguments, scale::Tuple, callable, args)
     @assert length(scale) === length(args) "Length of the scaling parameter $(scale) does not equal to the number of arguments."
     return callable(map(.*, scale, args)...)
 end
@@ -174,7 +174,7 @@ struct Decay{C, D}
     degree::D
 end
 
-Decay(f::F) where { F <: Function } = Decay(f, nothing)
+Decay(f::F) where {F <: Function} = Decay(f, nothing)
 
 (decayed::Decay)(x::Real) = decay(decayed, decayed.degree, decayed.callable, x)
 
@@ -215,7 +215,7 @@ struct Displace{C, S}
     scale::S
 end
 
-Displace(f::F) where { F <: Function } = Displace(f, nothing)
+Displace(f::F) where {F <: Function} = Displace(f, nothing)
 
 (displaced::Displace)(x::Real) = displace(displaced, displaced.scale, displaced.callable, x)
 

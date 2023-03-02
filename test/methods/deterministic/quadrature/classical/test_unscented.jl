@@ -78,11 +78,11 @@ import ExpectationApproximations: Unscented, unscented_statistics, approximate_e
     end
 
     @testset "Unscented: Basic integrations/approximations with Gaussian p" begin
-        true_dist       = Normal(5.0, 6.0)
-        sigmas          = [5,6,7,8,9,10,11,16]
-        means           = [3,4,7,8 ]
-        brtol           = 0.1
-        
+        true_dist = Normal(5.0, 6.0)
+        sigmas    = [5, 6, 7, 8, 9, 10, 11, 16]
+        means     = [3, 4, 7, 8]
+        brtol     = 0.1
+
         for sigma in sigmas, m in means
             importance_dist = Normal(m, sigma)
             method = Unscented(; alpha = 0.5, beta = 0.1, kappa = 0.2)
@@ -90,10 +90,8 @@ import ExpectationApproximations: Unscented, unscented_statistics, approximate_e
             tmp = approximate_expectation(method, true_dist, (x) -> x)
             @test isapprox(tmp, mean(true_dist), rtol = brtol)
             @test isapprox(approximate_expectation(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
-
         end
     end
-
 end
 
 end

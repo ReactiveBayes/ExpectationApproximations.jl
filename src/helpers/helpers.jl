@@ -64,4 +64,3 @@ function __splitjoin(x::AbstractVector, sizes::Tuple)
         return __splitjoinelement(x, start, size)
     end
 end
-

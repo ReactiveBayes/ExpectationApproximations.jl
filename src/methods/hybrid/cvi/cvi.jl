@@ -1,10 +1,9 @@
 import Base.prod
-export CVI, ForwardDiffGrad,ZygoteGrad, prod
-import ReactiveMP: isproper,logpdf_sample_friendly,rand, convert
+export CVI, ForwardDiffGrad, ZygoteGrad, prod
+import ReactiveMP: isproper, logpdf_sample_friendly, rand, convert
 import ReactiveMP: naturalparams, as_naturalparams, lognormalizer, NaturalParameters
 using Random
 using LinearAlgebra
-
 
 """
     cvi_update!(opt, λ, ∇)
@@ -17,7 +16,6 @@ end
 
 cvilinearize(vector::AbstractVector) = vector
 cvilinearize(matrix::AbstractMatrix) = eachcol(matrix)
-
 
 """
     CVI
@@ -66,23 +64,22 @@ end
 
 """Alias for the `CVI` method. See help for [`CVI`](@ref)"""
 
-struct CVIFactor 
-    exponentialfamily 
+struct CVIFactor
+    exponentialfamily
     positivemeasure
 end
 
 get_positive_measure(factor::CVIFactor) = factor.positivemeasure
 get_exponential_family(factor::CVIFactor) = factor.exponentialfamily
 
-function approximate_expectation(method::CVI, q::CVIFactor, f::F) where F
+function approximate_expectation(method::CVI, q::CVIFactor, f::F) where {F}
     positivemeasure = get_positive_measure(q)
     exponentialfamily = get_exponential_family(q)
 
-    exponentialfamily = prod(method,positivemeasure,exponentialfamily)
-    importancesampling = ImportanceSampling(method.rng,n_samples,exponentialfamily)
-    return approximate_expectation(importancesampling,newdist, f)
+    exponentialfamily = prod(method, positivemeasure, exponentialfamily)
+    importancesampling = ImportanceSampling(method.rng, n_samples, exponentialfamily)
+    return approximate_expectation(importancesampling, newdist, f)
 end
-
 
 #---------------------------
 # CVI implementations
@@ -113,7 +110,7 @@ end
 
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
-function prod(approximation::CVI, positivemeasure, exponentialfamily) 
+function prod(approximation::CVI, positivemeasure, exponentialfamily)
     ##requires naturalparams function to be defined on the exponentialfamily
     rng = something(approximation.rng, Random.default_rng())
 
@@ -167,7 +164,6 @@ function prod(approximation::CVI, positivemeasure, exponentialfamily)
 
     return convert(Distribution, λ_current)
 end
-
 
 using Requires
 
