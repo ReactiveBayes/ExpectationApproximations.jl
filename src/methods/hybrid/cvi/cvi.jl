@@ -1,6 +1,6 @@
 import Base.prod
-export CVI, ForwardDiffGrad,ZygoteGrad, prod
-import ExponentialFamily: isproper,logpdf_sample_friendly,rand, convert
+export CVI, ForwardDiffGrad, ZygoteGrad, prod
+import ExponentialFamily: isproper, logpdf_sample_friendly, rand, convert
 import ExponentialFamily: naturalparams, as_naturalparams, lognormalizer, NaturalParameters
 using Random
 using LinearAlgebra
