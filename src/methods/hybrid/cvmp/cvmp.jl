@@ -8,7 +8,7 @@ struct ForwardDiffGrad end
 
 compute_derivative(::ForwardDiffGrad, f::F, value::Real) where {F}       = ForwardDiff.derivative(f, value)
 compute_gradient(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F} = ForwardDiff.gradient(f, vec)
-compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F} = compute_derivative(grad, f, value)
+compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F}     = compute_derivative(grad, f, value)
 
 function total_derivative(approximation, f, s::Real)
     return s * compute_derivative(approximation.grad, f, s)
@@ -20,11 +20,7 @@ function total_derivative(approximation, f, s::Tuple)
     return dot(collect(s), gradient_at_s)
 end
 
-struct SimpleInitStrategy end
 
-function cvmp_init(_::CVMP{R, O, G, B, SimpleInitStrategy}, _, exponentialfamily, _, _) where {R, O, G, B}
-    return exponentialfamily
-end
 
 struct CVMP{R, O, G, B, S} <: AbstractApproximationMethod
     rng::R
@@ -35,6 +31,12 @@ struct CVMP{R, O, G, B, S} <: AbstractApproximationMethod
     enforce_proper_messages::Val{B}
     warn::Bool
     initstrategy::S
+end
+
+struct SimpleInitStrategy end
+
+function cvmp_init(_::CVMP{R, O, G, B, SimpleInitStrategy}, _, exponentialfamily, _, _) where {R, O, G, B}
+    return exponentialfamily
 end
 
 struct CVMPFactor
@@ -55,15 +57,15 @@ function approximate_expectation(method::CVMP, q::CVMPFactor, f::F) where {F}
     return mean(product)
 end
 
-function compute_grad_logq(approximation::CVMP, ef::KnownExponentialFamilyDistribution{T}, samples, weights, nonlinearity) where {T}
-    logq = (η) -> mean(
-                    map(
-                        (sample, weight) ->
-                            weight * logpdf(ExponentialFamily.KnownExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), nonlinearity(sample...)),
-                        samples,
-                        weights
-                    )
-                )
+function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.KnownExponentialFamilyDistribution{T}, samples, weights, nonlinearity) where {T}
+    logq =
+        (η) -> mean(
+            map(
+                (sample, weight) -> weight * logpdf(ExponentialFamily.KnownExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), nonlinearity(sample...)),
+                samples,
+                weights
+            )
+        )
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
@@ -81,7 +83,7 @@ function Base.prod(approximation::CVMP, positivemeasure, exponentialfamily::Expo
 
     samples = cvilinearize(rand(rng, in_marginal_friendly, n_gradpoints))
     weights = map((sample) -> total_derivative(approximation, nonlinearity, sample) * pdf(positivemeasure, sample), samples)
-    
+
     η_outbound_params = ExponentialFamily.getnaturalparameters(exponentialfamily_outbound)
 
     for _ in 1:n_iterations
@@ -94,12 +96,12 @@ function Base.prod(approximation::CVMP, positivemeasure, exponentialfamily::Expo
 
         # compute gradient on natural parameters
         ∇ = ExponentialFamily.getnaturalparameters(exponentialfamily_current) - ExponentialFamily.getnaturalparameters(exponentialfamily_outbound) - ∇f
-        
+
         # perform gradient descent step
         λ_new = cvi_update!(opt, ExponentialFamily.getnaturalparameters(exponentialfamily_current), ∇)
         p_new = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new)
         message_new = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new - η_outbound_params)
-        
+
         # check whether updated natural parameters are proper
         if ExponentialFamily.isproper(p_new) && ExponentialFamily.isproper(message_new)
             exponentialfamily_current = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new, nothing)
