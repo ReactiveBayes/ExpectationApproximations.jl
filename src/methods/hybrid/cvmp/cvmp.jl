@@ -4,7 +4,7 @@ import ExponentialFamily: isproper, logpdf_sample_friendly, rand, convert
 using LinearAlgebra
 using Random
 
-struct CVMP{R, O, G, B} <: AbstractApproximationMethod
+struct CVMP{R, O, G, B, S} <: AbstractApproximationMethod
     rng::R
     n_samples::Int ## to be used in ReactiveMP messsage computations. ExpectationApproximations do not use this field
     n_iterations::Int
@@ -13,11 +13,11 @@ struct CVMP{R, O, G, B} <: AbstractApproximationMethod
     n_gradpoints::Int
     enforce_proper_messages::Val{B}
     warn::Bool
-
+    initstrategy::S
     function CVMP(
-        rng::R, n_samples::Int, n_iterations::Int, opt::O, grad::G = ForwardDiffGrad(), n_gradpoints::Int = 1, enforce_proper_messages::Val{B} = Val(true), warn::Bool = true
+        rng::R, n_samples::Int, n_iterations::Int, opt::O, grad::G = ForwardDiffGrad(), n_gradpoints::Int = 1, enforce_proper_messages::Val{B} = Val(true), warn::Bool = true, initstrategy = SimpleInitStrategy()
     ) where {R, O, G, B}
-        return new{R, O, G, B}(rng, n_samples, n_iterations, opt, grad, n_gradpoints, enforce_proper_messages, warn)
+        return new{R, O, G, B, SimpleInitStrategy}(rng, n_samples, n_iterations, opt, grad, n_gradpoints, enforce_proper_messages, warn, initstrategy)
     end
 end
 
@@ -31,6 +31,8 @@ struct CVMPFactor
     in_marginal
 end
 
+struct SimpleInitStrategy end
+
 get_positive_measure(factor::CVMPFactor) = factor.positivemeasure
 get_exponential_family(factor::CVMPFactor) = factor.exponentialfamily
 
@@ -42,7 +44,7 @@ function approximate_expectation(method::CVMP, q::CVIFactor, f::F) where {F}
     return mean(product)
 end
 
-function cvmp_init(_::CVMP, _, exponentialfamily, _, _)
+function cvmp_init(_::CVMP{R, O, G, B, SimpleInitStrategy}, _, exponentialfamily, _, _) where {R, O, G, B}
     return exponentialfamily
 end
 
@@ -94,7 +96,7 @@ function Base.prod(approximation::CVMP, inbound, exponentialfamily::ExponentialF
     η_outbound_params = ExponentialFamily.getnaturalparameters(exponentialfamily_outbound)
 
     for _ in 1:n_iterations
-        ∇logq = ReactiveMP.compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(exponentialfamily_current))
+        ∇logq = compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(exponentialfamily_current))
 
         # compute Fisher matrix 
         Fisher = ExponentialFamily.fisherinformation(exponentialfamily_current)
@@ -105,7 +107,7 @@ function Base.prod(approximation::CVMP, inbound, exponentialfamily::ExponentialF
         ∇ = ExponentialFamily.getnaturalparameters(exponentialfamily_current) - ExponentialFamily.getnaturalparameters(exponentialfamily_outbound) - ∇f
         
         # perform gradient descent step
-        λ_new = ReactiveMP.cvi_update!(opt, ExponentialFamily.getnaturalparameters(exponentialfamily_current), ∇)
+        λ_new = cvi_update!(opt, ExponentialFamily.getnaturalparameters(exponentialfamily_current), ∇)
         p_new = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new)
         message_new = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new - η_outbound_params)
         
