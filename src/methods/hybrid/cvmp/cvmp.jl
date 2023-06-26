@@ -10,8 +10,8 @@ compute_derivative(::ForwardDiffGrad, f::F, value::Real) where {F}       = Forwa
 compute_gradient(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F} = ForwardDiff.gradient(f, vec)
 compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F}     = compute_derivative(grad, f, value)
 
-function total_derivative(approximation, f, s::Real)
-    return s * compute_derivative(approximation.grad, f, s)
+function total_derivative(grad::ForwardDiffGrad, f, s::Real)
+    return s * compute_derivative(grad, f, s)
 end
 
 function total_derivative(approximation, f, s::Tuple)

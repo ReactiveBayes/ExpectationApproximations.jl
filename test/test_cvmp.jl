@@ -32,8 +32,13 @@ using Optimisers
     end
 
     @testset "compute_gradient" begin
-        ExpectationApproximations.compute_gradient(ForwardDiffGrad(), (x) -> x^2, 2) == 4
-        ExpectationApproximations.compute_gradient(ForwardDiffGrad(), identity, 2) == 1
+        @test ExpectationApproximations.compute_gradient(ForwardDiffGrad(), (x) -> x^2, 2) == 4
+        @test ExpectationApproximations.compute_gradient(ForwardDiffGrad(), identity, 2) == 1
+    end
+
+    @testset "total_derivative" begin
+        @test ExpectationApproximations.total_derivative(ForwardDiffGrad(), (x) -> x^2, 2) == 8
+        @test ExpectationApproximations.total_derivative(ForwardDiffGrad(), identity, 2) == 2
     end
 end
 
