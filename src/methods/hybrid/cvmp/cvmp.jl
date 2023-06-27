@@ -3,6 +3,25 @@ export CVMP, CVMPFactor, ForwardDiffGrad, SimpleInitStrategy
 import ExponentialFamily: isproper, logpdf_sample_friendly, rand, convert
 using LinearAlgebra
 using Random
+using Distributions
+using Optimisers
+
+function init_model(x::Real)
+    return (params = [x],)
+end
+
+
+
+function cvmp_setup(opt::Optimisers.AbstractRule, x::Real)
+    # We rely on the `deepcopy` here, because some optimizers from the `Optimizers.jl` may change their state
+    return Optimisers.setup(deepcopy(opt), init_model(x))
+end
+
+function cvmp_update!(opt::Optimisers.Leaf, λ, ∇)
+    # I'm not sure we can ignore the updated tree?
+    _, result = Optimisers.update!(opt, λ, ∇)
+    return result
+end
 
 struct ForwardDiffGrad end
 
@@ -16,10 +35,9 @@ end
 
 function total_derivative(approximation, f, s::Tuple)
     f_for_grad = (x) -> f(x...)
-    gradient_at_s = ReactiveMP.compute_gradient(approximation.grad, f_for_grad, collect(s))
+    gradient_at_s = compute_gradient(approximation.grad, f_for_grad, collect(s))
     return dot(collect(s), gradient_at_s)
 end
-
 
 
 struct CVMP{R, O, G, B, S} <: AbstractApproximationMethod
@@ -42,19 +60,18 @@ end
 struct CVMPFactor
     exponentialfamily
     positivemeasure
-    in_marginal
+    marginal
 end
 
 get_positive_measure(factor::CVMPFactor) = factor.positivemeasure
 get_exponential_family(factor::CVMPFactor) = factor.exponentialfamily
-get_inmarginal(factor::CVMPFactor) = factor.in_marginal
+get_marginal(factor::CVMPFactor) = factor.marginal
 
-function approximate_expectation(method::CVMP, q::CVMPFactor, f::F) where {F}
+function approximate_distribution(method::CVMP, q::CVMPFactor, f::F) where {F}
     positivemeasure = get_positive_measure(q)
     exponentialfamily = get_exponential_family(q)
-    in_marginal = get_marginal(q)
-    product = prod(method, positivemeasure, exponentialfamily, in_marginal, f)
-    return mean(product)
+    marginal = get_marginal(q)
+    return prod(method, positivemeasure, exponentialfamily, marginal, f)
 end
 
 function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.KnownExponentialFamilyDistribution{T}, samples, weights, nonlinearity) where {T}
@@ -69,24 +86,29 @@ function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.KnownExpon
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
-function Base.prod(approximation::CVMP, positivemeasure, exponentialfamily::ExponentialFamily.KnownExponentialFamilyDistribution, in_marginal, nonlinearity)
+cvmplinearize(vector::AbstractVector) = vector
+cvmplinearize(matrix::AbstractMatrix) = eachcol(matrix)
+
+function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.KnownExponentialFamilyDistribution{T}, marginal, nonlinearity) where T
     rng = something(approximation.rng, Random.default_rng())
 
     # Initial parameters of projected distribution
-    exponentialfamily_current = cvmp_init(approximation, inbound, exponentialfamily, in_marginal, nonlinearity)
+    exponentialfamily_current = cvmp_init(approximation, positivemeasure, ef, marginal, nonlinearity)
 
     # Some distributions implement "sampling" efficient versions
     # returns the same distribution by default
-    _, in_marginal_friendly = logpdf_sample_friendly(in_marginal)
+    marginal_friendly = convert(Distribution, marginal)
 
     hasupdated = false
 
-    samples = cvilinearize(rand(rng, in_marginal_friendly, n_gradpoints))
-    weights = map((sample) -> total_derivative(approximation, nonlinearity, sample) * pdf(positivemeasure, sample), samples)
+    samples = cvmplinearize(rand(rng, marginal_friendly, approximation.n_gradpoints))
+    weights = map((sample) -> total_derivative(approximation.grad, nonlinearity, sample) * pdf(positivemeasure, sample), samples)
 
-    η_outbound_params = ExponentialFamily.getnaturalparameters(exponentialfamily_outbound)
+    η_outbound_params = ExponentialFamily.getnaturalparameters(ef)
+    
+    state_tree = cvmp_setup(approximation.opt, ExponentialFamily.getnaturalparameters(exponentialfamily_current))
 
-    for _ in 1:n_iterations
+    for _ in 1:approximation.n_iterations
         ∇logq = compute_grad_logq(approximation, exponentialfamily_current, samples, weights, nonlinearity)
 
         # compute Fisher matrix 
@@ -95,16 +117,15 @@ function Base.prod(approximation::CVMP, positivemeasure, exponentialfamily::Expo
         ∇f = Fisher \ ∇logq
 
         # compute gradient on natural parameters
-        ∇ = ExponentialFamily.getnaturalparameters(exponentialfamily_current) - ExponentialFamily.getnaturalparameters(exponentialfamily_outbound) - ∇f
+        ∇ = ExponentialFamily.getnaturalparameters(exponentialfamily_current) - η_outbound_params - ∇f
 
         # perform gradient descent step
-        λ_new = cvi_update!(opt, ExponentialFamily.getnaturalparameters(exponentialfamily_current), ∇)
-        p_new = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new)
-        message_new = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new - η_outbound_params)
-
-        # check whether updated natural parameters are proper
+        state_tree, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(exponentialfamily_current)), init_model(∇))
+        
+        p_new = ExponentialFamily.KnownExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
+        message_new = ExponentialFamily.KnownExponentialFamilyDistribution(T, λ_new.params[1] - η_outbound_params, ExponentialFamily.getconditioner(ef))
         if ExponentialFamily.isproper(p_new) && ExponentialFamily.isproper(message_new)
-            exponentialfamily_current = ExponentialFamily.KnownExponentialFamilyDistribution(ExponentialFamily.GammaShapeRate, λ_new, nothing)
+            exponentialfamily_current = ExponentialFamily.KnownExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
             hasupdated = true
         end
     end
