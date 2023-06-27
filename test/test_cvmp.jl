@@ -54,6 +54,18 @@ using Optimisers
                 @test mean(dist) ≈ mean(convert(Distribution, marginal)) atol=0.3
             end
         end
+
+
+        @testset "Gamma x Gamma prod" begin
+                cvmp_method = CVMP(StableRNG(42), 100, Optimisers.Adam(0.01), ForwardDiffGrad(), 10000, Val(true), true, SimpleInitStrategy())
+                ef = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
+                positive_measure = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
+                marginal = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [2.0, -2.0])
+                cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
+                product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
+                dist = convert(Distribution, product)
+                @test mean(dist) ≈ mean(convert(Distribution, marginal)) atol=0.4
+        end
     end
 end
 
