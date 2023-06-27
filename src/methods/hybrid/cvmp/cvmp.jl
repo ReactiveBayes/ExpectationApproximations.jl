@@ -10,17 +10,14 @@ function init_model(x::Real)
     return (params = [x],)
 end
 
+function init_model(x::AbstractArray)
+    return (params = (x,),)
+end
 
 
 function cvmp_setup(opt::Optimisers.AbstractRule, x::Real)
     # We rely on the `deepcopy` here, because some optimizers from the `Optimizers.jl` may change their state
     return Optimisers.setup(deepcopy(opt), init_model(x))
-end
-
-function cvmp_update!(opt::Optimisers.Leaf, λ, ∇)
-    # I'm not sure we can ignore the updated tree?
-    _, result = Optimisers.update!(opt, λ, ∇)
-    return result
 end
 
 struct ForwardDiffGrad end

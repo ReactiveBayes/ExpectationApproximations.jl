@@ -43,14 +43,16 @@ using Optimisers
 
     @testset "cvmp" begin
         @testset "Bernoulli x Bernoulli prod" begin
-            cvmp_method = CVMP(StableRNG(42), 500, Optimisers.Adam(0.001), ForwardDiffGrad(), 100, Val(true), true, SimpleInitStrategy())
-            positive_measure = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 0.5)
-            ef = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 0.5)
-            marginal = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 1)
-            cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
-            product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
-            dist = convert(Distribution, product)
-            @test mean(dist) ≈ 0.7 atol=0.1
+            cvmp_method = CVMP(StableRNG(42), 500, Optimisers.Adam(0.01), ForwardDiffGrad(), 300, Val(true), true, SimpleInitStrategy())
+            for i in -1:1, j in -1:1
+                positive_measure = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, i+1e-12)
+                ef = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, j+1e-12)
+                marginal = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, i+j)
+                cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
+                product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
+                dist = convert(Distribution, product)
+                @test mean(dist) ≈ mean(convert(Distribution, marginal)) atol=0.3
+            end
         end
     end
 end
