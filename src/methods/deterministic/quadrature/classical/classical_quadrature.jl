@@ -57,7 +57,7 @@ function ClassicalQuadrature_approximate_expectation(::UseWeights, rule, q, f::F
     weights = getweights(rule)
     g       = adjust_integrand(rule, q, f)
 
-    result = Iterators.mapreduce(+, zip(points, weights)) do (x, w)
+    result = mapreduce(+, zip(points, weights)) do (x, w)
         return w * g(x)
     end
 
