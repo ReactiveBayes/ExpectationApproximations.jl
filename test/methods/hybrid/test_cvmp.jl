@@ -63,9 +63,12 @@ using Optimisers
                 marginal = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [2.0, -2.0])
                 cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
                 product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
+                product_test = ExpectationApproximations.approximate(ExpectationApproximations.AsDistribution(),cvmp_method, cvmp_factor, identity)
                 dist = convert(Distribution, product)
+                dist_test = convert(Distribution, product_test)
                 @test mean(dist) ≈ mean(convert(Distribution, marginal)) atol=0.4
-        end
+                @test mean(dist) ≈ mean(dist_test) atol= 0.01
+        end 
     end
 end
 
