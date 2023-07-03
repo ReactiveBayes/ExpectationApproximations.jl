@@ -16,6 +16,6 @@ include("methods/stochastic/importance/importance_sampling.jl")
 include("methods/deterministic/series/linearization.jl")
 include("methods/deterministic/series/laplace.jl")
 include("methods/deterministic/quadrature/classical/unscented.jl")
-include("methods/hybrid/cvi/cvi.jl")
+include("methods/hybrid/cvmp/cvmp.jl")
 
 end
