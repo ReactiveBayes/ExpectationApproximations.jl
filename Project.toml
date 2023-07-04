@@ -4,6 +4,7 @@ authors = ["Bagaev Dmitry <d.v.bagaev@tue.nl> and contributors"]
 version = "1.0.0"
 
 [deps]
+AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 BlockDiagonals = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -13,6 +14,7 @@ FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LogDensityProblems = "6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 LogarithmicNumbers = "aa2f6b4e-9042-5d33-9679-40d3a6b85899"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"

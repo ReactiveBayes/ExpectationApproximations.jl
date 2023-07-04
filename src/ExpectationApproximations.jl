@@ -17,5 +17,6 @@ include("methods/deterministic/series/linearization.jl")
 include("methods/deterministic/series/laplace.jl")
 include("methods/deterministic/quadrature/classical/unscented.jl")
 include("methods/hybrid/cvmp/cvmp.jl")
+include("methods/stochastic/mcmc/advanced_hmc.jl")
 
 end
