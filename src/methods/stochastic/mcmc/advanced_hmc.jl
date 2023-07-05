@@ -1,5 +1,5 @@
 using AdvancedHMC, ForwardDiff, LogDensityProblems, LinearAlgebra, Random
-import ExponentialFamily: KnownExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters
+import ExponentialFamily: KnownExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters,rand
 import AdvancedHMC: sample, AbstractMetric, AbstractTrajectorySampler, AbstractTerminationCriterion, AbstractIntegrator, PhasePoint
 import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor,DiagEuclideanMetric
 import LogDensityProblems: logdensity,capabilities,dimension
@@ -36,8 +36,6 @@ struct LogTargetDensity{I, T, F}
         return new{I,T,F}(dim,q,μ)
     end
 end
-
-Random.rand(ef::KnownExponentialFamilyDistribution{T}) where {T <: Distribution} = Random.rand(convert(T,ef))
 
 function logpartition(ef::KnownExponentialFamilyDistribution{T}, ηvec::Vector{F}) where {T, F <: Real}
     ηef = getnaturalparameters(ef)
