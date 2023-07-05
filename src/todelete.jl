@@ -6,7 +6,7 @@ ef = convert(ExponentialFamily.KnownExponentialFamilyDistribution, q)
 f(x) = exp(-sin(tr(x*x')))
 metric = DiagEuclideanMetric(D)
 n_samples, n_adapts = 2_0000, 1_00
-method = ExpectationApproximations.AHMC(D, metric,n_samples,n_adapts)
+method = ExpectationApproximations.AHMC(D)
 
 samplelist = Base.prod(method,q,f)
 expectation = ExpectationApproximations.approximate(method,q,f)

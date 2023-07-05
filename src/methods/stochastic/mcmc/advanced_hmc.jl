@@ -1,7 +1,7 @@
 using AdvancedHMC, ForwardDiff, LogDensityProblems, LinearAlgebra, Random
 import ExponentialFamily: KnownExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters
 import AdvancedHMC: sample, AbstractMetric, AbstractTrajectorySampler, AbstractTerminationCriterion, AbstractIntegrator, PhasePoint
-import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor
+import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor,DiagEuclideanMetric
 import LogDensityProblems: logdensity,capabilities,dimension
 
 const N_SAMPLES = 1000
@@ -19,7 +19,7 @@ struct AHMC{T, M, G, I, TS, TC} <: AbstractApproximationMethod
     integrator :: I 
     trajectory_sampler :: TS
     termination_criterion :: TC 
-    function AHMC(dim::T, metric::M, n_samples::T = N_SAMPLES, n_adapts::T = N_ADAPTS, autograd::G = ForwardDiff, automatic_ϵ = true,
+    function AHMC(dim::T, metric::M = DiagEuclideanMetric(dim) , n_samples::T = N_SAMPLES, n_adapts::T = N_ADAPTS, autograd::G = ForwardDiff, automatic_ϵ = true,
         integrator::I = Leapfrog(ϵLEAP),trajectory_sampler :: TS = MultinomialTS, termination_criterion::TC = GeneralisedNoUTurn()) where 
         {T <: Integer, M <: AbstractMetric, G, I <: AbstractIntegrator, TS, TC <: AbstractTerminationCriterion}
         
