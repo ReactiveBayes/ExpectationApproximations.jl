@@ -37,12 +37,6 @@ struct LogTargetDensity{I, T, F}
     end
 end
 
-function logpartition(ef::KnownExponentialFamilyDistribution{T}, ηvec::Vector{F}) where {T, F <: Real}
-    ηef = getnaturalparameters(ef)
-    reconstructargument!(ηef, ηef, ηvec)
-    return logpartition(KnownExponentialFamilyDistribution(T, ηef))
-end
-
 logdensity(p::LogTargetDensity, θ) = logpdf(p.q,θ) + log(p.μ(θ))
 capabilities(::LogTargetDensity) = LogDensityProblems.LogDensityOrder{1}()
 dimension(p::LogTargetDensity) = p.dim
