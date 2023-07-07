@@ -1,8 +1,9 @@
 using AdvancedHMC, ForwardDiff, LogDensityProblems, LinearAlgebra, Random
-import ExponentialFamily: KnownExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters,rand
+import ExponentialFamily: KnownExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters,rand, variate_form
 import AdvancedHMC: sample, AbstractMetric, AbstractTrajectorySampler, AbstractTerminationCriterion, AbstractIntegrator, PhasePoint
 import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor,DiagEuclideanMetric
 import LogDensityProblems: logdensity,capabilities,dimension
+import Distributions: VariateForm, Univariate, Multivariate, Matrixvariate
 
 const N_SAMPLES = 1000
 const N_ADAPTS  = 1000
@@ -11,47 +12,84 @@ const STEP_SIZE_ADAPTOR = 0.8
 
 struct AHMC{T, M, G, I, TS, TC} <: AbstractApproximationMethod
     dim :: T
-    metric :: M
     n_samples :: T
     n_adapts :: T
+    metric :: M
     autograd :: G
     automatic_ϵ :: Bool
     integrator :: I 
     trajectory_sampler :: TS
     termination_criterion :: TC 
-    function AHMC(dim::T, metric::M = DiagEuclideanMetric(dim) , n_samples::T = N_SAMPLES, n_adapts::T = N_ADAPTS, autograd::G = ForwardDiff, automatic_ϵ = true,
+    
+    function AHMC(dim::T, n_samples::T = N_SAMPLES, n_adapts::T = N_ADAPTS, metric::M = DiagEuclideanMetric(dim), autograd::G = ForwardDiff, automatic_ϵ = true,
         integrator::I = Leapfrog(ϵLEAP),trajectory_sampler :: TS = MultinomialTS, termination_criterion::TC = GeneralisedNoUTurn()) where 
         {T <: Integer, M <: AbstractMetric, G, I <: AbstractIntegrator, TS, TC <: AbstractTerminationCriterion}
-        
-        return new{T, M, G,I, TS, TC}(dim,metric,n_samples,n_adapts,autograd,automatic_ϵ, integrator, trajectory_sampler, termination_criterion)
+        return new{T, M, G,I, TS, TC}(dim,n_samples,n_adapts,metric,autograd,automatic_ϵ, integrator, trajectory_sampler, termination_criterion)
     end
 end
 
-struct LogTargetDensity{I, T, F}
+struct LogTargetDensity{V, I, T, F}
     dim :: I
-    q   :: T 
+    q   :: T
     μ   :: F 
 
     function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F}
-        return new{I,T,F}(dim,q,μ)
+            V = variate_form(q)
+        return new{V,I,T,F}(dim,q,μ)
+    end
+    
+    function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T, F}
+        return new{V,I,T,F}(dim,q,μ) where {V <: VariateForm}
     end
 end
 
-logdensity(p::LogTargetDensity, θ) = logpdf(p.q,θ) + log(p.μ(θ))
+logdensity(p::LogTargetDensity{Univariate,I,T,F}, θ) where  {I <: Integer, T, F} = log(p.q(θ[1])) + log(p.μ(θ[1]))
+logdensity(p::LogTargetDensity{Multivariate,I,T,F}, θ) where {I <: Integer, T , F} = log(p.q(θ)) + log(p.μ(θ))
+function logdensity(p::LogTargetDensity{Matrixvariate,I,T,F}, θ) where {I <: Integer, T, F} 
+        n = Int(sqrt(length(θ)))
+        θnew = reshape(θ,n,n)
+    return log(p.q(θnew)) + log(p.μ(θnew))
+end
+
+logdensity(p::LogTargetDensity{Univariate,I,T,F}, θ) where 
+    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F} = logpdf(p.q,θ[1]) + log(p.μ(θ[1]))
+logdensity(p::LogTargetDensity{Multivariate,I,T,F}, θ) where 
+    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F} = logpdf(p.q,θ) + log(p.μ(θ))
+function logdensity(p::LogTargetDensity{Matrixvariate,I,T,F}, θ) where 
+    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F} 
+        
+        n = Int(sqrt(length(θ)))
+        θnew = reshape(θ,n,n)
+    return logpdf(p.q,θnew) + log(p.μ(θnew))
+end
+
 capabilities(::LogTargetDensity) = LogDensityProblems.LogDensityOrder{1}()
 dimension(p::LogTargetDensity) = p.dim
 
-function approximate_expectation(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
-    sample_list = prod(method,q,f)
-    return mean(get_unnormalised_weights(get_meta(sample_list)))
+function approximate_expectation(method::AHMC, q::T, f::F) where {T, F}
+    sample_list = prod(method,q, x -> 1)
+    samples = get_samples(sample_list)
+    return mapreduce(d -> f(d), +, samples) / length(samples)
 end
 
-function Base.prod(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
-    ltd = LogTargetDensity(method.dim, q, f)
-    initial_θ = Random.rand(ltd.q)
-    hamiltonian = Hamiltonian(method.metric, ltd, method.autograd)
+function approximate_distribution(method::AHMC, q::T, f::F) where {T, F}
+   return prod(method,q,f)
+end
 
-    if method.automatic_ϵ == true
+
+function Base.prod(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
+    var_form = variate_form(q)
+    ltd = LogTargetDensity(method.dim, q, f) 
+    hamiltonian = Hamiltonian(method.metric, ltd, method.autograd)
+    
+    if var_form == Univariate || var_form == Matrixvariate
+        initial_θ = as_vec(Random.rand(ltd.q))
+    else
+        initial_θ = Random.rand(ltd.q)
+    end
+
+
+    if method.automatic_ϵ == true 
         initial_ϵ  = find_good_stepsize(hamiltonian, initial_θ)
         integrator = Leapfrog(initial_ϵ)
     else
@@ -76,6 +114,14 @@ function Base.prod(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<
     entropy = H_x + H_y
 
     meta = SampleListMeta(raw_weights, entropy, nothing, nothing)
-  
+    
+    if var_form == Univariate
+        samples = map(d -> d[1], samples)
+    elseif var_form == Matrixvariate
+        n = Int(sqrt(method.dim))
+        samples = map(d -> reshape(d,n,n),samples)
+    end 
+
     return SampleList(samples, norm_weights, meta)
 end
+

@@ -40,7 +40,7 @@ import ExpectationApproximations: AHMC
             L = rand(dim)
             M = L*L' + 1e-8*diageye(dim)
             metric = DenseEuclideanMetric(M)
-            ahmc_method = AHMC(dim,metric, n_samples,n_adapts,autograd,automatic_ϵ,integrator,trajectory_sampler,termination_criterion)
+            ahmc_method = AHMC(dim,n_samples,n_adapts,metric, autograd,automatic_ϵ,integrator,trajectory_sampler,termination_criterion)
 
             @test ahmc_method.n_samples == n_samples
             @test ahmc_method.n_adapts == n_adapts
@@ -50,6 +50,18 @@ import ExpectationApproximations: AHMC
             @test ahmc_method.integrator == integrator
             @test ahmc_method.trajectory_sampler == trajectory_sampler
             @test ahmc_method.termination_criterion == termination_criterion
+        end
+    end
+
+    @testset "ahmc" begin
+        @testset "ahmc: expectation with respect to normal" begin 
+            true_dist  = NormalMeanVariance(5.0, 6.0)
+            brtol = 0.1
+            method = AHMC(1)
+            @test isapprox(approximate(method, true_dist, (x) -> 1), 1.0, rtol = brtol)
+            tmp = approximate(method, true_dist, (x) -> x)
+            @test isapprox(tmp, mean(true_dist), rtol = brtol)
+            @test isapprox(approximate(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
         end
     end
 

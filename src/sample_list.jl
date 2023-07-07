@@ -2,6 +2,7 @@ export SampleList, SampleListMeta
 
 import Base: show, ndims, length, size, precision, getindex, broadcasted, map
 import Distributions: mean, var, cov, std
+import ExponentialFamily: variate_form
 import StatsBase: Weights
 using Random
 
