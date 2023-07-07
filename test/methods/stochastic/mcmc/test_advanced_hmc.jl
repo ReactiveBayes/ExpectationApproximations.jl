@@ -54,7 +54,7 @@ import ExpectationApproximations: AHMC
     end
 
     @testset "ahmc" begin
-        @testset "ahmc: expectation with respect to normal" begin 
+        @testset "ahmc: simple expectation with respect to normal" begin 
             true_dist  = NormalMeanVariance(5.0, 6.0)
             brtol = 0.1
             method = AHMC(1)
@@ -63,6 +63,17 @@ import ExpectationApproximations: AHMC
             @test isapprox(tmp, mean(true_dist), rtol = brtol)
             @test isapprox(approximate(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
         end
+
+        @testset "ahmc: product of normal and gamma" begin 
+            dist1  = NormalMeanVariance(-5.0, 6.0)
+            dist2  = Gamma(10,10)
+            brtol = 0.1
+            method = AHMC(1)
+            ExpectationApproximations.sample_direction(::NormalMeanVariance,::Gamma) = ExpectationApproximations.SampleRight()
+            prod_sample_list = prod(method,dist1,dist2)
+            mean(ExpectationApproximations.get_samples(prod_sample_list))
+        end
+
     end
 
 end
