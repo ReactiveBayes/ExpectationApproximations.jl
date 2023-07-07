@@ -62,7 +62,7 @@ function Base.prod(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<
     
     adaptor = StanHMCAdaptor(MassMatrixAdaptor(method.metric), StepSizeAdaptor(STEP_SIZE_ADAPTOR, integrator))
     
-    samples, _ = sample(hamiltonian, proposal, initial_θ, method.n_samples, adaptor, method.n_adapts; progress=false)
+    samples, _ = sample(hamiltonian, proposal, initial_θ, method.n_samples, adaptor, method.n_adapts; verbose=false,progress=false)
     
     raw_weights = map(d -> exp(logdensity(ltd,d)), samples) 
     weights_sum = sum(raw_weights)
