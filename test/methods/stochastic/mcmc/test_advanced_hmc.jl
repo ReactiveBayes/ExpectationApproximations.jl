@@ -109,15 +109,15 @@ import ExpectationApproximations: AHMC, ImportanceSampling
             f(x) = exp(-tr(x*x'))
             irng = StableRNG(123)
             D = 5
-            nsamples = 10
-            method = AHMC(Multivariate, D, nsamples, 1000)
+            nsamples = 1000
+            method = AHMC(Multivariate, D, nsamples, 0)
             m = rand(D)
             L = rand(D)
             P = L*L' + 1e-6diageye(D)
             dist = MvNormalMeanCovariance(m,P)
             expecatation_ahmc = approximate(method,dist, f)
 
-            method_is = ImportanceSampling(irng, nsamples, dist; resampling = false)
+            method_is = ImportanceSampling(irng,5000, dist; resampling = false)
             expectation_is = approximate(method_is, dist, f)
             @test expecatation_ahmc ≈ expectation_is rtol=0.1
         end
