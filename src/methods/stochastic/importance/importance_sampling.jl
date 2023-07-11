@@ -33,7 +33,7 @@ getsamples(approximation::ImportanceSampling)           = getsamples(approximati
 getsamples(approximation::ImportanceSampling, nsamples) = rand(approximation.rng, approximation.distribution, nsamples)
 
 function approximate_expectation(approximation::ImportanceSampling, q::Distribution, f::F) where {F}
-
+    @show approximation.bsamples
     # We use preallocated arrays to sample and compute transformed samples and weightd
     rand!(approximation.rng, approximation.distribution, approximation.bsamples)
     # modify function f
