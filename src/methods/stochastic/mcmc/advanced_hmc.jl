@@ -6,7 +6,7 @@ import LogDensityProblems: logdensity,capabilities,dimension
 import Distributions: VariateForm, Univariate, Multivariate, Matrixvariate
 
 const N_SAMPLES = 1000
-const N_ADAPTS  = 10
+const N_ADAPTS  = 0
 const ϵLEAP = 0.01
 const STEP_SIZE_ADAPTOR = 0.8
 

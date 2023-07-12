@@ -9,8 +9,9 @@ using StableRNGs
 using Optimisers
 using AdvancedHMC
 using ForwardDiff, ReverseDiff, LinearAlgebra
-import Distributions: Univariate, Multivariate
+import Distributions: Univariate, Multivariate, Matrixvariate
 import SpecialFunctions: digamma
+import ExponentialFamily: KnownExponentialFamilyDistribution,convert
 
 import ExpectationApproximations: AHMC, ImportanceSampling
 
@@ -105,22 +106,38 @@ import ExpectationApproximations: AHMC, ImportanceSampling
         #     end
         # end
 
-        @testset "AHMC: Expectation of a multivariate function with respect to multivariate normal" begin
-            f(x) = exp(-tr(x*x'))
+        # @testset "AHMC: Expectation of a multivariate function with respect to multivariate normal" begin
+        #     f(x) = exp(-tr(x*x'))
+        #     irng = StableRNG(123)
+        #     D = 5
+        #     nsamples = 1000
+        #     method = AHMC(Multivariate, D, nsamples, 0)
+        #     m = rand(D)
+        #     L = rand(D)
+        #     P = L*L' + 1e-6diageye(D)
+        #     dist = MvNormalMeanCovariance(m,P)
+        #     expecatation_ahmc = approximate(method,dist, f)
+
+        #     method_is = ImportanceSampling(irng, 5000, dist; resampling = false)
+        #     expectation_is = approximate(method_is, dist, f)
+        #     @test expecatation_ahmc ≈ expectation_is rtol=0.1
+        # end
+
+        @testset "AHMC: " begin
+            f(x) = exp(-tr(X))*(1/det(x))
             irng = StableRNG(123)
-            D = 5
-            nsamples = 1000
-            method = AHMC(Multivariate, D, nsamples, 0)
-            m = rand(D)
-            L = rand(D)
-            P = L*L' + 1e-6diageye(D)
-            dist = MvNormalMeanCovariance(m,P)
+            D = 20
+            nsamples = 10
+            method = AHMC(Matrixvariate, D^2, nsamples, 0)
+            L = diageye(D)
+            dist = Wishart(D+1,L)
             expecatation_ahmc = approximate(method,dist, f)
 
-            method_is = ImportanceSampling(irng,5000, dist; resampling = false)
+            method_is = ImportanceSampling(irng, 5000, dist; resampling = false)
             expectation_is = approximate(method_is, dist, f)
             @test expecatation_ahmc ≈ expectation_is rtol=0.1
         end
+
     end
 end
 
