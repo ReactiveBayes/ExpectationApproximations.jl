@@ -60,7 +60,7 @@ import ExpectationApproximations: AHMC, ImportanceSampling
         @testset "AHMC: simple expectation with respect to normal" begin 
             true_dist  = NormalMeanVariance(5.0, 6.0)
             brtol = 0.1
-            method = AHMC(Univariate, 1)
+            method = AHMC(Univariate, 1,1000,100)
             @test isapprox(approximate(method, true_dist, (x) -> 1), 1.0, rtol = brtol)
             tmp = approximate(method, true_dist, (x) -> x)
             @test isapprox(tmp, mean(true_dist), rtol = brtol)
@@ -95,14 +95,14 @@ import ExpectationApproximations: AHMC, ImportanceSampling
         end
 
         @testset "AHMC: Basic integration with unnormalized distribution: Beta" begin
-            method = AHMC(Univariate, 1,1000,0)
+            method = AHMC(Univariate, 1,1000)
             alphas = 5, 6, 20
             betas  = 2, 10, 20
             for alpha in alphas, beta in betas
-                unnormalized_dist  = x -> x > 0 ? x^(alpha - 1) * (1 - x)^(beta - 1) : 1e-12
+                unnormalized_dist  = x -> x^(alpha - 1) * (1 - x)^(beta - 1) > 0 ? x^(alpha - 1) * (1 - x)^(beta - 1) : 1e-12
                 tmp = approximate(method, unnormalized_dist, (x) -> x)
                 @test isapprox(tmp, alpha / (beta + alpha), rtol = 0.2)
-                @test isapprox(approximate(method, unnormalized_dist, (x) -> log(x)), digamma(alpha) - digamma(alpha + beta), rtol = 0.5)
+                @test isapprox(approximate(method, unnormalized_dist, (x) -> x > 0 ? log(x) : 1e-12), digamma(alpha) - digamma(alpha + beta), rtol = 0.5)
             end
         end
 
