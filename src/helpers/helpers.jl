@@ -64,3 +64,10 @@ function __splitjoin(x::AbstractVector, sizes::Tuple)
         return __splitjoinelement(x, start, size)
     end
 end
+
+
+function deep_eltype end
+
+deep_eltype(::Type{T}) where {T}                  = T
+deep_eltype(::Type{T}) where {T <: AbstractArray} = deep_eltype(eltype(T))
+deep_eltype(any)                                  = deep_eltype(typeof(any))

@@ -1,5 +1,6 @@
 using Distributions
-import Distributions: rand!, rand
+import ExponentialFamily: variate_form, KnownExponentialFamilyDistribution
+import Distributions: rand!, rand, Univariate, Multivariate, Matrixvariate
 import StatsBase: Weights
 
 """
@@ -15,10 +16,10 @@ struct ImportanceSampling{T, R, D} <: AbstractApproximationMethod
     rng          :: R
     nsamples     :: Int
     distribution :: D
-    bsamples     :: Vector{T}
+    bsamples     :: AbstractArray
     bweights     :: Vector{T}
     resampling   :: Bool
-    rsamples     :: Vector{T}
+    rsamples     :: AbstractArray
 end
 
 function ImportanceSampling(rng::R, nsamples::Int, distribution::D; resampling::Bool = true) where {R, D}
@@ -26,14 +27,20 @@ function ImportanceSampling(rng::R, nsamples::Int, distribution::D; resampling::
 end
 
 function ImportanceSampling(::Type{T}, rng::R, nsamples::Int, distribution::D; resampling::Bool = true) where {T, R, D}
-    return ImportanceSampling{T, R, D}(rng, nsamples, distribution, Vector{T}(undef, nsamples), Vector{T}(undef, nsamples), resampling, Vector{T}(undef, nsamples))
+    V = variate_form(distribution)
+    if V == Univariate
+        return ImportanceSampling{T, R, D}(rng, nsamples, distribution, Vector{T}(undef, nsamples), Vector{T}(undef, nsamples), resampling, Vector{T}(undef, nsamples))
+    elseif V == Multivariate 
+        return ImportanceSampling{T, R, D}(rng, nsamples, distribution, Vector{Vector{T}}(undef, nsamples), Vector{T}(undef, nsamples), resampling, Vector{Vector{T}}(undef, nsamples))
+    elseif  V == Matrixvariate 
+        return ImportanceSampling{T, R, D}(rng, nsamples, distribution, Vector{Matrix{T}}(undef, nsamples), Vector{T}(undef, nsamples), resampling, Vector{Matrix{T}}(undef, nsamples))
+    end
 end
 
 getsamples(approximation::ImportanceSampling)           = getsamples(approximation, approximation.nsamples)
 getsamples(approximation::ImportanceSampling, nsamples) = rand(approximation.rng, approximation.distribution, nsamples)
 
-function approximate_expectation(approximation::ImportanceSampling, q::Distribution, f::F) where {F}
-
+function approximate_expectation(approximation::ImportanceSampling, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
     # We use preallocated arrays to sample and compute transformed samples and weightd
     rand!(approximation.rng, approximation.distribution, approximation.bsamples)
     # modify function f
@@ -62,9 +69,8 @@ function approximate_expectation(approximation::ImportanceSampling, q::Distribut
     end
 
     map!(Base.Fix2(/, normalization), approximation.bweights, approximation.bweights)
-    map!(f, approximation.bsamples, approximation.bsamples)
-
-    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples))
+    
+    return mapreduce(prod, +, zip(approximation.bweights, map(f, approximation.bsamples)))
 end
 
 function approximate_expectation(approximation::ImportanceSampling, q, f::F) where {F}
@@ -97,7 +103,6 @@ function approximate_expectation(approximation::ImportanceSampling, q, f::F) whe
     end
 
     map!(Base.Fix2(/, normalization), approximation.bweights, approximation.bweights)
-    map!(f, approximation.bsamples, approximation.bsamples)
 
-    return mapreduce(prod, +, zip(approximation.bweights, approximation.bsamples))
+    return mapreduce(prod, +, zip(approximation.bweights, map(f, approximation.bsamples)))
 end

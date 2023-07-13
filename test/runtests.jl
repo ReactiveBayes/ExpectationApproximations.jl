@@ -7,6 +7,7 @@ using Test
 
     include("methods/deterministic/quadrature/classical/test_classical_quadrature.jl")
     include("methods/stochastic/importance/test_importance_sampling.jl")
+    include("methods/stochastic/mcmc/test_advanced_hmc.jl")
     include("methods/deterministic/series/test_linearization.jl")
     include("methods/deterministic/series/test_laplace.jl")
     include("methods/deterministic/quadrature/classical/test_unscented.jl")
