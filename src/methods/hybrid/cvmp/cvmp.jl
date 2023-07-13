@@ -1,6 +1,6 @@
-import Base.prod
 export CVMP, CVMPFactor, ForwardDiffGrad, SimpleInitStrategy
-import ExponentialFamily: isproper, logpdf_sample_friendly, rand, convert
+import ExponentialFamily: isproper, logpdf_sample_friendly, convert
+import Base.rand
 using LinearAlgebra
 using Random
 using Distributions
@@ -98,7 +98,7 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.K
 
     hasupdated = false
 
-    samples = cvmplinearize(rand(rng, marginal_friendly, approximation.n_gradpoints))
+    samples = cvmplinearize(Random.rand(rng, marginal_friendly, approximation.n_gradpoints))
     weights = map((sample) -> total_derivative(approximation.grad, nonlinearity, sample) * pdf(positivemeasure, sample), samples)
 
     η_outbound_params = ExponentialFamily.getnaturalparameters(ef)
