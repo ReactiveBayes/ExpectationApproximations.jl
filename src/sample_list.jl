@@ -229,14 +229,14 @@ vague(::Type{SampleList}, dim1::Int, dim2::Int; nsamples::Int = DEFAULT_SAMPLE_L
 
 ##
 
-rand(samplelist::SampleList) = rand(Random.GLOBAL_RNG, samplelist)
-rand(samplelist::SampleList, n::Integer) = rand(Random.GLOBAL_RNG, samplelist, n)
+Random.rand(samplelist::SampleList) = rand(Random.GLOBAL_RNG, samplelist)
+Random.rand(samplelist::SampleList, n::Integer) = rand(Random.GLOBAL_RNG, samplelist, n)
 
-function rand(rng::AbstractRNG, samplelist::SampleList)
+function Random.rand(rng::AbstractRNG, samplelist::SampleList)
     return rand(rng, get_samples(samplelist))
 end
 
-function rand(rng::AbstractRNG, samplelist::SampleList, n::Integer)
+function Random.rand(rng::AbstractRNG, samplelist::SampleList, n::Integer)
     return rand(rng, get_samples(samplelist), n)
 end
 
