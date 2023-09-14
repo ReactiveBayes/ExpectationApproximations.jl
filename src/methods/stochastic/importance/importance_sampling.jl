@@ -1,5 +1,5 @@
 using Distributions
-import ExponentialFamily: variate_form, KnownExponentialFamilyDistribution
+import ExponentialFamily: variate_form, ExponentialFamilyDistribution
 import Distributions: rand!, rand, Univariate, Multivariate, Matrixvariate
 import StatsBase: Weights
 
@@ -40,7 +40,7 @@ end
 getsamples(approximation::ImportanceSampling)           = getsamples(approximation, approximation.nsamples)
 getsamples(approximation::ImportanceSampling, nsamples) = rand(approximation.rng, approximation.distribution, nsamples)
 
-function approximate_expectation(approximation::ImportanceSampling, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
+function approximate_expectation(approximation::ImportanceSampling, q::Union{<:ExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
     # We use preallocated arrays to sample and compute transformed samples and weightd
     rand!(approximation.rng, approximation.distribution, approximation.bsamples)
     # modify function f

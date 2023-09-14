@@ -1,5 +1,5 @@
 using AdvancedHMC, ForwardDiff, LogDensityProblems, LinearAlgebra, Random
-import ExponentialFamily: KnownExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters,rand, variate_form
+import ExponentialFamily: ExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters,rand, variate_form
 import AdvancedHMC: sample, AbstractMetric, AbstractTrajectorySampler, AbstractTerminationCriterion, AbstractIntegrator, PhasePoint
 import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor,DiagEuclideanMetric
 import LogDensityProblems: logdensity,capabilities,dimension
@@ -34,18 +34,18 @@ struct LogTargetDensity{V, I, T, F}
     q   :: T
     μ   :: F 
 
-    function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F}
+    function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution}, F}
             V = variate_form(q)
         return new{V,I,T,F}(dim,q,μ)
     end
 
-    function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T , F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}}
+    function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T , F <: Union{<:ExponentialFamilyDistribution,<:Distribution}}
             V = variate_form(μ)
         return new{V,I,T,F}(dim,q,μ)
     end
 
     function LogTargetDensity(dim::I, q::T, μ::F) where 
-        {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}}
+        {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution}, F <: Union{<:ExponentialFamilyDistribution,<:Distribution}}
             @assert variate_form(q) == variate_form(μ) " $(q) and $(μ) must have the same variate type"
             V = variate_form(q)
         return new{V,I,T,F}(dim,q,μ)
@@ -65,35 +65,35 @@ function logdensity(p::LogTargetDensity{Matrixvariate,I,T,F}, θ) where {I <: In
 end
 
 logdensity(p::LogTargetDensity{Univariate,I,T,F}, θ) where 
-    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F} = logpdf(p.q,θ[1]) + log(p.μ(θ[1]))
+    {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution}, F} = logpdf(p.q,θ[1]) + log(p.μ(θ[1]))
 logdensity(p::LogTargetDensity{Multivariate,I,T,F}, θ) where 
-    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F} = logpdf(p.q,θ) + log(p.μ(θ))
+    {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution}, F} = logpdf(p.q,θ) + log(p.μ(θ))
 function logdensity(p::LogTargetDensity{Matrixvariate,I,T,F}, θ) where 
-    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F}       
+    {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution}, F}       
         n = Int(sqrt(length(θ)))
         θnew = reshape(θ,n,n)
     return logpdf(p.q,θnew) + log(p.μ(θnew))
 end
 
 logdensity(p::LogTargetDensity{Univariate,I,T,F}, θ) where 
-    {I <: Integer, T , F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}} = log(p.q(θ[1])) + logpdf(p.μ, θ[1])
+    {I <: Integer, T , F <: Union{<:ExponentialFamilyDistribution,<:Distribution}} = log(p.q(θ[1])) + logpdf(p.μ, θ[1])
 logdensity(p::LogTargetDensity{Multivariate,I,T,F}, θ) where 
-    {I <: Integer, T , F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution} } = log(p.q(θ)) + logpdf(p.μ, θ)
+    {I <: Integer, T , F <: Union{<:ExponentialFamilyDistribution,<:Distribution} } = log(p.q(θ)) + logpdf(p.μ, θ)
 function logdensity(p::LogTargetDensity{Matrixvariate,I,T,F}, θ) where 
-    {I <: Integer, T , F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}}        
+    {I <: Integer, T , F <: Union{<:ExponentialFamilyDistribution,<:Distribution}}        
         n = Int(sqrt(length(θ)))
         θnew = reshape(θ,n,n)
     return log(p.q(θnew)) + logpdf(p.μ, θnew)
 end
 
 logdensity(p::LogTargetDensity{Univariate,I,T,F}, θ) where 
-    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}, F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}} =
+    {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution}, F <: Union{<:ExponentialFamilyDistribution,<:Distribution}} =
         logpdf(p.q,θ[1]) + logpdf(p.μ, θ[1])
 logdensity(p::LogTargetDensity{Multivariate,I,T,F}, θ) where 
-    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution} , F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution} } = 
+    {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution} , F <: Union{<:ExponentialFamilyDistribution,<:Distribution} } = 
         logpdf(p.q, θ) + logpdf(p.μ, θ)
 function logdensity(p::LogTargetDensity{Matrixvariate,I,T,F}, θ) where 
-    {I <: Integer, T <: Union{<:KnownExponentialFamilyDistribution,<:Distribution} , F <: Union{<:KnownExponentialFamilyDistribution,<:Distribution}}      
+    {I <: Integer, T <: Union{<:ExponentialFamilyDistribution,<:Distribution} , F <: Union{<:ExponentialFamilyDistribution,<:Distribution}}      
         n = Int(sqrt(length(θ)))
         θnew = reshape(θ,n,n)
     return logpdf(p.q, θnew) + logpdf(p.μ, θnew)
@@ -102,7 +102,7 @@ end
 capabilities(::LogTargetDensity) = LogDensityProblems.LogDensityOrder{1}()
 dimension(p::LogTargetDensity) = p.dim
 
-function Base.prod(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
+function Base.prod(method::AHMC, q::Union{<:ExponentialFamilyDistribution,<:Distribution}, f::F) where {F}
     ltd = LogTargetDensity(method.dim, q, f) 
     hamiltonian = Hamiltonian(method.metric, ltd, method.autograd)
     var_form = variate_form(q)
@@ -147,7 +147,7 @@ function Base.prod(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<
     return SampleList(samples, norm_weights, meta)
 end
 
-Base.prod(method::AHMC, q::F, f::Union{<:KnownExponentialFamilyDistribution,<:Distribution}) where {F} = prod(method,f,q)
+Base.prod(method::AHMC, q::F, f::Union{<:ExponentialFamilyDistribution,<:Distribution}) where {F} = prod(method,f,q)
 
 ## In case two known distributions are multiplied, it must be chosen which distribution a sample should be drawn to determine step size.
 ## For example if Gamma and Normal is multiplied it is better to choose Gamma to sample from ow negative valued samples might break step size determination.
@@ -159,11 +159,11 @@ function sample_direction(q,f)
     return SampleLeft()
 end
 
-function Base.prod(method::AHMC,q::Union{<:KnownExponentialFamilyDistribution,<:Distribution},f::Union{<:KnownExponentialFamilyDistribution,<:Distribution} )
+function Base.prod(method::AHMC,q::Union{<:ExponentialFamilyDistribution,<:Distribution},f::Union{<:ExponentialFamilyDistribution,<:Distribution} )
     return prod(method,sample_direction(q,f),q,f)
 end
 
-function Base.prod(method::AHMC,::SampleLeft, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution},f::Union{<:KnownExponentialFamilyDistribution,<:Distribution}) 
+function Base.prod(method::AHMC,::SampleLeft, q::Union{<:ExponentialFamilyDistribution,<:Distribution},f::Union{<:ExponentialFamilyDistribution,<:Distribution}) 
     ltd = LogTargetDensity(method.dim, q, f) 
     hamiltonian = Hamiltonian(method.metric, ltd, method.autograd) 
     
@@ -207,7 +207,7 @@ function Base.prod(method::AHMC,::SampleLeft, q::Union{<:KnownExponentialFamilyD
 
     return SampleList(samples, norm_weights, meta)
 end
-Base.prod(method::AHMC,::SampleRight, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution},f::Union{<:KnownExponentialFamilyDistribution,<:Distribution}) = 
+Base.prod(method::AHMC,::SampleRight, q::Union{<:ExponentialFamilyDistribution,<:Distribution},f::Union{<:ExponentialFamilyDistribution,<:Distribution}) = 
     prod(method,SampleLeft(),f,q)
 function Base.prod(method::AHMC,q::T,f::F) where {T, F}
     ltd = LogTargetDensity(method.dim, q, f, method.varform) 
@@ -264,7 +264,7 @@ approximate_distribution(method::AHMC, q::T, f::F) where {T, F} = approximate_di
 approximate_distribution(method::AHMC, ::SampleLeft, q::T, f::F) where {T,F} = prod(method, SampleLeft(),q,f)
 approximate_distribution(method::AHMC, ::SampleRight, q::T, f::F) where {T,F} = prod(method,SampleRight(),q,f)
 
-approximate_distribution(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution},f::F ) where {F} = prod(method,q,f)
-approximate_distribution(method::AHMC, q::F, f::Union{<:KnownExponentialFamilyDistribution,<:Distribution}) where {F} = prod(method,q,f)
+approximate_distribution(method::AHMC, q::Union{<:ExponentialFamilyDistribution,<:Distribution},f::F ) where {F} = prod(method,q,f)
+approximate_distribution(method::AHMC, q::F, f::Union{<:ExponentialFamilyDistribution,<:Distribution}) where {F} = prod(method,q,f)
 
-approximate_distribution(method::AHMC, q::Union{<:KnownExponentialFamilyDistribution,<:Distribution},f::Union{<:KnownExponentialFamilyDistribution,<:Distribution}) = prod(method,sample_direction(q,f),q,f)
+approximate_distribution(method::AHMC, q::Union{<:ExponentialFamilyDistribution,<:Distribution},f::Union{<:ExponentialFamilyDistribution,<:Distribution}) = prod(method,sample_direction(q,f),q,f)
