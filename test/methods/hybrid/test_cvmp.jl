@@ -21,14 +21,14 @@ using Optimisers
 
     @testset "Constructor CVMP Factor" begin
         cvmp_factor = CVMPFactor(
-            ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 0.7),
-            ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 0.9),
-            ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 1)
+            ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.7]),
+            ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.9]),
+            ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [1])
         )
 
-        @test ExpectationApproximations.get_exponential_family(cvmp_factor) == ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 0.7)
-        @test ExpectationApproximations.get_positive_measure(cvmp_factor) == ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 0.9)
-        @test ExpectationApproximations.get_marginal(cvmp_factor) == ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, 1)
+        @test ExpectationApproximations.get_exponential_family(cvmp_factor) == ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.7])
+        @test ExpectationApproximations.get_positive_measure(cvmp_factor) == ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.9])
+        @test ExpectationApproximations.get_marginal(cvmp_factor) == ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [1])
     end
 
     @testset "compute_gradient" begin
@@ -45,9 +45,9 @@ using Optimisers
         @testset "Bernoulli x Bernoulli prod" begin
             cvmp_method = CVMP(StableRNG(42), 500, Optimisers.Adam(0.01), ForwardDiffGrad(), 300, Val(true), true, SimpleInitStrategy())
             for i in -1:1, j in -1:1
-                positive_measure = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, i+1e-12)
-                ef = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, j+1e-12)
-                marginal = ExponentialFamily.KnownExponentialFamilyDistribution(Bernoulli, i+j)
+                positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i+1e-12])
+                ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j+1e-12])
+                marginal = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i+j])
                 cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
                 product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
                 dist = convert(Distribution, product)
@@ -58,9 +58,9 @@ using Optimisers
 
         @testset "Gamma x Gamma prod" begin
                 cvmp_method = CVMP(StableRNG(42), 100, Optimisers.Adam(0.01), ForwardDiffGrad(), 10000, Val(true), true, SimpleInitStrategy())
-                ef = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
-                positive_measure = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
-                marginal = ExponentialFamily.KnownExponentialFamilyDistribution(GammaShapeRate, [2.0, -2.0])
+                ef = ExponentialFamily.ExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
+                positive_measure = ExponentialFamily.ExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
+                marginal = ExponentialFamily.ExponentialFamilyDistribution(GammaShapeRate, [2.0, -2.0])
                 cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
                 product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
                 product_test = ExpectationApproximations.approximate(ExpectationApproximations.AsDistribution(),cvmp_method, cvmp_factor, identity)

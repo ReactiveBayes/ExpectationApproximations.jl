@@ -71,11 +71,11 @@ function approximate_distribution(method::CVMP, q::CVMPFactor, f::F) where {F}
     return prod(method, positivemeasure, exponentialfamily, marginal, f)
 end
 
-function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.KnownExponentialFamilyDistribution{T}, samples, weights, nonlinearity) where {T}
+function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, samples, weights, nonlinearity) where {T}
     logq =
         (η) -> mean(
             map(
-                (sample, weight) -> weight * logpdf(ExponentialFamily.KnownExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), nonlinearity(sample...)),
+                (sample, weight) -> weight * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), nonlinearity(sample...)),
                 samples,
                 weights
             )
@@ -86,7 +86,7 @@ end
 cvmplinearize(vector::AbstractVector) = vector
 cvmplinearize(matrix::AbstractMatrix) = eachcol(matrix)
 
-function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.KnownExponentialFamilyDistribution{T}, marginal, nonlinearity) where T
+function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, marginal, nonlinearity) where T
     rng = something(approximation.rng, Random.default_rng())
 
     # Initial parameters of projected distribution
@@ -119,10 +119,10 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.K
         # perform gradient descent step
         state_tree, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(exponentialfamily_current)), init_model(∇))
         
-        p_new = ExponentialFamily.KnownExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
-        message_new = ExponentialFamily.KnownExponentialFamilyDistribution(T, λ_new.params[1] - η_outbound_params, ExponentialFamily.getconditioner(ef))
+        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
+        message_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1] - η_outbound_params, ExponentialFamily.getconditioner(ef))
         if ExponentialFamily.isproper(p_new) && ExponentialFamily.isproper(message_new)
-            exponentialfamily_current = ExponentialFamily.KnownExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
+            exponentialfamily_current = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
             hasupdated = true
         end
     end

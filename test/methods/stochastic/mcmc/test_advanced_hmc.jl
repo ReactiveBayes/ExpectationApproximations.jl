@@ -11,7 +11,7 @@ using AdvancedHMC
 using ForwardDiff, ReverseDiff, LinearAlgebra
 import Distributions: Univariate, Multivariate, Matrixvariate
 import SpecialFunctions: digamma
-import ExponentialFamily: KnownExponentialFamilyDistribution,convert
+import ExponentialFamily: ExponentialFamilyDistribution,convert
 
 import ExpectationApproximations: AHMC, ImportanceSampling
 
