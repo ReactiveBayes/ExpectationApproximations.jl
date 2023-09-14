@@ -6,10 +6,6 @@ using Random
 using Distributions
 using Optimisers
 
-function init_model(x::Real)
-    return (params = [x],)
-end
-
 function init_model(x::AbstractArray)
     return (params = (x,),)
 end
