@@ -2,10 +2,15 @@ using ExpectationApproximations
 using Test
 
 @testset "ExpectationApproximations.jl" begin
-    
     include("test_transforms.jl")
     include("test_log.jl")
 
-    include("methods/unscented/test_unscented.jl")
-
+    include("methods/deterministic/quadrature/classical/test_classical_quadrature.jl")
+    include("methods/stochastic/importance/test_importance_sampling.jl")
+    include("methods/stochastic/mcmc/test_advanced_hmc.jl")
+    include("methods/deterministic/series/test_linearization.jl")
+    include("methods/deterministic/series/test_laplace.jl")
+    include("methods/deterministic/quadrature/classical/test_unscented.jl")
+    include("methods/hybrid/test_cvmp.jl")
+    # include("methods/hybrid/test_cvi.jl")
 end

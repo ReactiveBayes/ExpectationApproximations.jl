@@ -1,4 +1,4 @@
-export Expectation, approximate
+export AbstractApproximationMethod, Expectation, approximate
 
 using Distributions
 
@@ -8,12 +8,21 @@ using Distributions
 
 # iscompatible(method, q) = CompatibilityUnknown()
 
+export AbstractApproximationMethod
+export approximation_name, approximation_short_name
+
+abstract type AbstractApproximationMethod end
+
+function approximation_name end
+function approximation_short_name end
+
 abstract type Kernel end
 
 function adjust_integrand end
 function adjust_result end
 
 struct Expectation end
+struct AsDistribution end 
 
 ##
 
@@ -23,9 +32,10 @@ as_integrand(f::Distribution) = LogIntegrand((x) -> logpdf(f, x))
 
 ##
 
-approximate(method, f::F) where F    = approximate(method, nothing, f)
-approximate(method, q, f::F) where F = approximate(Expectation(), method, q, f)
+approximate(method::AbstractApproximationMethod, f::F) where {F}    = approximate(method, nothing, f)
+approximate(method::AbstractApproximationMethod, q, f::F) where {F} = approximate(Expectation(), method, q, f)
 
-approximate(::Expectation, method, q, f::F) where F  = approximate_expectation(method, q, as_integrand(f))
-approximate(kernel::Kernel, method, q, f::F) where F = approximate_expectation(method, q, adjust_integrand(kernel, as_integrand(f)))
+approximate(::Expectation, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_expectation(method, q, as_integrand(f))
+approximate(kernel::Kernel, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_expectation(method, q, adjust_integrand(kernel, as_integrand(f)))
 
+approximate(::AsDistribution, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_distribution(method,q,as_integrand(f))
