@@ -16,22 +16,11 @@ function cvmp_setup(opt::Optimisers.AbstractRule, x)
     return Optimisers.setup(deepcopy(opt), init_model(x))
 end
 
-struct ForwardDiffGrad end
-
-compute_derivative(::ForwardDiffGrad, f::F, value::Real) where {F}       = ForwardDiff.derivative(f, value)
-compute_gradient(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F} = ForwardDiff.gradient(f, vec)
-compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F}     = compute_derivative(grad, f, value)
-
-function total_derivative(grad::ForwardDiffGrad, f, s::Real)
-    return s * compute_derivative(grad, f, s)
-end
-
 function total_derivative(approximation, f, s::Tuple)
     f_for_grad = (x) -> f(x...)
     gradient_at_s = compute_gradient(approximation.grad, f_for_grad, collect(s))
     return dot(collect(s), gradient_at_s)
 end
-
 
 struct CVMP{R, O, G, B, S} <: AbstractApproximationMethod
     rng::R

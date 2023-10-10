@@ -81,32 +81,11 @@ function approximate_expectation(method::CVI, q::CVIFactor, f::F) where {F}
     return approximate_expectation(importancesampling, newdist, f)
 end
 
-#---------------------------
-# CVI implementations
-#---------------------------
-
-struct ForwardDiffGrad end
-
-compute_derivative(::ForwardDiffGrad, f::F, value::Real) where {F}       = ForwardDiff.derivative(f, value)
-compute_gradient(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F} = ForwardDiff.gradient(f, vec)
-compute_hessian(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F}  = ForwardDiff.hessian(f, vec)
-
-function compute_second_derivative(grad::G, logp::F, z_s::Real) where {G, F}
-    first_derivative = (x) -> compute_derivative(grad, logp, x)
-    return compute_derivative(grad, first_derivative, z_s)
-end
-
 # We perform the check in case if the `enforce_proper_messages` setting is set to `Val{true}`
 enforce_proper_message(::Val{true}, λ::NaturalParameters, η::NaturalParameters) = isproper(λ - η)
 
 # We skip the check in case if the `enforce_proper_messages` setting is set to `Val{false}`
 enforce_proper_message(::Val{false}, λ::NaturalParameters, η::NaturalParameters) = true
-
-function compute_fisher_matrix(approximation::CVI, ::Type{T}, vec::AbstractVector) where {T <: NaturalParameters}
-    neg_lognormalizer = (x) -> -lognormalizer(as_naturalparams(T, x))
-
-    return -compute_hessian(approximation.grad, neg_lognormalizer, vec)
-end
 
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
@@ -165,92 +144,3 @@ function prod(approximation::CVI, positivemeasure, exponentialfamily)
     return convert(Distribution, λ_current)
 end
 
-using Requires
-
-function __init__()
-    @require Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c" begin
-        function cvi_update!(opt::Flux.Optimise.AbstractOptimiser, λ::NaturalParameters, ∇::NaturalParameters)
-            return Flux.Optimise.update!(opt, vec(λ), vec(∇))
-        end
-    end
-
-    @require Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f" begin
-        export ZygoteGrad
-
-        struct ZygoteGrad end
-
-        compute_gradient(::ZygoteGrad, f::F, vec::AbstractVector) where {F} = Zygote.gradient(f, vec)[1]
-        compute_hessian(::ZygoteGrad, f::F, vec::AbstractVector) where {F}  = Zygote.hessian(f, vec)
-        compute_derivative(::ZygoteGrad, f::F, value::Real) where {F}       = Zygote.gradient(f, value)[1]
-    end
-
-    @require DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5" begin
-        function compute_df_mv(::CVI{R, O, ForwardDiffGrad}, logp::F, vec::AbstractVector) where {R, O, F}
-            result = DiffResults.HessianResult(vec)
-            result = ForwardDiff.hessian!(result, logp, vec)
-            return DiffResults.gradient(result), DiffResults.hessian(result) ./ 2
-        end
-    end
-end
-
-# Thes functions extends the `ExpectationApproximations.CVI` approximation method in case if input is from the `NormalDistributionsFamily`
-
-function compute_df_mv(approximation::CVI, logp::F, z_s::Real) where {F}
-    df_m = compute_derivative(approximation.grad, logp, z_s)
-    df_v = compute_second_derivative(approximation.grad, logp, z_s)
-    return df_m, df_v / 2
-end
-
-function compute_df_mv(approximation::CVI, logp::F, z_s::AbstractVector) where {F}
-    df_m = compute_gradient(approximation.grad, logp, z_s)
-    df_v = compute_hessian(approximation.grad, logp, z_s)
-    return df_m, df_v ./ 2
-end
-
-function prod(approximation::CVI, left, dist::GaussianDistributionsFamily)
-    rng = something(approximation.rng, Random.GLOBAL_RNG)
-
-    logp = (x) -> logpdf(left, x)
-
-    # Natural parameters of incoming distribution message
-    η = naturalparams(dist)
-    T = typeof(η)
-
-    # Initial parameters of projected distribution
-    λ = naturalparams(dist)
-
-    # Initialize update flag
-    hasupdated = false
-
-    for _ in 1:(approximation.n_iterations)
-        # create distribution to sample from and sample from it
-        q = convert(Distribution, λ)
-        z_s = rand(rng, q)
-
-        # compute gradient on mean parameters
-        df_m, df_v = compute_df_mv(approximation, logp, z_s)
-
-        # convert mean parameter gradient into natural gradient
-        df_μ1 = df_m - 2 * df_v * mean(q)
-        df_μ2 = df_v
-        ∇f = as_naturalparams(T, df_μ1, df_μ2)
-
-        # compute gradient on natural parameters
-        ∇ = λ - η - ∇f
-
-        # perform gradient descent step
-        λ_new = as_naturalparams(T, cvi_update!(approximation.opt, λ, ∇))
-
-        # check whether updated natural parameters are proper
-        if isproper(λ_new) && enforce_proper_message(approximation.enforce_proper_messages, λ_new, η)
-            λ = λ_new
-            hasupdated = true
-        end
-    end
-
-    if !hasupdated && approximation.warn
-        @warn "CVI approximation has not updated the initial state. The method did not converge. Set `warn = false` to supress this warning."
-    end
-
-    return convert(Distribution, λ)
-end
