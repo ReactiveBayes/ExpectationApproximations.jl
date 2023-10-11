@@ -11,7 +11,7 @@ function compute_second_derivative(grad::G, logp::F, z_s::Real) where {G, F}
     return compute_derivative(grad, first_derivative, z_s)
 end
 
-compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F}     = compute_derivative(grad, f, value)
+compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F} = compute_derivative(grad, f, value)
 
 function total_derivative(grad::ForwardDiffGrad, f, s::Real)
     return s * compute_derivative(grad, f, s)

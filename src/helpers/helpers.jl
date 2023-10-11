@@ -65,7 +65,6 @@ function __splitjoin(x::AbstractVector, sizes::Tuple)
     end
 end
 
-
 function deep_eltype end
 
 deep_eltype(::Type{T}) where {T}                  = T

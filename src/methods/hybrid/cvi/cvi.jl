@@ -45,30 +45,27 @@ function approximate_distribution(method::CVI, q::CVIFactor)
     return prod(method, positivemeasure, exponentialfamily)
 end
 
-# # # We perform the check in case if the `enforce_proper_messages` setting is set to `Val{true}`
-# # enforce_proper_message(::Val{true}, λ::NaturalParameters, η::NaturalParameters) = isproper(λ - η)
-
-# # # We skip the check in case if the `enforce_proper_messages` setting is set to `Val{false}`
-# # enforce_proper_message(::Val{false}, λ::NaturalParameters, η::NaturalParameters) = true
-
 function cvi_init(_, _, exponentialfamily)
     return exponentialfamily
 end
 
 function compute_grad_logq(approximation::CVI, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, positivemeasure, samples) where {T}
-    logq = (η) -> mean((sample) -> logpdf(positivemeasure, sample) * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), sample), samples)
+    logq =
+        (η) ->
+            mean((sample) -> logpdf(positivemeasure, sample) * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), sample), samples)
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
-function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where T
+function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
     ##requires naturalparams function to be defined on the exponentialfamily
     rng = something(approximation.rng, Random.default_rng())
 
     # Initial parameters of projected distribution
     ef_current = cvi_init(approximation, positivemeasure, ef)
-    η_outbound_params = ExponentialFamily.getnaturalparameters(ef)
+
+    ef_divisor = deepcopy(ef_current)
 
     hasupdated = false
 
@@ -91,13 +88,12 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
         ∇f = Fisher \ ∇logq
 
         # compute gradient on natural parameters
-        ∇ = ExponentialFamily.getnaturalparameters(ef_current) - η_outbound_params - ∇f
+        ∇ = ExponentialFamily.getnaturalparameters(ef_current) - ExponentialFamily.getnaturalparameters(ef_divisor) - ∇f
 
         # perform gradient descent step
         _, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(ef_current)), init_model(∇))
-
-        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
-        if ExponentialFamily.isproper(p_new)
+        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef), nothing)
+        if ExponentialFamily.isproper(p_new) && enforce_proper_message(approximation.enforce_proper_messages, p_new, ef_divisor)
             ef_current = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
             hasupdated = true
         end
@@ -109,4 +105,3 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
 
     return ef_current
 end
-

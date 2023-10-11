@@ -1,11 +1,8 @@
-module TestsClassicalQuadratureGaussLaguerreExponential
 
-using Test
-using ExpectationApproximations, Distributions, StableRNGs
+@testitem "GaussLaguerre: Basic integrations/approximations when q is Exponential" begin
+    using ExpectationApproximations, Distributions, StableRNGs
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
-import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
-
-@testset "GaussLaguerre: Basic integrations/approximations when q is Exponential" begin
     irng = StableRNG(123)
 
     btol(::UseLogWeights, n) = 1e-10 / log(n) # LogWeights should have better accuracy overall
@@ -34,6 +31,4 @@ import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
         @test isapprox(approximate(method, q, (x) -> -(x - mean(q))^2), -var(q), rtol = brtol)
         @test isapprox(approximate(method, q, LogIntegrand((x) -> 2log(abs(x - mean(q))))), var(q), rtol = brtol)
     end
-end
-
 end
