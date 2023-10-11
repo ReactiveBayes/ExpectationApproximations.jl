@@ -1,4 +1,4 @@
-export CVMP, CVMPFactor, ForwardDiffGrad, SimpleInitStrategy
+export CVMP, CVMPFactor, SimpleInitStrategy
 import ExponentialFamily: isproper, logpdf_sample_friendly, convert
 import Base.rand
 using LinearAlgebra

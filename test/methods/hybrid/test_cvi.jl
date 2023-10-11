@@ -16,53 +16,29 @@ using Optimisers
     @testset "Constructor CVI method" begin
         cvi_method = CVI(StableRNG(42), 1000, Optimisers.Adam(), ForwardDiffGrad(), 900, Val(true), true)
         @show cvi_method
-        @test CVI.n_iterations == 1000
-        # @test CVI.n_gradpoints == 900
-        # @test CVI.enforce_proper_messages == Val(true)
-        # @test CVI.warn == true
+        @test cvi_method.n_iterations == 1000
+        @test cvi_method.n_gradpoints == 900
+        @test cvi_method.enforce_proper_messages == Val(true)
+        @test cvi_method.warn == true
     end
-    # @testset "empty optimizer" begin
-    #     for (m_in, m_out) in ((NormalMeanVariance(0, 1), NormalMeanVariance(0, 1)), (GammaShapeRate(2, 2), GammaShapeRate(2, 2)), (Bernoulli(0.5), Bernoulli(0.5)))
-    #         opt = EmptyOptimizer()
-    #         meta = CVI(1, 100, opt)
-    #         λ = prod(meta, ContinuousUnivariateLogPdf((z) -> logpdf(m_out, z)), m_in)
-    #         @test all(mean_var(λ) .== mean_var(m_in))
-    #     end
-    # end
 
-    # @testset "counting optimizer" begin
-    #     for (m_in, m_out) in ((NormalMeanVariance(0, 1), NormalMeanVariance(0, 1)), (GammaShapeRate(2, 2), GammaShapeRate(2, 2)), (Bernoulli(0.5), Bernoulli(0.5)))
-    #         opt = CountingOptimizer(0)
-    #         meta = CVI(1, 100, opt)
-    #         λ = prod(meta, ContinuousUnivariateLogPdf((z) -> logpdf(m_out, z)), m_in)
-    #         @test all(mean_var(λ) .== mean_var(m_in))
-    #         @test opt.num_its === 100
-    #     end
-    # end
+    @testset "Constructor CVI Factor" begin
+        cvi_factor = CVIFactor(
+            ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.7]),
+            ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.9]),
+        )
 
-    # @testset "counting lambda optimizer" begin
-    #     for (m_in, m_out) in ((NormalMeanVariance(0, 1), NormalMeanVariance(0, 1)), (GammaShapeRate(2, 2), GammaShapeRate(2, 2)), (Bernoulli(0.5), Bernoulli(0.5)))
-    #         η = naturalparams(m_in)
-    #         num_its = 0
-    #         opt = (λ, ∇) -> begin
-    #             num_its += 1
-    #             return vec(λ)
-    #         end
-    #         meta = CVI(1, 100, opt)
-    #         λ = prod(meta, ContinuousUnivariateLogPdf((z) -> logpdf(m_out, z)), m_in)
-    #         @test all(mean_var(λ) .== mean_var(m_in))
-    #         @test num_its === 100
-    #     end
-    # end
+        @test ExpectationApproximations.get_exponential_family(cvi_factor) == ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.7])
+        @test ExpectationApproximations.get_positive_measure(cvi_factor) == ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.9])
+    end
 
     # @testset "cvi Bernoulli x Bernoulli prod" begin
-    #     cvmp_method = CVI(StableRNG(42), 1, 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 60, Val(true), false)
+    #     cvi_method = CVI(StableRNG(42), 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 60, Val(true), false)
 
     #     for i in -1:1, j in -1:1
     #         positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i+1e-12])
     #         ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j+1e-12])
-    #         cvmp_factor = CVIFactor(ef, positive_measure)
-    #         product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor)
+    #         product = ExpectationApproximations.approximate_distribution(cvi_method, CVIFactor(ef, positive_measure))
     #         dist = convert(Distribution, product)
     #         @test mean(dist) ≈ mean(convert(Distribution, marginal)) atol=0.3
     #     end
