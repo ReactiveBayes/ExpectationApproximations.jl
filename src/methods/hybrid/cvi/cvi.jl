@@ -1,21 +1,8 @@
 import Base.prod
-export CVI, ForwardDiffGrad, ZygoteGrad, prod
-import ExponentialFamily: isproper, logpdf_sample_friendly, rand, convert
-import ExponentialFamily: naturalparams, as_naturalparams, lognormalizer, NaturalParameters
+export CVI, CVIFactor, ForwardDiffGrad, prod
+using ExponentialFamily
 using Random
 using LinearAlgebra
-
-"""
-    cvi_update!(opt, λ, ∇)
-"""
-function cvi_update! end
-
-function cvi_update!(callback::F, λ, ∇) where {F <: Function}
-    return callback(λ, ∇)
-end
-
-cvilinearize(vector::AbstractVector) = vector
-cvilinearize(matrix::AbstractMatrix) = eachcol(matrix)
 
 """
     CVI
@@ -25,7 +12,6 @@ This method performs an approximation of the product of the `dist` and `logp` wi
 
 Arguments
  - `rng`: random number generator
- - `n_samples`: number of samples to use for statistics approximation
  - `n_iterations`: number of iteration for the natural parameters gradient optimization
  - `opt`: optimizer, which will be used to perform the natural parameters gradient optimization step
  - `grad`: optional, defaults to `ForwardDiffGrad()`, structure to select how the gradient and the hessian will be computed
@@ -35,31 +21,15 @@ Arguments
 
 !!! note 
     `n_gradpoints` option is ignored in the Gaussian case
-
-!!! note 
-    Run `using Flux` in your Julia session to enable the `Flux` optimizers support for the CVI approximation method.
-    Run `using Zygote` in your Julia session to enable the `ZygoteGrad()` option support for the CVI `grad` parameter.
-    Run `using DiffResults` in your Julia session to enable faster gradient computations in case if all inputs are of the `Gaussian` type.
 """
 struct CVI{R, O, G, B} <: AbstractApproximationMethod
     rng::R
-    n_samples::Int ## to be used in ReactiveMP messsage computations. ExpectationApproximations do not use this field
     n_iterations::Int
     opt::O
     grad::G
     n_gradpoints::Int
     enforce_proper_messages::Val{B}
     warn::Bool
-
-    function CVI(
-        rng::R, n_samples::Int, n_iterations::Int, opt::O, grad::G = ForwardDiffGrad(), n_gradpoints::Int = 1, enforce_proper_messages::Val{B} = Val(true), warn::Bool = true
-    ) where {R, O, G, B}
-        return new{R, O, G, B}(rng, n_samples, n_iterations, opt, grad, n_gradpoints, enforce_proper_messages, warn)
-    end
-end
-
-function CVI(n_samples::Int, n_iterations::Int, opt, grad = ForwardDiffGrad(), n_gradpoints::Int = 1, enforce_proper_messages::Val = Val(true), warn::Bool = true)
-    return CVI(Random.GLOBAL_RNG, n_samples, n_iterations, opt, grad, n_gradpoints, enforce_proper_messages, warn)
 end
 
 """Alias for the `CVI` method. See help for [`CVI`](@ref)"""
@@ -72,35 +42,40 @@ end
 get_positive_measure(factor::CVIFactor) = factor.positivemeasure
 get_exponential_family(factor::CVIFactor) = factor.exponentialfamily
 
-function approximate_expectation(method::CVI, q::CVIFactor, f::F) where {F}
+function approximate_distribution(method::CVMP, q::CVIFactor) where {F}
     positivemeasure = get_positive_measure(q)
     exponentialfamily = get_exponential_family(q)
-
-    exponentialfamily = prod(method, positivemeasure, exponentialfamily)
-    importancesampling = ImportanceSampling(method.rng, n_samples, exponentialfamily)
-    return approximate_expectation(importancesampling, newdist, f)
+    return prod(method, positivemeasure, exponentialfamily)
 end
 
-# We perform the check in case if the `enforce_proper_messages` setting is set to `Val{true}`
-enforce_proper_message(::Val{true}, λ::NaturalParameters, η::NaturalParameters) = isproper(λ - η)
+# # We perform the check in case if the `enforce_proper_messages` setting is set to `Val{true}`
+# enforce_proper_message(::Val{true}, λ::NaturalParameters, η::NaturalParameters) = isproper(λ - η)
 
-# We skip the check in case if the `enforce_proper_messages` setting is set to `Val{false}`
-enforce_proper_message(::Val{false}, λ::NaturalParameters, η::NaturalParameters) = true
+# # We skip the check in case if the `enforce_proper_messages` setting is set to `Val{false}`
+# enforce_proper_message(::Val{false}, λ::NaturalParameters, η::NaturalParameters) = true
+
+
+function cvi_init(::Any, _, exponentialfamily)
+    return exponentialfamily
+end
+
+function compute_grad_logq(approximation::CVI, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, positivemeasure, samples) where {T}
+    logq = (η) -> mean((sample) -> logpdf(positivemeasure, sample) * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), sample), samples)
+    return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
+end
 
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
-function prod(approximation::CVI, positivemeasure, exponentialfamily)
+function prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where T
     ##requires naturalparams function to be defined on the exponentialfamily
     rng = something(approximation.rng, Random.default_rng())
 
-    # Natural parameters of incoming distribution message
-    η_exponentialfamily = naturalparams(exponentialfamily)
-
-    # Natural parameter type of incoming distribution
-    T = typeof(η_exponentialfamily)
+    # Initial parameters of projected distribution
+    exponentialfamily_current = cvi_init(approximation, positivemeasure, ef)
 
     # Initial parameters of projected distribution
     λ_current = naturalparams(exponentialfamily)
+    η_outbound_params = ExponentialFamily.getnaturalparameters(ef)
 
     hasupdated = false
 
@@ -108,31 +83,27 @@ function prod(approximation::CVI, positivemeasure, exponentialfamily)
 
         # Some distributions implement "sampling" efficient versions
         # returns the same distribution by default
-        _, q_friendly = logpdf_sample_friendly(convert(Distribution, λ_current))
+        sampling_frindly_current_ef= convert(Distribution, ef_current)
 
-        samples = cvilinearize(rand(rng, q_friendly, approximation.n_gradpoints))
+        samples = cvilinearize(rand(rng, sampling_frindly_current_ef, approximation.n_gradpoints))
 
-        logq = let samples = samples, positivemeasure = positivemeasure, T = T
-            (η) -> mean((sample) -> logpdf(positivemeasure, sample) * logpdf(as_naturalparams(T, η), sample), samples)
-        end
-
-        ∇logq = compute_gradient(approximation.grad, logq, vec(λ_current))
+        ∇logq = compute_grad_logq(approximation, ef_current, positivemeasure, samples)
 
         # compute Fisher matrix 
-        Fisher = compute_fisher_matrix(approximation, T, vec(λ_current))
+        Fisher = ExponentialFamily.fisherinformation(exponentialfamily_current)
 
         # compute natural gradient
         ∇f = Fisher \ ∇logq
 
         # compute gradient on natural parameters
-        ∇ = λ_current - η_exponentialfamily - as_naturalparams(T, ∇f)
+        ∇ = ExponentialFamily.getnaturalparameters(exponentialfamily_current) - η_outbound_params - ∇f
 
         # perform gradient descent step
-        λ_new = as_naturalparams(T, cvi_update!(approximation.opt, λ_current, ∇))
+        _, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(exponentialfamily_current)), init_model(∇))
 
-        # check whether updated natural parameters are proper
-        if isproper(λ_new) && enforce_proper_message(approximation.enforce_proper_messages, λ_new, η_exponentialfamily)
-            λ_current = λ_new
+        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
+        if ExponentialFamily.isproper(p_new)
+            exponentialfamily_current = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
             hasupdated = true
         end
     end
