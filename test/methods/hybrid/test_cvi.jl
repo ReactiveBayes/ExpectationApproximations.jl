@@ -32,17 +32,17 @@ using Optimisers
         @test ExpectationApproximations.get_positive_measure(cvi_factor) == ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [0.9])
     end
 
-    # @testset "cvi Bernoulli x Bernoulli prod" begin
-    #     cvi_method = CVI(StableRNG(42), 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 60, Val(true), false)
+    @testset "cvi Bernoulli x Bernoulli prod" begin
+        cvi_method = CVI(StableRNG(42), 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 60, Val(true), false)
 
-    #     for i in -1:1, j in -1:1
-    #         positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i+1e-12])
-    #         ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j+1e-12])
-    #         product = ExpectationApproximations.approximate_distribution(cvi_method, CVIFactor(ef, positive_measure))
-    #         dist = convert(Distribution, product)
-    #         @test mean(dist) ≈ mean(convert(Distribution, marginal)) atol=0.3
-    #     end
-    # end
+        for i in -1:1, j in -1:1
+            positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i+1e-12])
+            ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j+1e-12])
+            product = ExpectationApproximations.approximate_distribution(cvi_method, CVIFactor(ef, positive_measure))
+            dist = convert(Distribution, product)
+            @test mean(dist) ≈ mean(convert(Distribution, product)) atol=0.3
+        end
+    end
 
     # @testset "cvi `prod` tests (n_gradpoints = 60)" begin
     #     rng = StableRNG(42)

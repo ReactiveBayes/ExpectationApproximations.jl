@@ -16,3 +16,9 @@ compute_gradient(grad::ForwardDiffGrad, f::F, value::Real) where {F}     = compu
 function total_derivative(grad::ForwardDiffGrad, f, s::Real)
     return s * compute_derivative(grad, f, s)
 end
+
+function total_derivative(approximation, f, s::Tuple)
+    f_for_grad = (x) -> f(x...)
+    gradient_at_s = compute_gradient(approximation.grad, f_for_grad, collect(s))
+    return dot(collect(s), gradient_at_s)
+end

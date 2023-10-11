@@ -10,16 +10,9 @@ function init_model(x::AbstractArray)
     return (params = (x,),)
 end
 
-
 function cvmp_setup(opt::Optimisers.AbstractRule, x)
     # We rely on the `deepcopy` here, because some optimizers from the `Optimizers.jl` may change their state
     return Optimisers.setup(deepcopy(opt), init_model(x))
-end
-
-function total_derivative(approximation, f, s::Tuple)
-    f_for_grad = (x) -> f(x...)
-    gradient_at_s = compute_gradient(approximation.grad, f_for_grad, collect(s))
-    return dot(collect(s), gradient_at_s)
 end
 
 struct CVMP{R, O, G, B, S} <: AbstractApproximationMethod
@@ -68,9 +61,6 @@ function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.Exponentia
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
-cvmplinearize(vector::AbstractVector) = vector
-cvmplinearize(matrix::AbstractMatrix) = eachcol(matrix)
-
 function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, marginal, nonlinearity) where T
     rng = something(approximation.rng, Random.default_rng())
 
@@ -83,7 +73,7 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.E
 
     hasupdated = false
 
-    samples = cvmplinearize(Random.rand(rng, marginal_friendly, approximation.n_gradpoints))
+    samples = hybridlinearize(Random.rand(rng, marginal_friendly, approximation.n_gradpoints))
     weights = map((sample) -> total_derivative(approximation.grad, nonlinearity, sample) * pdf(positivemeasure, sample), samples)
 
     η_outbound_params = ExponentialFamily.getnaturalparameters(ef)
