@@ -12,5 +12,5 @@ using Test
     include("methods/deterministic/series/test_laplace.jl")
     include("methods/deterministic/quadrature/classical/test_unscented.jl")
     include("methods/hybrid/test_cvmp.jl")
-    # include("methods/hybrid/test_cvi.jl")
+    include("methods/hybrid/test_cvi.jl")
 end
