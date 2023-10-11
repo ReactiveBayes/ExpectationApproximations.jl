@@ -34,4 +34,4 @@ Contributions to ``ExpectationsApproximations`` are welcome!
 
 # License
 
-[MIT License](LICENSE) Copyright (c) 2021-2023 BIASlab
+[MIT License](LICENSE) Copyright (c) 2023 BIASlab
