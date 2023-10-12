@@ -44,40 +44,47 @@ using Optimisers
         end
     end
 
-    # @testset "cvi `prod` tests (n_gradpoints = 60)" begin
-    #     rng = StableRNG(42)
+    @testset "cvi `prod` tests (n_gradpoints = 60)" begin
+        rng = StableRNG(42)
 
-    #     tests = (
-    #         (method = CVI(StableRNG(42), 1, 5000, Descent(0.001), ForwardDiffGrad(), 60, Val(true), false), tol = 5e-1),
-    #     )
+        tests = (
+            (method = CVI(StableRNG(42), 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 60, Val(true), false), tol = 5e-1),
+        )
 
-    #     # Check several prods against their analytical solutions
-    #     for test in tests, i in 1:5
-    #         # Univariate `Gamma`
-    #         g1 = GammaShapeRate(rand(rng) + 1, rand(rng) + 1)
-    #         g2 = GammaShapeRate(rand(rng) + 1, rand(rng) + 1)
+        # Check several prods against their analytical solutions
+        for test in tests, i in 1:5
+            # Univariate `Gamma`
+            g1 = GammaShapeRate(rand(rng) + 1, rand(rng) + 1)
+            g2 = GammaShapeRate(rand(rng) + 1, rand(rng) + 1)
 
-    #         g_analytical = prod(ProdAnalytical(), g1, g2)
-    #         g_cvi1 = prod(test[:method], g1, g2)
-    #         g_cvi2 = prod(test[:method], ContinuousUnivariateLogPdf((x) -> logpdf(g1, x)), g2)
+            cvi_factor = CVIFactor(
+                convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, g1),
+                convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, g2)
+            )
 
-    #         @test g_cvi1 ≈ g_analytical atol = test[:tol]
-    #         @test g_cvi2 ≈ g_analytical atol = test[:tol]
-    #     end
-    # end
+            product = ExpectationApproximations.approximate_distribution(test.method, cvi_factor)
+            dist = convert(Distribution, product)
+        end
+    end
 
-    # @testset "Normal x Normal (Log-likelihood preconditioner prod)" begin
-    #     seed = 123
-    #     rng = StableRNG(seed)
-    #     optimizer = Descent(0.001)
-    #     meta = CVI(rng, 50, 5000, optimizer, ForwardDiffGrad(), 1, Val(false), false)
+    @testset "Normal x Normal (Log-likelihood preconditioner prod)" begin
+        seed = 123
+        rng = StableRNG(seed)
+        optimizer = Optimisers.Descent(0.001)
+        method = CVI(rng, 5000, optimizer, ForwardDiffGrad(), 1, Val(false), false)
 
-    #     for i in 1:3
-    #         m_out, m_in = NormalMeanVariance(i, 1), NormalMeanVariance(0, 1)
-    #         λ = prod(meta, m_out, m_in)
-    #         @test isapprox(convert(Distribution, λ), NormalWeightedMeanPrecision(i, 2), atol = 0.7)
-    #     end
-    # end
+        for i in 1:3
+            m_out, m_in = NormalMeanVariance(i, 1), NormalMeanVariance(0, 1)
+            cvi_factor = CVIFactor(
+                convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, m_out),
+                convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, m_in)
+            )
+
+            product = ExpectationApproximations.approximate_distribution(method, cvi_factor)
+
+            @test isapprox(convert(Distribution, product), NormalWeightedMeanPrecision(i, 2), atol = 0.7)
+        end
+    end
 
     # @static if VERSION ≥ v"1.7" # Base.@invoke is available only in Julia >= 1.7
     #     @testset "Normal x Normal (Fisher preconditioner prod)" begin
