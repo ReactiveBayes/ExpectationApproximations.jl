@@ -6,10 +6,6 @@ using Random
 using Distributions
 using Optimisers
 
-function init_model(x::AbstractArray)
-    return (params = (x,),)
-end
-
 function cvmp_setup(opt::Optimisers.AbstractRule, x)
     # We rely on the `deepcopy` here, because some optimizers from the `Optimizers.jl` may change their state
     return Optimisers.setup(deepcopy(opt), init_model(x))
