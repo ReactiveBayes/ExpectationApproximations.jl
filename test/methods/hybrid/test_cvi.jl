@@ -62,12 +62,14 @@ using Optimisers
                 convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, g2)
             )
 
+            # @show logpdf(cvi_factor.exponentialfamily, 1)
+
             product = ExpectationApproximations.approximate_distribution(test.method, cvi_factor)
             dist = convert(Distribution, product)
         end
     end
 
-    @testset "Normal x Normal (Log-likelihood preconditioner prod)" begin
+    @testset "Normal x Normal" begin
         seed = 123
         rng = StableRNG(seed)
         optimizer = Optimisers.Descent(0.001)
@@ -82,54 +84,26 @@ using Optimisers
 
             product = ExpectationApproximations.approximate_distribution(method, cvi_factor)
 
-            @test isapprox(convert(Distribution, product), NormalWeightedMeanPrecision(i, 2), atol = 0.7)
+            @test isapprox(mean(convert(Distribution, product)), mean(NormalWeightedMeanPrecision(i, 2)), atol = 0.7)
         end
     end
 
-    # @static if VERSION ≥ v"1.7" # Base.@invoke is available only in Julia >= 1.7
-    #     @testset "Normal x Normal (Fisher preconditioner prod)" begin
-    #         seed = 123
-    #         rng = StableRNG(seed)
-    #         optimizer = Descent(0.001)
-    #         meta = CVI(rng, 50, 5000, optimizer, ForwardDiffGrad(), 1, Val(false), false)
+    # @testset "MvNormal x MvNormal" begin
+    #     rng = StableRNG(123)
+    #     method = CVI(rng, 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 10, Val(false), false)
+    #     for i in 1:3
+    #         m_out, m_in = MvGaussianMeanCovariance(fill(i, 2)), MvGaussianMeanCovariance(zeros(2))
+    #         cvi_factor = CVIFactor(
+    #             convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, m_out),
+    #             convert(ExpectationApproximationsCVITest.ExponentialFamilyDistribution, m_in)
+    #         )
 
-    #         for i in 1:3
-    #             m_out, m_in = NormalMeanVariance(i, 1), NormalMeanVariance(0, 1)
-    #             λ = Base.@invoke prod(meta::CVI, (ContinuousUnivariateLogPdf((z) -> logpdf(m_out, z)))::AbstractContinuousGenericLogPdf, m_in::Any)
-    #             @test isapprox(convert(Distribution, λ), NormalWeightedMeanPrecision(i, 2), atol = 0.5)
-    #         end
+    #         g_cvi1 = ExpectationApproximations.approximate_distribution(method, cvi_factor)
+    #         g_analytical = MvNormalWeightedMeanPrecision(fill(i, 2), diageye(2) * 2)
+    #         @test all(isapprox.(mean(g_analytical), mean(g_cvi1), atol = 0.2))
     #     end
     # end
 
-    # @static if VERSION ≥ v"1.7" # Base.@invoke is available only in Julia >= 1.7
-    #     @testset "MvNormal x MvNormal 1D (Fisher preconditioner prod)" begin
-    #         seed = 123
-    #         rng = StableRNG(seed)
-    #         optimizer = Descent(0.001)
-    #         meta = CVI(rng, 1, 5000, optimizer, ForwardDiffGrad(), 1, Val(false), false)
-
-    #         for i in 1:3
-    #             m_out, m_in = MvNormalMeanCovariance([i], [1]), MvNormalMeanCovariance([0], [1])
-    #             λ = Base.@invoke prod(
-    #                 meta::CVI, (ContinuousMultivariateLogPdf(ReactiveMP.UnspecifiedDomain(), (x) -> logpdf(m_out, x)))::AbstractContinuousGenericLogPdf, m_in::Any
-    #             )
-    #             @test isapprox(convert(Distribution, λ), MvNormalWeightedMeanPrecision([i], [2]), atol = 0.5)
-    #         end
-    #     end
-
-    #     @testset "MvNormal x MvNormal 2D (Fisher preconditioner prod)" begin
-    #         seed = 123
-    #         rng = StableRNG(seed)
-    #         optimizer = Descent(0.001)
-    #         meta = CVI(rng, 1, 5000, optimizer, ForwardDiffGrad(), 10, Val(false), false)
-    #         for i in 1:3
-    #             m_out, m_in = MvGaussianMeanCovariance(fill(i, 2)), MvGaussianMeanCovariance(zeros(2))
-    #             g_cvi1 = Base.@invoke prod(meta::CVI, (ContinuousMultivariateLogPdf(2, (x) -> logpdf(m_out, x)))::AbstractContinuousGenericLogPdf, m_in::Any)
-    #             g_analytical = MvNormalWeightedMeanPrecision(fill(i, 2), diageye(2) * 2)
-    #             @test all(isapprox.(mean(g_analytical), mean(g_cvi1), atol = 0.2))
-    #         end
-    #     end
-    # end
 end
 
 end

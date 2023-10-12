@@ -1,5 +1,5 @@
 using AdvancedHMC, ForwardDiff, LogDensityProblems, LinearAlgebra, Random
-import ExponentialFamily: ExponentialFamilyDistribution, sufficientstatistics,distributiontype,reconstructargument!,logpartition, getnaturalparameters,rand, variate_form
+import ExponentialFamily: ExponentialFamilyDistribution, sufficientstatistics,logpartition, getnaturalparameters,rand, variate_form
 import AdvancedHMC: sample, AbstractMetric, AbstractTrajectorySampler, AbstractTerminationCriterion, AbstractIntegrator, PhasePoint
 import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor,DiagEuclideanMetric
 import LogDensityProblems: logdensity,capabilities,dimension

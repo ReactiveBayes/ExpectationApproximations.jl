@@ -90,8 +90,7 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
 
         # perform gradient descent step
         _, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(ef_current)), init_model(∇))
-
-        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
+        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef), nothing)
         if ExponentialFamily.isproper(p_new) && enforce_proper_message(approximation.enforce_proper_messages, p_new, ef_divisor)
             ef_current = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
             hasupdated = true
