@@ -92,7 +92,8 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.E
         
         p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
         message_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1] - η_outbound_params, ExponentialFamily.getconditioner(ef))
-        if ExponentialFamily.isproper(p_new) && ExponentialFamily.isproper(message_new)
+        
+        if ExponentialFamily.isproper(p_new) && enforce_proper_message(approximation.enforce_proper_messages, p_new, message_new)
             exponentialfamily_current = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
             hasupdated = true
         end
