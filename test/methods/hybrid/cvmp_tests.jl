@@ -49,9 +49,9 @@
 
         @testset "Gamma x Gamma prod" begin
             cvmp_method = CVMP(StableRNG(42), 100, Optimisers.Adam(0.01), ForwardDiffGrad(), 10000, Val(true), true, SimpleInitStrategy())
-            ef = ExponentialFamily.ExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
-            positive_measure = ExponentialFamily.ExponentialFamilyDistribution(GammaShapeRate, [1.0, -1.0])
-            marginal = ExponentialFamily.ExponentialFamilyDistribution(GammaShapeRate, [2.0, -2.0])
+            ef = ExponentialFamily.ExponentialFamilyDistribution(Gamma, [1.0, -1.0])
+            positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Gamma, [1.0, -1.0])
+            marginal = ExponentialFamily.ExponentialFamilyDistribution(Gamma, [2.0, -2.0])
             cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
             product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)
             product_test = ExpectationApproximations.approximate(ExpectationApproximations.AsDistribution(), cvmp_method, cvmp_factor, identity)
