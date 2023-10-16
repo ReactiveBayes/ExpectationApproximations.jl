@@ -30,11 +30,11 @@ end
     end
 end
 
-@testitem "cvi `prod` tests (n_gradpoints = 60)" begin
+@testitem "cvi `prod` tests" begin
     include("./hybrid_setuptests.jl")
     rng = StableRNG(42)
 
-    tests = ((method = CVI(StableRNG(42), 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 60, Val(true), false), tol = 5e-1),)
+    tests = ((method = CVI(StableRNG(42), 500, Optimisers.Descent(0.01), ForwardDiffGrad(), 2000, Val(true), false), tol = 0.1),)
 
     # Check several prods against their analytical solutions
     for test in tests, i in 1:5
