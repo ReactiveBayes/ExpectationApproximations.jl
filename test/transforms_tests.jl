@@ -1,9 +1,4 @@
-module TestsTransforms
-
-using Test
-using ExpectationApproximations
-
-@testset "RescaleArguments" begin
+@testitem "RescaleArguments" begin
     import ExpectationApproximations: RescaleArguments
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
@@ -40,7 +35,7 @@ using ExpectationApproximations
     @test_throws AssertionError RescaleArguments((x, y) -> x + y, (1.0,))(1.0, 2.0)
 end
 
-@testset "RescaleOutput" begin
+@testitem "RescaleOutput" begin
     import ExpectationApproximations: RescaleOutput
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
@@ -74,7 +69,7 @@ end
     end
 end
 
-@testset "ShiftOutput" begin
+@testitem "ShiftOutput" begin
     import ExpectationApproximations: ShiftOutput
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1), shift in (1, -2.0, 0.5)
@@ -108,7 +103,7 @@ end
     end
 end
 
-@testset "Decay" begin
+@testitem "Decay" begin
     import ExpectationApproximations: Decay
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1)
@@ -127,7 +122,7 @@ end
     end
 end
 
-@testset "Displace" begin
+@testitem "Displace" begin
     import ExpectationApproximations: Displace
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1)
@@ -144,6 +139,4 @@ end
             end
         end
     end
-end
-
 end

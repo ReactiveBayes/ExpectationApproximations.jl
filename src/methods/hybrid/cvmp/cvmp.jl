@@ -57,7 +57,7 @@ function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.Exponentia
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
-function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, marginal, nonlinearity) where T
+function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, marginal, nonlinearity) where {T}
     rng = something(approximation.rng, Random.default_rng())
 
     # Initial parameters of projected distribution
@@ -73,10 +73,10 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.E
     weights = map((sample) -> total_derivative(approximation.grad, nonlinearity, sample) * pdf(positivemeasure, sample), samples)
 
     η_outbound_params = ExponentialFamily.getnaturalparameters(ef)
-    
+
     state_tree = cvmp_setup(approximation.opt, ExponentialFamily.getnaturalparameters(exponentialfamily_current))
 
-    for _ in 1:approximation.n_iterations
+    for _ in 1:(approximation.n_iterations)
         ∇logq = compute_grad_logq(approximation, exponentialfamily_current, samples, weights, nonlinearity)
 
         # compute Fisher matrix 
@@ -89,7 +89,6 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.E
 
         # perform gradient descent step
         state_tree, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(exponentialfamily_current)), init_model(∇))
-        
         p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef), nothing)
         message_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1] - η_outbound_params, ExponentialFamily.getconditioner(ef), nothing)
 

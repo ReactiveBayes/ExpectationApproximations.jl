@@ -1,13 +1,9 @@
-module TestsClassicalQuadratureGaussLaguerre
-
-using Test
-using ExpectationApproximations
-
-@testset "GaussLaguerre creation" begin
+@testitem "GaussHermite creation" begin
+    using ExpectationApproximations
     import ExpectationApproximations: getrule, getpoints, getweights, getlogweights
 
     for npoints in (10, 20, 100)
-        gl = GaussLaguerre(npoints)
+        gl = GaussHermite(npoints)
 
         @test getrule(ClassicalQuadrature(gl)) === gl
 
@@ -16,9 +12,4 @@ using ExpectationApproximations
         @test length(getweights(gl)) === npoints
         @test length(getlogweights(gl)) === npoints
     end
-end
-
-include("test_gausslaguerre_gamma.jl")
-include("test_gausslaguerre_exponential.jl")
-
 end

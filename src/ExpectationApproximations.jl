@@ -2,7 +2,6 @@ module ExpectationApproximations
 
 using ExponentialFamily
 
-
 include("helpers/helpers.jl")
 include("helpers/algebra/cholesky.jl")
 include("helpers/algebra/common.jl")

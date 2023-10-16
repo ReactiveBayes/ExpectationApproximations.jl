@@ -22,7 +22,7 @@ function adjust_integrand end
 function adjust_result end
 
 struct Expectation end
-struct AsDistribution end 
+struct AsDistribution end
 
 ##
 
@@ -38,4 +38,4 @@ approximate(method::AbstractApproximationMethod, q, f::F) where {F} = approximat
 approximate(::Expectation, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_expectation(method, q, as_integrand(f))
 approximate(kernel::Kernel, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_expectation(method, q, adjust_integrand(kernel, as_integrand(f)))
 
-approximate(::AsDistribution, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_distribution(method,q,as_integrand(f))
+approximate(::AsDistribution, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_distribution(method, q, as_integrand(f))

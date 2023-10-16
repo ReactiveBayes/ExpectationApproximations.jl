@@ -1,16 +1,7 @@
-using ExpectationApproximations
-using Test
+using Aqua, CpuId, ReTestItems, ExpectationApproximations
 
-@testset "ExpectationApproximations.jl" begin
-    include("test_transforms.jl")
-    include("test_log.jl")
+# `ambiguities = false` - there are quite some ambiguities, but these should be normal and should not be encountered under normal circumstances
+# `piracy = false` - we extend/add some of the methods to the objects defined in the Distributions.jl
+Aqua.test_all(ExpectationApproximations, ambiguities = false, piracy = false)
 
-    include("methods/deterministic/quadrature/classical/test_classical_quadrature.jl")
-    include("methods/stochastic/importance/test_importance_sampling.jl")
-    include("methods/stochastic/mcmc/test_advanced_hmc.jl")
-    include("methods/deterministic/series/test_linearization.jl")
-    include("methods/deterministic/series/test_laplace.jl")
-    include("methods/deterministic/quadrature/classical/test_unscented.jl")
-    include("methods/hybrid/test_cvmp.jl")
-    include("methods/hybrid/test_cvi.jl")
-end
+runtests(ExpectationApproximations, nworkers = cpucores(), nworker_threads = 2, memory_threshold = 1.0)

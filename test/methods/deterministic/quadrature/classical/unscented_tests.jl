@@ -1,10 +1,8 @@
-module ExpectationApproximationsUnscentedTest
+@testitem "Unscented approximation method" begin
+    using Test, Distributions
 
-using Test, Distributions
+    import ExpectationApproximations: Unscented, unscented_statistics, approximate_expectation
 
-import ExpectationApproximations: Unscented, unscented_statistics, approximate_expectation
-
-@testset "Unscented approximation method" begin
     @testset "Univariate `unscented_statistics`" begin
 
         # Compared against the ForneyLab implementation
@@ -92,6 +90,4 @@ import ExpectationApproximations: Unscented, unscented_statistics, approximate_e
             @test isapprox(approximate_expectation(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
         end
     end
-end
-
 end

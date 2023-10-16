@@ -1,23 +1,20 @@
-module TestSampleList
+@testitem "SampleList" begin
+    using Test
+    using ExpectationApproximations
+    using Random
+    using Distributions
+    using LinearAlgebra
+    using StaticArrays
+    using StableRNGs
 
-using Test
-using ExpectationApproximations
-using Random
-using Distributions
-using LinearAlgebra
-using StaticArrays
-using StableRNGs
+    import ExpectationApproximations: SampleList, vague
+    import ExpectationApproximations: deep_eltype, get_samples, get_weights, sample_list_zero_element
+    import ExpectationApproximations: variate_form, Univariate, Multivariate, Matrixvariate
+    import ExpectationApproximations: get_meta, is_meta_present, get_unnormalised_weights, get_entropy, get_logproposal, get_logintegrand
+    import ExpectationApproximations: call_logproposal, call_logintegrand
+    import ExpectationApproximations: transform_samples, transform_weights!
+    import ExpectationApproximations: xtlog, mirrorlog
 
-import ExpectationApproximations: SampleList, vague
-import ExpectationApproximations: deep_eltype, get_samples, get_weights, sample_list_zero_element
-import ExpectationApproximations: variate_form, Univariate, Multivariate, Matrixvariate
-import ExpectationApproximations: get_meta, is_meta_present, get_unnormalised_weights, get_entropy, get_logproposal, get_logintegrand
-import ExpectationApproximations: call_logproposal, call_logintegrand
-import ExpectationApproximations: transform_samples, transform_weights!
-import ExpectationApproximations: approximate_prod_with_sample_list
-import ExpectationApproximations: xtlog, mirrorlog
-
-@testset "SampleList" begin
     @testset "Internal functions" begin
         @test sample_list_zero_element(SampleList([1.0, 1.0])) === 0.0
         @test sample_list_zero_element(SampleList([[1.0, 1.0], [1.0, 1.0]])) == [0.0, 0.0]
@@ -116,6 +113,4 @@ import ExpectationApproximations: xtlog, mirrorlog
         @test_throws AssertionError SampleList([rand(5, 5) for _ in 1:5], rand(10))
         @test_throws AssertionError SampleList([rand(5, 5) for _ in 1:5], [-1 for _ in 1:5])
     end
-end
-
 end
