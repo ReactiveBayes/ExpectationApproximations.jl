@@ -1,11 +1,9 @@
-module ExpectationApproximationsLaplaceTest
+@testitem "Laplace approximation method" begin
+    using Test, Distributions
+    using ExpectationApproximations
+    import SpecialFunctions: beta
+    import ExpectationApproximations: Laplace, approximate_expectation
 
-using Test, Distributions
-using ExpectationApproximations
-import SpecialFunctions: beta
-import ExpectationApproximations: Laplace, approximate_expectation
-
-@testset "Laplace approximation method" begin
     @testset "Laplace `approximate_expectation` tests: with Gaussian forms" begin
         q        = Normal(3, 1)
         qdensity = x -> -x^2
@@ -22,10 +20,8 @@ import ExpectationApproximations: Laplace, approximate_expectation
         brtol    = 0.2
         point    = mode(q)
         m        = approximate_expectation(Laplace(1, 1, point), q, (x) -> x)
-        @test isapprox(m, mean(q), rtol = brtol)
-        @test isapprox(approximate_expectation(Laplace(1, 1, point), q, (x) -> 1), 1.0, rtol = brtol)
-        @test isapprox(approximate_expectation(Laplace(1, 1, point), qdensity, (x) -> 1), beta(4, 3), rtol = brtol)
+        @test isapprox(m, mean(q), atol = brtol)
+        @test isapprox(approximate_expectation(Laplace(1, 1, point), q, (x) -> 1), 1.0, atol = brtol)
+        @test isapprox(approximate_expectation(Laplace(1, 1, point), qdensity, (x) -> 1), beta(4, 3), atol = brtol)
     end
-end
-
 end

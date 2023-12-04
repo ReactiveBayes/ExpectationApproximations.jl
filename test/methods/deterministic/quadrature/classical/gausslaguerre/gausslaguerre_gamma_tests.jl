@@ -1,11 +1,8 @@
-module TestsClassicalQuadratureGaussLaguerreGamma
 
-using Test
-using ExpectationApproximations, Distributions, StableRNGs
+@testitem "GaussLaguerre: Basic integrations/approximations when q is Gamma" begin
+    using ExpectationApproximations, Distributions, StableRNGs
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
-import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
-
-@testset "GaussLaguerre: Basic integrations/approximations when q is Gamma" begin
     irng = StableRNG(123)
 
     btol(::UseLogWeights, n) = 1e-2 / log(n) # LogWeights should have better accuracy overall
@@ -36,7 +33,10 @@ import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
     end
 end
 
-@testset "GaussLaguerre moments calculation when q is Gamma" begin
+@testitem "GaussLaguerre moments calculation when q is Gamma" begin
+    using ExpectationApproximations, Distributions, StableRNGs
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
+
     btol(::UseLogWeights, n) = 1e-1 / log(n) # LogWeights should have better accuracy overall
     btol(::UseWeights, n) = 1e-1
     btol(::ClassicalQuadratureStrategyAutomatic, n) = 1e-1
@@ -66,6 +66,4 @@ end
             @test isapprox(v, var(p), rtol = brtol)
         end
     end
-end
-
 end

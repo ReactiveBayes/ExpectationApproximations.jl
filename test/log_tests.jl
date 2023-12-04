@@ -1,9 +1,4 @@
-module TestsLog
-
-using Test
-using ExpectationApproximations
-
-@testset "LogIntegrand wrapper" begin
+@testitem "LogIntegrand wrapper" begin
     import LogarithmicNumbers: Logarithmic
 
     testfn = ((x) -> -(x - 1.0)^2, (x) -> exp(Logarithmic, -x))
@@ -29,6 +24,4 @@ using ExpectationApproximations
         @test real(log(logf)(v)) ≈ float(f(v))
         @test imag(log(logf)(v)) ≈ 0.0
     end
-end
-
 end

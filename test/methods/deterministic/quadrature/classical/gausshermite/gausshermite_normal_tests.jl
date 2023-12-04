@@ -1,11 +1,7 @@
-module TestsClassicalQuadratureGaussHermiteNormal
+@testitem "GaussHermite: Basic integrations/approximations when q is Normal" begin
+    using ExpectationApproximations, Distributions, StableRNGs
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
-using Test
-using ExpectationApproximations, Distributions, StableRNGs
-
-import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
-
-@testset "GaussHermite: Basic integrations/approximations when q is Normal" begin
     irng = StableRNG(123)
 
     btol(::UseLogWeights, n) = 1e-2 / log(n) # LogWeights should have better accuracy overall
@@ -36,7 +32,10 @@ import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
     end
 end
 
-@testset "GaussHermite moments calculation when q is Normal" begin
+@testitem "GaussHermite moments calculation when q is Normal" begin
+    using ExpectationApproximations, Distributions, StableRNGs
+    import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
+
     btol(::UseLogWeights, n) = 5e-1 / log(n) # LogWeights should have better accuracy overall
     btol(::UseWeights, n) = 5e-1
     btol(::ClassicalQuadratureStrategyAutomatic, n) = 5e-1
@@ -69,6 +68,4 @@ end
             @test isapprox(v, var(p), rtol = brtol)
         end
     end
-end
-
 end

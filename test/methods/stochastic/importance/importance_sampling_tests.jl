@@ -1,12 +1,6 @@
-module TestsImportancecSampling
+@testitem "ImportanceSampling: Basic integrations/approximations with Gaussian p" begin
+    include("./importance_setuptests.jl")
 
-using Test
-using ExpectationApproximations, Distributions, StableRNGs
-import ExpectationApproximations: ImportanceSampling
-import Distributions: rand!
-import SpecialFunctions: gamma, digamma
-
-@testset "ImportanceSampling: Basic integrations/approximations with Gaussian p" begin
     irng       = StableRNG(123)
     true_dist  = Normal(5.0, 6.0)
     n          = 10000
@@ -16,7 +10,7 @@ import SpecialFunctions: gamma, digamma
     resampling = [true, false]
 
     for sigma in sigmas, m in means, resample in resampling
-        importance_dist = Normal(m, sigma)
+        importance_dist = convert(ExponentialFamilyDistribution, Normal(m, sigma))
         method = ImportanceSampling(irng, n, importance_dist; resampling = resample)
         @test isapprox(approximate(method, true_dist, (x) -> 1), 1.0, rtol = brtol)
         tmp = approximate(method, true_dist, (x) -> x)
@@ -25,7 +19,9 @@ import SpecialFunctions: gamma, digamma
     end
 end
 
-@testset "ImportanceSampling: Basic integration with unnormalized distribution: exp(-x^2)" begin
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution: exp(-x^2)" begin
+    include("./importance_setuptests.jl")
+
     irng       = StableRNG(123)
     true_dist  = x -> exp(-0.5(x - 5)^2 / 36)
     n          = 10000
@@ -43,7 +39,9 @@ end
     end
 end
 
-@testset "ImportanceSampling: Basic integration with normalized distribution: Gamma" begin
+@testitem "ImportanceSampling: Basic integration with normalized distribution: Gamma" begin
+    include("./importance_setuptests.jl")
+
     irng       = StableRNG(123)
     alpha      = 5
     beta       = 4
@@ -63,7 +61,9 @@ end
     end
 end
 
-@testset "ImportanceSampling: Basic integration with unnormalized distribution: Beta" begin
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution: Beta" begin
+    include("./importance_setuptests.jl")
+
     irng       = StableRNG(123)
     alpha      = 5
     beta       = 4
@@ -83,7 +83,9 @@ end
     end
 end
 
-@testset "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance" begin
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance (function)" begin
+    include("./importance_setuptests.jl")
+
     irng = StableRNG(123)
     true_dist = x -> x^(4) * (1 - x)^3 * exp(-x^2)
     trange = collect(0.0000001:0.00001:1.0)
@@ -107,7 +109,9 @@ end
     end
 end
 
-@testset "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance" begin
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance (pdf)" begin
+    include("./importance_setuptests.jl")
+
     irng = StableRNG(123)
     ##expectation of sin(2*pi*x)pdf(Normal(1,0.1),x)x
     trange = collect(0.0000001:0.00001:1.0)
@@ -130,5 +134,4 @@ end
         @test isapprox(tmp, m, rtol = brtol)
         @test isapprox(approximate(method, true_dist, (x) -> log(x)), logm, rtol = logmtol)
     end
-end
 end
