@@ -32,11 +32,9 @@ function approximate_expectation(method::Laplace, q, f::F) where {F}
     d     = method.dimension
     if point === nothing
         if d == 1
-            point = 0.0
             dq = (x) -> ForwardDiff.derivative(q, x)
             neghessian = -ForwardDiff.derivative(dq, point)
         else
-            point = zeros(d)
             neghessian = -ForwardDiff.hessian(q, point)
         end
     else

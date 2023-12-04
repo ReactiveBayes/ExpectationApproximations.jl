@@ -1,15 +1,12 @@
 module ExpectationApproximations
 
-using ExponentialFamily
+using ExponentialFamily, BayesBase, FastCholesky
 
 include("helpers/helpers.jl")
-include("helpers/algebra/cholesky.jl")
-include("helpers/algebra/common.jl")
 
 include("transforms.jl")
 include("log.jl")
 include("approximate.jl")
-include("sample_list.jl")
 
 include("kernels/raw_moment.jl")
 include("kernels/central_moment.jl")
