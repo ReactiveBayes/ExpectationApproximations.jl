@@ -64,22 +64,20 @@ end
         cvi_factor = CVIFactor(convert(ExponentialFamilyDistribution, m_out), convert(ExponentialFamilyDistribution, m_in))
 
         product = ExpectationApproximations.approximate_distribution(method, cvi_factor)
-
         @test mean(product) ≈ mean(NormalWeightedMeanPrecision(i, 2.0)) atol = 0.1
     end
 end
 
-# not differentiable logpdf
-# @testitem "MvNormal x MvNormal" begin
-#     include("./hybrid_setuptests.jl")
-#     rng = StableRNG(123)
-#     method = CVI(rng, 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 10, Val(false), false)
-#     for i in 1:3
-#         m_out, m_in = MvGaussianMeanCovariance(fill(i, 2)), MvGaussianMeanCovariance(zeros(2))
-#         cvi_factor = CVIFactor(convert(ExponentialFamilyDistribution, m_out), convert(ExponentialFamilyDistribution, m_in))
+@testitem "MvNormal x MvNormal" begin
+    include("./hybrid_setuptests.jl")
+    rng = StableRNG(123)
+    method = CVI(rng, 5000, Optimisers.Descent(0.001), ForwardDiffGrad(), 10, Val(false), false)
+    for i in 1:3
+        m_out, m_in = MvGaussianMeanCovariance(fill(i, 2)), MvGaussianMeanCovariance(zeros(2))
+        cvi_factor = CVIFactor(convert(ExponentialFamilyDistribution, m_out), convert(ExponentialFamilyDistribution, m_in))
 
-#         g_cvi1 = ExpectationApproximations.approximate_distribution(method, cvi_factor)
-#         g_analytical = MvNormalWeightedMeanPrecision(fill(i, 2), diageye(2) * 2)
-#         @test all(isapprox.(mean(g_analytical), mean(g_cvi1), atol = 0.2))
-#     end
-# end
+        g_cvi1 = ExpectationApproximations.approximate_distribution(method, cvi_factor)
+        g_analytical = MvNormalWeightedMeanPrecision(fill(i, 2), diageye(2) * 2)
+        @test all(isapprox.(mean(g_analytical), mean(g_cvi1), atol = 0.2))
+    end
+end

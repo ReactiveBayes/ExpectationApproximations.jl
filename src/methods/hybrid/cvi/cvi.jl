@@ -7,7 +7,7 @@ using LinearAlgebra
     CVI
 
 The `CVI` structure defines the approximation method hyperparameters of the `prod(approximation::CVI, logp::F, dist)`.
-This method performs an approximation of the product of the `dist` and `logp` with Stochastic Variational message passing (SVMP-CVI) (See [`Probabilistic programming with stochastic variational message passing`](https://biaslab.github.io/publication/probabilistic_programming_with_stochastic_variational_message_passing/)).
+This method performs an approximation of the product of the `dist` and `logp` with Stochastic Variational message passing (SVMP-CVI) (See [`Probabilistic programming with stochastic variational message passing`](https://biaslab.github.io/publ  ication/probabilistic_programming_with_stochastic_variational_message_passing/)).
 
 Arguments
  - `rng`: random number generator
@@ -45,63 +45,44 @@ function approximate_distribution(method::CVI, q::CVIFactor)
     return prod(method, positivemeasure, exponentialfamily)
 end
 
-function cvi_init(_, _, exponentialfamily)
-    return exponentialfamily
-end
-
-function compute_grad_logq(approximation::CVI, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, positivemeasure, samples) where {T}
-    logq =
-        (η) ->
-            mean((sample) -> logpdf(positivemeasure, sample) * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), sample), samples)
-    return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
-end
-
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
 function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
-    ##requires naturalparams function to be defined on the exponentialfamily
     rng = something(approximation.rng, Random.default_rng())
 
-    # Initial parameters of projected distribution
-    ef_current = cvi_init(approximation, positivemeasure, ef)
+    nat_params = ExponentialFamily.getnaturalparameters(ef)
 
-    ef_divisor = deepcopy(ef_current)
+    natural_manifold = ExponentialFamily.getmanifold(ExponentialFamily.ExponentialFamilyDistribution(T))
 
-    hasupdated = false
+    function cvi_objective(natural_manifold, p, positive_measure; rng = StableRNG(42))
+        nat_dist = point2dist(natural_manifold, p)
+        samples = rand(rng, nat_dist, approximation.n_gradpoints)
+        nat_logpdf = logpdf(nat_dist, samples)
+        pos_logpdf = logpdf(positive_measure, sample)
+        return dot(nat_logpdf, pos_logpdf) / n_gradpoints
+    end
 
-    state_tree = cvmp_setup(approximation.opt, ExponentialFamily.getnaturalparameters(ef_current))
+    function score(M, p)
+        return cvi_objective(M, p, positivemeasure)
+    end
 
-    for _ in 1:(approximation.n_iterations)
-
-        # Some distributions implement "sampling" efficient versions
-        # returns the same distribution by default
-        sampling_frindly_current_ef = convert(Distribution, ef_current)
-
-        samples = hybridlinearize(rand(rng, sampling_frindly_current_ef, approximation.n_gradpoints))
-
-        ∇logq = compute_grad_logq(approximation, ef_current, positivemeasure, samples)
-
-        # compute Fisher matrix 
-        Fisher = ExponentialFamily.fisherinformation(ef_current)
-
-        # compute natural gradient
-        ∇f = Fisher \ ∇logq
-
-        # compute gradient on natural parameters
-        ∇ = ExponentialFamily.getnaturalparameters(ef_current) - ExponentialFamily.getnaturalparameters(ef_divisor) - ∇f
-
-        # perform gradient descent step
-        _, λ_new = Optimisers.update(state_tree, init_model(ExponentialFamily.getnaturalparameters(ef_current)), init_model(∇))
-        p_new = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef), nothing)
-        if ExponentialFamily.isproper(p_new) && enforce_proper_message(approximation.enforce_proper_messages, p_new, ef_divisor)
-            ef_current = ExponentialFamily.ExponentialFamilyDistribution(T, λ_new.params[1], ExponentialFamily.getconditioner(ef))
-            hasupdated = true
+    function grad_from_backend(backend, score)
+        function grad(M, p)
+            ManifoldDiff.gradient(M, score, p, backend)
         end
+        return grad - nat_params
     end
 
-    if !hasupdated && approximation.warn
-        @warn "CVI approximation has not updated the initial state. The method did not converge. Set `warn = false` to supress this warning."
-    end
+    result = ExponentialFamilyManifolds.optimize_on_manifold(
+        approximation.method,
+        natural_manifold,
+        score,
+        grad_from_backend(approximation.backend),
+        rand(rng, natural_manifold),
+        approximation.stopping_criterion,
+    )
 
-    return ef_current
+    point_to_dist = point2dist(natural_manifold, result)
+    
+    return point_to_dist
 end

@@ -26,17 +26,23 @@ using ForwardDiff
 using Optim
 import LinearAlgebra: det
 
+"""
+    approximate_expectation(method::Laplace, q, f::F) where {F}
+
+This function approximates the expectation of f(x) with respect to q(x) by Laplace's method.
+
+This methods is not robust if your function is not twice differentiable.
+"""
+
 function approximate_expectation(method::Laplace, q, f::F) where {F}
     M     = method.M
     point = method.point
     d     = method.dimension
     if point === nothing
         if d == 1
-            point = 0.0
             dq = (x) -> ForwardDiff.derivative(q, x)
             neghessian = -ForwardDiff.derivative(dq, point)
         else
-            point = zeros(d)
             neghessian = -ForwardDiff.hessian(q, point)
         end
     else
