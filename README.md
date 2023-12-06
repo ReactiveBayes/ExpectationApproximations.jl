@@ -31,3 +31,7 @@ using ExpectationsApproximations
 
 # Contributing
 Contributions to ``ExpectationsApproximations`` are welcome!
+
+# License
+
+[MIT License](LICENSE) Copyright (c) 2023 BIASlab
