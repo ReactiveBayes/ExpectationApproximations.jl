@@ -4,6 +4,7 @@ import AdvancedHMC: sample, AbstractMetric, AbstractTrajectorySampler, AbstractT
 import AdvancedHMC: AbstractAdaptor, MassMatrixAdaptor, StepSizeAdaptor, StanHMCAdaptor, DiagEuclideanMetric
 import LogDensityProblems: logdensity, capabilities, dimension
 import Distributions: VariateForm, Univariate, Multivariate, Matrixvariate
+import BayesBase: get_samples
 
 const N_SAMPLES = 1000
 const N_ADAPTS = 0
