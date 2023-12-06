@@ -2,6 +2,8 @@ export CVI, CVIFactor
 using ExponentialFamily
 using Random
 using LinearAlgebra
+using StableRNGs
+using ExponentialFamilyManifolds
 
 """
     CVI
@@ -11,6 +13,7 @@ This method performs an approximation of the product of the `dist` and `logp` wi
 
 Arguments
  - `rng`: random number generator
+ - `autograd_backend`: backend to use for the autograd
  - `n_iterations`: number of iteration for the natural parameters gradient optimization
  - `opt`: optimizer, which will be used to perform the natural parameters gradient optimization step
  - `grad`: optional, defaults to `ForwardDiffGrad()`, structure to select how the gradient and the hessian will be computed
@@ -21,8 +24,10 @@ Arguments
 !!! note 
     `n_gradpoints` option is ignored in the Gaussian case
 """
-struct CVI{R, O, G, B} <: AbstractApproximationMethod
+struct CVI{R, M, AGB, O, G, B} <: AbstractApproximationMethod
     rng::R
+    method::M
+    autograd_backend::AGB
     n_iterations::Int
     opt::O
     grad::G
@@ -45,6 +50,14 @@ function approximate_distribution(method::CVI, q::CVIFactor)
     return prod(method, positivemeasure, exponentialfamily)
 end
 
+function cvi_objective(approximation::CVI, natural_manifold, p, positive_measure; rng = StableRNG(42))
+    nat_dist = ExponentialFamilyManifolds.point2dist(natural_manifold, p)
+    samples = rand(rng, nat_dist, approximation.n_gradpoints)
+    nat_logpdf = logpdf(nat_dist, samples)
+    pos_logpdf = logpdf(positive_measure, samples)
+    return dot(nat_logpdf, pos_logpdf) / approximation.n_gradpoints
+end
+
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
 function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
@@ -54,13 +67,6 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
 
     natural_manifold = ExponentialFamily.getmanifold(ExponentialFamily.ExponentialFamilyDistribution(T))
 
-    function cvi_objective(natural_manifold, p, positive_measure; rng = StableRNG(42))
-        nat_dist = point2dist(natural_manifold, p)
-        samples = rand(rng, nat_dist, approximation.n_gradpoints)
-        nat_logpdf = logpdf(nat_dist, samples)
-        pos_logpdf = logpdf(positive_measure, sample)
-        return dot(nat_logpdf, pos_logpdf) / n_gradpoints
-    end
 
     function score(M, p)
         return cvi_objective(M, p, positivemeasure)
@@ -68,9 +74,9 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
 
     function grad_from_backend(backend, score)
         function grad(M, p)
-            ManifoldDiff.gradient(M, score, p, backend)
+            ManifoldDiff.gradient(M, score, p, backend) - nat_params
         end
-        return grad - nat_params
+        return grad
     end
 
     result = ExponentialFamilyManifolds.optimize_on_manifold(
