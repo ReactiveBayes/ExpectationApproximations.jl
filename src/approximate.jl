@@ -39,3 +39,5 @@ approximate(::Expectation, method::AbstractApproximationMethod, q, f::F) where {
 approximate(kernel::Kernel, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_expectation(method, q, adjust_integrand(kernel, as_integrand(f)))
 
 approximate(::AsDistribution, method::AbstractApproximationMethod, q, f::F) where {F} = approximate_distribution(method, q, as_integrand(f))
+
+Base.prod(method::AbstractApproximationMethod, q, f) = approximate(AsDistribution(), method, q, f) 

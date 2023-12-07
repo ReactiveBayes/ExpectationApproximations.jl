@@ -7,3 +7,4 @@ using Optimisers
 using ExponentialFamilyManifolds
 using ManifoldDiff
 using LinearAlgebra
+using FiniteDifferences

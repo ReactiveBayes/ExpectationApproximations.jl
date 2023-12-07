@@ -4,6 +4,7 @@ using Random
 using LinearAlgebra
 using StableRNGs
 using ExponentialFamilyManifolds
+using BayesBase
 
 """
     CVI
@@ -47,7 +48,12 @@ get_exponential_family(factor::CVIFactor) = factor.exponentialfamily
 function approximate_distribution(method::CVI, q::CVIFactor)
     positivemeasure = get_positive_measure(q)
     exponentialfamily = get_exponential_family(q)
-    return prod(method, positivemeasure, exponentialfamily)
+    return approximate_distribution_cvi(method, positivemeasure, exponentialfamily)
+end
+
+function approximate_distribution(method::CVI, ef::ExponentialFamilyDistribution, pm)
+    cvi_factor = CVIFactor(ef, pm)
+    return approximate_distribution(method, cvi_factor)
 end
 
 function cvi_objective(approximation::CVI, natural_manifold, p, positive_measure; rng = StableRNG(42))
@@ -60,16 +66,17 @@ end
 
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
-function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
+function approximate_distribution_cvi(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
     rng = something(approximation.rng, Random.default_rng())
 
     nat_params = ExponentialFamily.getnaturalparameters(ef)
 
-    natural_manifold = ExponentialFamily.getmanifold(ExponentialFamily.ExponentialFamilyDistribution(T))
+    options = ExponentialFamilyManifolds.filloptions(ef)
 
+    natural_manifold = ExponentialFamily.getnaturalmanifold(T, options)
 
     function score(M, p)
-        return cvi_objective(M, p, positivemeasure)
+        return cvi_objective(approximation, M, p, positivemeasure)
     end
 
     function grad_from_backend(backend, score)
@@ -83,7 +90,7 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
         approximation.method,
         natural_manifold,
         score,
-        grad_from_backend(approximation.backend),
+        grad_from_backend(approximation.autograd_backend),
         rand(rng, natural_manifold),
         approximation.stopping_criterion,
     )
