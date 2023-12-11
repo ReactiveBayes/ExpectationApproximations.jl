@@ -5,6 +5,7 @@ using LinearAlgebra
 using StableRNGs
 using ExponentialFamilyManifolds
 using BayesBase
+using ManifoldDiff
 
 """
     CVI
@@ -25,7 +26,7 @@ Arguments
 !!! note 
     `n_gradpoints` option is ignored in the Gaussian case
 """
-struct CVI{R, M, AGB, O, G, B} <: AbstractApproximationMethod
+struct CVI{R, M, AGB, O, G, B, S} <: AbstractApproximationMethod
     rng::R
     method::M
     autograd_backend::AGB
@@ -35,6 +36,7 @@ struct CVI{R, M, AGB, O, G, B} <: AbstractApproximationMethod
     n_gradpoints::Int
     enforce_proper_messages::Val{B}
     warn::Bool
+    stopping_criterion::S
 end
 
 struct CVIFactor
@@ -56,42 +58,51 @@ function approximate_distribution(method::CVI, ef::ExponentialFamilyDistribution
     return approximate_distribution(method, cvi_factor)
 end
 
-function cvi_objective(approximation::CVI, natural_manifold, p, positive_measure; rng = StableRNG(42))
+function cvi_objective(approximation::CVI, natural_manifold, p, positive_measure, nat_params)
+    rng = StableRNG(42)
     nat_dist = ExponentialFamilyManifolds.point2dist(natural_manifold, p)
+    message_nat_dist = ExponentialFamilyManifolds.point2dist(natural_manifold, nat_params)
     samples = rand(rng, nat_dist, approximation.n_gradpoints)
     nat_logpdf = logpdf(nat_dist, samples)
     pos_logpdf = logpdf(positive_measure, samples)
-    return dot(nat_logpdf, pos_logpdf) / approximation.n_gradpoints
+    message_logpdf = logpdf(message_nat_dist, samples)
+    return mean(nat_logpdf) - mean(pos_logpdf) - mean(message_logpdf)
 end
 
+function grad_from_backend(backend, score)
+    function grad(M, p)
+        _grad = ManifoldDiff.gradient(M, score, p, backend)
+        return _grad
+    end
+    return grad
+end
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
 ## and working with the log of the positive measure 
 function approximate_distribution_cvi(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
     rng = something(approximation.rng, Random.default_rng())
 
-    nat_params = ExponentialFamily.getnaturalparameters(ef)
-
     options = ExponentialFamilyManifolds.filloptions(ef)
 
-    natural_manifold = ExponentialFamily.getnaturalmanifold(T, options)
+    natural_manifold = ExponentialFamilyManifolds.getnaturalmanifold(T, options)
+    nat_params = ExponentialFamilyManifolds.dist2point(natural_manifold, ef)
+
+    function score(p)
+        cvi_objective(approximation, natural_manifold, p, positivemeasure, nat_params)
+    end
 
     function score(M, p)
-        return cvi_objective(approximation, M, p, positivemeasure)
+        return cvi_objective(approximation, natural_manifold, p, positivemeasure, nat_params)
     end
 
-    function grad_from_backend(backend, score)
-        function grad(M, p)
-            ManifoldDiff.gradient(M, score, p, backend) - nat_params
-        end
-        return grad
-    end
+    
+    _grad = grad_from_backend(approximation.autograd_backend, score)
 
     result = ExponentialFamilyManifolds.optimize_on_manifold(
-        approximation.method,
         natural_manifold,
+        approximation.method,
         score,
-        grad_from_backend(approximation.autograd_backend),
-        rand(rng, natural_manifold),
+        _grad,
+        rand(rng, natural_manifold.manifold),
         approximation.stopping_criterion,
     )
 

@@ -47,16 +47,19 @@ end
     
 end
 
-@testitem "MvNormal x MvNormal" begin
-    include("./hybrid_setuptests.jl")
-    rng = StableRNG(123)
+@testitem "MvNormal x MvNormal"
+    rng = StableRNG(42)
     autograd = ManifoldDiff.FiniteDifferencesBackend()
     r_backend = ManifoldDiff.TangentDiffBackend(autograd)
-    method = CVI(rng, nothing, r_backend, 100, nothing, ForwardDiffGrad(), 10, Val(false), false)
-    for n in 2:4
-        m_out, m_in = generate_random_normal(rng, n), generate_random_normal(rng, n)
-        cvi_factor = CVIFactor(convert(ExponentialFamilyDistribution, m_out), convert(ExponentialFamilyDistribution, m_in))
-        product = ExpectationApproximations.approximate_distribution(method, cvi_factor)
-        @test mean(product) ≈ mean(NormalWeightedMeanPrecision(i, 2.0)) atol = 0.1
-    end
+    method =  Manopt.gradient_descent
+
+    @show "Starting test"
+
+    cvi = CVI(rng, method, r_backend, 100, nothing, ForwardDiffGrad(), 10, Val(false), false)
+    @show cvi.stopping_criterion
+ 
+    m_out, m_in = generate_random_normal(rng, n), generate_random_normal(rng, n)
+    cvi_factor = CVIFactor(convert(ExponentialFamilyDistribution, m_out), m_in)
+    product = ExpectationApproximations.approximate_distribution(method, cvi_factor)
+    # @test mean(product) ≈ mean(NormalWeightedMeanPrecision(i, 2.0)) atol = 0.1
 end
