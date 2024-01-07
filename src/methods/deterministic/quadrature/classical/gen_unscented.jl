@@ -119,7 +119,6 @@ function sigma_points_weights(::GenUnscented, m::Real, V::Real,S::Real,K::Real)
     invL3 = inv(L^3) 
     u     = (1/2)*(-S*invL3 + (1/V)*sqrt(4*K - 3*(S^2)/V))
     v     = u + S*invL3
-    
     auxiliary    = inv(v*(u+v))
     sigma_points = (m, m - u*L, m + v*L)
     weights      = (1-auxiliary*(v/u +1)  , (v/u)*auxiliary, auxiliary)
@@ -138,10 +137,8 @@ function sigma_points_weights(::GenUnscented, m::AbstractVector, V::AbstractMatr
     determinant = 4*invL4*K - 3*(invL3*S).^2
     u     = (1/2)*(-invL3*S + sqrt.(determinant ) )
     v     = u + invL3*S
-
     sigma_points = Vector{Vector{T}}(undef, 2 * d + 1)
     weights      = Vector{T}(undef, 2 * d + 1)
-    
     sigma_points[1] = m
     @inbounds for i in 1:d
         @views sigma_points[i+1]  = m - L[:, i]*u[i]
@@ -154,4 +151,3 @@ function sigma_points_weights(::GenUnscented, m::AbstractVector, V::AbstractMatr
 
     return (sigma_points, weights)
 end
-

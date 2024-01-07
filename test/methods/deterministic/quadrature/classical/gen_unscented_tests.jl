@@ -4,7 +4,7 @@
     import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation
     skewness(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = skewness(convert(Normal, d))
     kurtosis(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = kurtosis(convert(Normal, d))
-    Distributions.cov(d::UnivariateGaussianDistributionsFamily) where T = var(d)
+    Distributions.cov(d::UnivariateDistribution)          = var(d)
     
     @testset "GenUnscented: Basic integrations/approximations with Gaussian p" begin
         true_dist = NormalMeanVariance(5.0, 6.0)
