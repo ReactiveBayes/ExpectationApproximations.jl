@@ -29,7 +29,6 @@
         vdist = var.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
-        ExponentialFamily.dimensionalities(convert(JointNormal, mdist, vdist))
 
         g(x,y,z) = [x*y; z]
         estimate = ExpectationApproximations.unscented_statistics(method,g,mdist,vdist,sdist,kdist)
@@ -47,7 +46,6 @@
         vdist = var.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
-        ExponentialFamily.dimensionalities(convert(JointNormal, mdist, vdist))
 
         g(x,y,z) = [x*y; sin(z)*x*y^3; y/x]
         estimate = ExpectationApproximations.unscented_statistics(method,g,mdist,vdist,sdist,kdist)
