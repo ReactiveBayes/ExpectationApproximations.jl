@@ -27,12 +27,15 @@ function approximate_expectation(method::GenUnscented, q, f::F) where {F}
 end
 
 function approximate_expectation(method::GenUnscented, q::Tuple, f::F) where {F}
-    m = vcat(mean.(q)...)
+    ms = mean.(q)
+    ds = size.(ms)
+    m = vcat(ms...)
     V = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,cov.(q))
     S = vcat(skewness.(q)...)
     K = vcat(kurtosis.(q, false)...)
     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
-    return sum(weights .* f.(sigma_points))
+    f_sigma = [f(__splitjoin(sp, ds)...) for sp in sigma_points] #
+    return sum(weights .* f_sigma)
 end
 
 function Unscented_approximate(method::GenUnscented, g::G, means::Tuple, covs::Tuple,skewnesses::Tuple, kurtosises::Tuple) where {G}
