@@ -130,10 +130,11 @@ function sigma_points_weights(::GenUnscented, m::AbstractVector, V::AbstractMatr
     d     = length(m)
     T     = promote_type(eltype(m), eltype(V),eltype(S),eltype(K))
     L     = cholsqrt(V)
-    invL3 = inv(L.^3)
-    @show L, invL3, inv(L.^3)
-    @show 4*inv(L.^4)*K - 3*(inv(L.^3)*S).^2 
-    u     = (1/2)*(-invL3*S + sqrt.(4*cholinv(L.^4)*K - 3*(cholinv(L.^3)*S).^2 ) )
+    L3    = L.^3
+    invL3 = cholinv(L3)
+    invL4 = cholinv(L3 .* L3)
+    determinant = 4*invL4*K - 3*(invL3*S).^2
+    u     = (1/2)*(-invL3*S + sqrt.(determinant ) )
     v     = u + invL3*S
 
     sigma_points = Vector{Vector{T}}(undef, 2 * d + 1)
