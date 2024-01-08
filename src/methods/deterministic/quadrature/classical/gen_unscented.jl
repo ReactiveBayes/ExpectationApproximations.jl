@@ -144,7 +144,6 @@ function sigma_points_weights(::GenUnscented, m::AbstractVector, V::AbstractMatr
         @views sigma_points[i+1]  = m - L[:, i]*u[i]
         @views sigma_points[i+d+1] = m + L[:, i]*v[i]
     end
-
     @inbounds weights[d+2:end] .=  1 ./ v ./ ( u + v) 
     @inbounds weights[2:d+1]   .= weights[d+2:end] .* (v ./ u)
     weights[1] = 1 - sum(weights[2:end])

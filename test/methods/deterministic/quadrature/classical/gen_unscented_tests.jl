@@ -13,7 +13,6 @@
         brtol     = 1e-6
 
         for sigma in sigmas, m in means
-            importance_dist = Normal(m, sigma)
             method = GenUnscented()
             @test isapprox(approximate_expectation(method, true_dist, (x) -> 1), 1.0, rtol = brtol)
             tmp = approximate_expectation(method, true_dist, (x) -> x)
@@ -29,32 +28,46 @@
         vdist = var.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
-        brtol = 1e-6
+        brtol = 1e-2
         g(x,y,z) = [x*y; z]
-        estimate = ExpectationApproximations.unscented_statistics(method,g,mdist,vdist,sdist,kdist)
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-        samples = [rand.(dist) for i=1:10000];
+        samples = [rand.(dist) for i=1:1e5];
         mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
-        @test isapprox( estimate_mc , mean(mapped_samples), rtol = brtol)
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
     end
 
     @testset "GenUnscented: Basic integrations with Beta, Gamma, Normal" begin
         method = GenUnscented()
-        dist = (Gamma(8,4),Beta(3,4), NormalMeanVariance(20,1))
+        dist = (Gamma(8,4),Beta(30,4), NormalMeanVariance(2,1))
         mdist = mean.(dist)
         vdist = var.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
-        brtol = 1e-6
-        g(x,y,z) = [x*y; sin(z)*x*y^3; y/x]
-        estimate = ExpectationApproximations.unscented_statistics(method,g,mdist,vdist,sdist,kdist)
+        brtol = 1e-1
+        g(x,y,z) = [x*y; sin(z)*x; y/x]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-        samples = [rand.(dist) for i=1:10000];
+        samples = [rand.(dist) for i=1:1e5];
         mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
-        @test isapprox( estimate_mc , mean(mapped_samples), rtol = brtol)
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
     end
 
+
+    @testset "GenUnscented: Basic integrations with Poisson, Rayleigh" begin
+        method = GenUnscented()
+        dist = (Poisson(0.1),Rayleigh(1.0))
+        mdist = mean.(dist)
+        vdist = var.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-1
+        g(x,y) = [sin(x*y), cos(x*y)]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d[1],d[2]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
 end

@@ -6,13 +6,29 @@
     kurtosis(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = kurtosis(convert(Normal, d))
     Distributions.cov(d::UnivariateDistribution)          = var(d)
     
-    @testset "GenConstrainedUnscented: Basic integrations/approximations with Gaussian p" begin
-        method = GenConstrainedUnscented((0.9,0.1),(5,0.9))
-        dist = [Gamma(1,2), Beta(2,3)]
-        m = mean.(dist)
-        v = Matrix(Diagonal(cov.(dist)))
-        s = skewness.(dist)
-        k = kurtosis.(dist, false)
+    @testset "GenConstrainedUnscented: Basic integrations/approximations with single Gamma" begin
+      
+        dist = Gamma(1,2)
+        m = mean(dist)
+        method = GenConstrainedUnscented((0.9,),(m+0.3,))
+        v = var(dist)
+        s = skewness(dist)
+        k = kurtosis(dist, false)
+        points, weights = sigma_points_weights(method, m,v,s,k)
+        g(x) = [3x+2x^2]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+
+  
+    end
+
+    @testset "GenConstrainedUnscented: Basic integrations/approximations with single Gamma" begin
+        method = GenConstrainedUnscented((0.9,1 ),(3,2.3))
+        dist = (Gamma(1,2), Normal(2,1))
+        m = vcat(mean.(dist)...)
+   
+        v = Matrix(Diagonal(vcat(var.(dist)...)))
+        s = vcat(skewness.(dist)...)
+        k = vcat(kurtosis.(dist, false)...)
         points, weights = sigma_points_weights(method, m,v,s,k)
         @show points 
         # for sigma in sigmas, m in means
@@ -25,39 +41,6 @@
         # end
     end
 
-    # @testset "GenUnscented: Basic integrations with Beta and Gamma" begin
-    #     method = GenUnscented()
-    #     dist = (Gamma(8,4),Beta(3,4), Gamma(20,1))
-    #     mdist = mean.(dist)
-    #     vdist = var.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-6
-    #     g(x,y,z) = [x*y; z]
-    #     estimate = ExpectationApproximations.unscented_statistics(method,g,mdist,vdist,sdist,kdist)
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_mc , mean(mapped_samples), rtol = brtol)
-    # end
-
-    # @testset "GenUnscented: Basic integrations with Beta, Gamma, Normal" begin
-    #     method = GenUnscented()
-    #     dist = (Gamma(8,4),Beta(3,4), NormalMeanVariance(20,1))
-    #     mdist = mean.(dist)
-    #     vdist = var.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-6
-    #     g(x,y,z) = [x*y; sin(z)*x*y^3; y/x]
-    #     estimate = ExpectationApproximations.unscented_statistics(method,g,mdist,vdist,sdist,kdist)
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_mc , mean(mapped_samples), rtol = brtol)
-    # end
 
 
 end
