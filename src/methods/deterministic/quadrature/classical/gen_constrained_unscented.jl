@@ -150,10 +150,8 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
     invL3 = inv(l^3) 
     u     = (1/2)*(-S*invL3 + (1/V)*sqrt(4*K - 3*(S^2)/V))
     v     = u + S*invL3
-    @show u,v,u*l, v*l
     #initialize
-    @show lb, ub
-    @show constrained_sigma_points = (m, m - u*l, m + v*l)
+    constrained_sigma_points = (m, m - u*l, m + v*l)
     vnew = v
     ##lowerbound
    
@@ -163,7 +161,6 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
     if constrained_sigma_points[3] < lb
         vnew = θ*abs((lb - m)/l)
     end
-    @show u,vnew
     
 
     if vnew == v
@@ -175,7 +172,6 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
     vnew2 = vnew
     ##upperbound
     
-    @show u,vnew
     if constrained_sigma_points[2] > ub
         u = θ*abs((m - ub)/l) 
     end
@@ -183,7 +179,6 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
         vnew2 = θ*abs((ub - m)/l)
     end
     
-    @show u,vnew2
     if vnew2 == vnew
         vnew2                    = u + S*inv(l^3) 
         constrained_sigma_points = (m, m - u*l, m + vnew2*l)
@@ -194,8 +189,6 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
         auxiliary                = inv(vnew2*(u+vnew))
         constrained_weights      = (1-auxiliary*(vnew2/u +1)  , (vnew2/u)*auxiliary, auxiliary)
     end
-
-    @show u, vnew2
     return constrained_sigma_points, constrained_weights
 
 end
