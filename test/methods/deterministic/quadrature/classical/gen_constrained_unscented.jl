@@ -4,21 +4,28 @@
     import ExpectationApproximations: GenConstrainedUnscented, unscented_statistics, approximate_expectation,sigma_points_weights
     skewness(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = skewness(convert(Normal, d))
     kurtosis(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = kurtosis(convert(Normal, d))
-    Distributions.cov(d::UnivariateDistribution)          = var(d)
+    Distributions.cov(d::UnivariateDistribution)                         = var(d)
     
     @testset "GenConstrainedUnscented: Basic integrations/approximations with single Gamma" begin
       
         dist = Gamma(1,2)
         m = mean(dist)
-        method = GenConstrainedUnscented((0.9,),(m+0.3,))
-        v = var(dist)
-        s = skewness(dist)
-        k = kurtosis(dist, false)
-        points, weights = sigma_points_weights(method, m,v,s,k)
-        g(x) = [3x+2x^2]
+        lb = 0.9
+        ub = m + 0.3
+        tdist = truncated(dist, lb, ub)
+        method = GenConstrainedUnscented((lb,),(ub,))
+        brtol = 1e-2
+        g(x) = 3x+2x^2
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
 
-  
+        samples     = [rand(dist) for i=1:100000]
+        estimate_mc = mean(g.(samples));
+        
+        
+        # @test g(lb) < estimate_genut < g(ub)
+        # @test g(lb) < estimate_mc < g(ub)
+        @test isapprox(estimate_genut, estimate_mc,rtol=brtol)
+        
     end
 
     @testset "GenConstrainedUnscented: Basic integrations/approximations with single Gamma" begin
@@ -30,15 +37,7 @@
         s = vcat(skewness.(dist)...)
         k = vcat(kurtosis.(dist, false)...)
         points, weights = sigma_points_weights(method, m,v,s,k)
-        @show points 
-        # for sigma in sigmas, m in means
-        #     importance_dist = Normal(m, sigma)
-            
-        #     @test isapprox(approximate_expectation(method, true_dist, (x) -> 1), 1.0, rtol = brtol)
-        #     tmp = approximate_expectation(method, true_dist, (x) -> x)
-        #     @test isapprox(tmp, mean(true_dist), rtol = brtol)
-        #     @test isapprox(approximate_expectation(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
-        # end
+
     end
 
 

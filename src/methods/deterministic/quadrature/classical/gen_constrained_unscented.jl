@@ -7,8 +7,8 @@ const DEFAULT_Θ = 0.5
 """
 The `GenConstrainedUnscented` structure defines the approximation method of Generalized Constrained Unscented Transform.
 # Arguments
-- `lb`: lower bound on the transformed sigma points #1
-- `ub`: upper bound on the transformed sigma points #2
+- `lb`: lower bound on the sigma points #1
+- `ub`: upper bound on the sigma points #2
 lb = (1,) will imply univariate 
 ub = (3,)
 lb = ([2,1], 3, 4) will imply first variable is 2 two dimensional, 2nd and 3rd variable are univariate
@@ -144,26 +144,27 @@ end
 function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,S::Real,K::Real)
     lb = first(getlowerbound(method))
     ub = first(getupperbound(method))
-    
     @assert lb < m < ub "Mean: $(m) should be within the upper bound: $(ub) and lower bound: $(lb)"
-    θ = getθ(method)
-    l = sqrt(V)
-    (unconstrained_sigma_points, unconstrained_weights) = sigma_points_weights(GenUnscented(),m,V,S,K)
-    
+    θ     = getθ(method)
+    l     = sqrt(V)
+    invL3 = inv(l^3) 
+    u     = (1/2)*(-S*invL3 + (1/V)*sqrt(4*K - 3*(S^2)/V))
+    v     = u + S*invL3
+    @show u,v,u*l, v*l
     #initialize
-    dim = 1
-    u = unconstrained_sigma_points[1]
-    v = unconstrained_sigma_points[2]
-    constrained_sigma_points = unconstrained_sigma_points
-    constrained_weights      = unconstrained_weights
+    @show lb, ub
+    @show constrained_sigma_points = (m, m - u*l, m + v*l)
     vnew = v
     ##lowerbound
-    @inbounds for i=1:2dim
-        if unconstrained_sigma_points[i+1] < lb
-            u = θ*abs((m - lb)/l)
-            vnew = θ*abs((lb - m)/l)
-        end
+   
+    if constrained_sigma_points[2] < lb
+        u = θ*abs((m - lb)/l)    
     end
+    if constrained_sigma_points[3] < lb
+        vnew = θ*abs((lb - m)/l)
+    end
+    @show u,vnew
+    
 
     if vnew == v
         vnew = u + S*inv(l^3) 
@@ -173,12 +174,16 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
     end
     vnew2 = vnew
     ##upperbound
-    @inbounds for i=1:2dim
-        if constrained_sigma_points[i+1] > ub
-            u = θ*abs((m - ub)/l)
-            vnew2 = θ*abs((ub - m)/l)
-        end
+    
+    @show u,vnew
+    if constrained_sigma_points[2] > ub
+        u = θ*abs((m - ub)/l) 
     end
+    if constrained_sigma_points[3] > ub
+        vnew2 = θ*abs((ub - m)/l)
+    end
+    
+    @show u,vnew2
     if vnew2 == vnew
         vnew2                    = u + S*inv(l^3) 
         constrained_sigma_points = (m, m - u*l, m + vnew2*l)
@@ -190,6 +195,7 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,
         constrained_weights      = (1-auxiliary*(vnew2/u +1)  , (vnew2/u)*auxiliary, auxiliary)
     end
 
+    @show u, vnew2
     return constrained_sigma_points, constrained_weights
 
 end
@@ -267,7 +273,6 @@ function sigma_points_weights(method::GenConstrainedUnscented, m::AbstractVector
         @inbounds weights[2:dim+1]   .= weights[dim+2:end] .* (vnew2 ./ u)
         weights[1] = 1 - sum(weights[2:end])
     end
-
 
     return (constrained_sigma_points, weights)
 end
