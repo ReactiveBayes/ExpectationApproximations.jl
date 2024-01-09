@@ -19,7 +19,7 @@ const GenUnscentedTransform = GenUnscented
 
 function approximate_expectation(method::GenUnscented, q, f::F) where {F}
     m = mean(q)
-    V = cov(q)
+    V = _cov(q)
     S = skewness(q)
     K = kurtosis(q, false)
     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
@@ -30,7 +30,7 @@ function approximate_expectation(method::GenUnscented, q::Tuple, f::F) where {F}
     ms = mean.(q)
     ds = size.(ms)
     m = vcat(ms...)
-    V = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,cov.(q))
+    V = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,_cov.(q))
     S = vcat(skewness.(q)...)
     K = vcat(kurtosis.(q, false)...)
     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)

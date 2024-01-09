@@ -2,9 +2,7 @@
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import Distributions: skewness, kurtosis,cov,var
     import ExpectationApproximations: GenConstrainedUnscented, unscented_statistics, approximate_expectation,sigma_points_weights
-    skewness(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = skewness(convert(Normal, d))
-    kurtosis(d::ExponentialFamily.UnivariateGaussianDistributionsFamily) = kurtosis(convert(Normal, d))
-    Distributions.cov(d::UnivariateDistribution)                         = var(d)
+
     
     @testset "GenConstrainedUnscented: Basic integrations/approximations with single Gamma" begin
       

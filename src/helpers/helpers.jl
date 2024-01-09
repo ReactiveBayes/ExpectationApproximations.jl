@@ -64,3 +64,7 @@ function __splitjoin(x::AbstractVector, sizes::Tuple)
         return __splitjoinelement(x, start, size)
     end
 end
+import Distributions: UnivariateDistribution
+_cov(d::UnivariateDistribution) = var(d)
+_cov(d::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = var(d)
+_cov(q)                         = cov(q)
