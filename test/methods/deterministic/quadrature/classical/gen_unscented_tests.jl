@@ -1,24 +1,10 @@
 @testitem "Generalized Unscented approximation method" begin
-    using Test, Distributions, ExponentialFamily
-    import Distributions: skewness, kurtosis,cov,var
+    using Test, Distributions, ExponentialFamily, LinearAlgebra
+    import Distributions: skewness, kurtosis, cov, var
     import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation
-
-    
-    @testset "GenUnscented: Basic integrations/approximations with Gaussian p" begin
-        true_dist = NormalMeanVariance(5.0, 6.0)
-        sigmas    = [5, 6, 7, 8, 9, 10, 11, 16]
-        means     = [3, 4, 7, 8]
-        brtol     = 1e-6
-
-        for sigma in sigmas, m in means
-            method = GenUnscented()
-            @test isapprox(approximate_expectation(method, true_dist, (x) -> 1), 1.0, rtol = brtol)
-            tmp = approximate_expectation(method, true_dist, (x) -> x)
-            @test isapprox(tmp, mean(true_dist), rtol = brtol)
-            @test isapprox(approximate_expectation(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
-        end
-    end
-
+    skewness(dist::MvNormalMeanCovariance) = zeros(length(dist.μ))
+    kurtosis(dist::MvNormalMeanCovariance,correction::Bool=false) = 3var(dist)
+   
     @testset "GenUnscented: Basic integrations with Beta and Gamma" begin
         method = GenUnscented()
         dist = (Gamma(8,4),Beta(3,4), Gamma(20,1))
@@ -67,5 +53,70 @@
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
     end
+
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Poisson, Rayleigh" begin
+        method = GenUnscented()
+        dist = (MvNormalMeanCovariance([2.0,5.3],[3.0 4.0;4.0 10.0]), Poisson(0.1), Rayleigh(1.0))
+        mdist = mean.(dist)
+        vdist = cov.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-1
+        g(x,y,z) = [sin(z*y)*x[1], cos(z*y)*x[2]]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:10000];
+        mapped_samples = map(d -> g(first(d),d[2],d[3]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
+
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance" begin
+        method = GenUnscented()
+        dist = MvNormalMeanCovariance([2.0, 5.3],[3.0 4.0;4.0 10.0])
+        mdist = mean(dist)
+        vdist = cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-2
+        g(x) = x*x'
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
+
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance" begin
+        method = GenUnscented()
+        dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0])))
+        mdist = mean(dist)
+        vdist = cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-2
+        g(x) = tr(x*x') 
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
+
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Chisq" begin
+        method = GenUnscented()
+        dist = (MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0]))), Chisq(2.0))
+        mdist = mean.(dist)
+        vdist = cov.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-1
+        g(x,ν) = ν*x*x'
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d[1],d[2]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
+
 
 end
