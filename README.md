@@ -34,4 +34,4 @@ Contributions to ``ExpectationsApproximations`` are welcome!
 
 # License
 
-[MIT License](LICENSE) Copyright (c) 2023 reactivebayes
+[MIT License](LICENSE) Copyright (c) 2022-2024 BIASlab, 2024-present ReactiveBayes
