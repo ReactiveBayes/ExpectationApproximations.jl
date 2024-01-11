@@ -7,11 +7,11 @@ makedocs(;
     modules  = [ ExpectationApproximations ],
     strict   = [ :doctest, :eval_block, :example_block, :meta_block, :parse_error, :setup_block ],
     authors  = "Bagaev Dmitry <bvdmitri@gmail.com> and contributors",
-    repo     = "https://github.com/biaslab/ExpectationApproximations.jl/blob/{commit}{path}#{line}",
+    repo     = "https://github.com/reactivebayes/ExpectationApproximations.jl/blob/{commit}{path}#{line}",
     sitename = "ExpectationApproximations.jl",
     format   = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical  = "https://biaslab.github.io/ExpectationApproximations.jl",
+        canonical  = "https://reactivebayes.github.io/ExpectationApproximations.jl",
         assets     = String[],
     ),
     pages = [
@@ -23,6 +23,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo      = "github.com/biaslab/ExpectationApproximations.jl",
+    repo      = "github.com/reactivebayes/ExpectationApproximations.jl",
     devbranch = "main",
 )
