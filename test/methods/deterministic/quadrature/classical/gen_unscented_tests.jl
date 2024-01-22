@@ -1,9 +1,16 @@
 @testitem "Generalized Unscented approximation method" begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import Distributions: skewness, kurtosis, cov, var
-    import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation
-    skewness(dist::MvNormalMeanCovariance) = zeros(length(dist.μ))
-    kurtosis(dist::MvNormalMeanCovariance,correction::Bool=false) = 3var(dist)
+    import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation,_cov
+   
+    skewness(dist::MvNormalMeanCovariance)   = zeros(length(dist.μ))
+    kurtosis(dist::MvNormalMeanCovariance, correction::Bool=false)   = 3*var(dist).^2
+    skewness(dist::MvNormalMeanPrecision)   = zeros(length(dist.μ))
+    kurtosis(dist::MvNormalMeanPrecision, correction::Bool=false)   = 3*var(dist).^2
+    skewness(dist::MvNormalWeightedMeanPrecision)   = zeros(length(dist.xi))
+    kurtosis(dist::MvNormalWeightedMeanPrecision, correction::Bool=false)   = 3*var(dist).^2
+    skewness(dist::UnivariateGaussianDistributionsFamily) = 0.0
+    kurtosis(dist::UnivariateGaussianDistributionsFamily, correction::Bool=false) = 3*var(dist)^2
    
     @testset "GenUnscented: Basic integrations with Beta and Gamma" begin
         method = GenUnscented()
@@ -12,7 +19,7 @@
         vdist = var.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
-        brtol = 1e-2
+        brtol = 1e-3
         g(x,y,z) = [x*y; z]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
         samples = [rand.(dist) for i=1:1e5];
@@ -28,7 +35,7 @@
         vdist = var.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
-        brtol = 1e-1
+        brtol = 1e-2
         g(x,y,z) = [x*y; sin(z)*x; y/x]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
         samples = [rand.(dist) for i=1:1e5];
@@ -58,7 +65,7 @@
         method = GenUnscented()
         dist = (MvNormalMeanCovariance([2.0,5.3],[3.0 4.0;4.0 10.0]), Poisson(0.1), Rayleigh(1.0))
         mdist = mean.(dist)
-        vdist = cov.(dist)
+        vdist = _cov.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
         brtol = 1e-1
@@ -74,13 +81,13 @@
         method = GenUnscented()
         dist = MvNormalMeanCovariance([2.0, 5.3],[3.0 4.0;4.0 10.0])
         mdist = mean(dist)
-        vdist = cov(dist)
+        vdist = _cov(dist)
         sdist = skewness(dist)
         kdist = kurtosis(dist, false)
         brtol = 1e-2
         g(x) = x*x'
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-        samples = [rand(dist) for i=1:10000];
+        samples = [rand(dist) for i=1:50000];
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
@@ -90,7 +97,7 @@
         method = GenUnscented()
         dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0])))
         mdist = mean(dist)
-        vdist = cov(dist)
+        vdist = _cov(dist)
         sdist = skewness(dist)
         kdist = kurtosis(dist, false)
         brtol = 1e-2
@@ -106,7 +113,7 @@
         method = GenUnscented()
         dist = (MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0]))), Chisq(2.0))
         mdist = mean.(dist)
-        vdist = cov.(dist)
+        vdist = _cov.(dist)
         sdist = skewness.(dist)
         kdist = kurtosis.(dist, false)
         brtol = 1e-1

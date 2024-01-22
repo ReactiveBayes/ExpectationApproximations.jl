@@ -19,7 +19,7 @@ const GenUnscentedTransform = GenUnscented
 
 function approximate_expectation(method::GenUnscented, q, f::F) where {F}
     m = mean(q)
-    V = cov(q)
+    V = _cov(q)
     S = skewness(q)
     K = kurtosis(q, false)
     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
@@ -30,7 +30,7 @@ function approximate_expectation(method::GenUnscented, q::Tuple, f::F) where {F}
     ms = mean.(q)
     ds = size.(ms)
     m = vcat(ms...)
-    V = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,cov.(q))
+    V = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,_cov.(q))
     S = vcat(skewness.(q)...)
     K = vcat(kurtosis.(q, false)...)
     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
@@ -128,17 +128,26 @@ end
 
 #Multivariate sigma points and weights
 function sigma_points_weights(::GenUnscented, m::AbstractVector, V::AbstractMatrix, S::AbstractVector,K::AbstractVector)
-    d     = length(m)
-    T     = promote_type(eltype(m), eltype(V),eltype(S),eltype(K))
-    L     = cholsqrt(V)
-    L3    = L.^3
-    invL3 = cholinv(L3)
-    invL4 = cholinv(L3 .* L3)
-    determinant = 4*invL4*K - 3*(invL3*S).^2
-    u     = (1/2)*(-invL3*S + sqrt.(determinant ) )
-    v     = u + invL3*S
+    d       = length(m)
+    T       = promote_type(eltype(m), eltype(V),eltype(S),eltype(K))
+    U,D,_   = svd(Matrix(V);full=true)
+    L       = U*Diagonal(sqrt.(D))*U'
+    L3      = L.^3
+    L4      = L3 .* L
+    L3S     = L3\S
+    minkurt = (L4)*(L3S).^2;
+
+    if any(K .< minkurt)
+        @warn "kurtosis violates condition"
+        K[K .< minkurt] = 1.001*minkurt[K .< minkurt];
+    end
+
+    determinant  = 4*(L4\K) - 3*(L3S).^2
+    u            = (1/2)*(-L3S + sqrt.(determinant ) )
+    v            = u + L3S
     sigma_points = Vector{Vector{T}}(undef, 2 * d + 1)
     weights      = Vector{T}(undef, 2 * d + 1)
+
     sigma_points[1] = m
     @inbounds for i in 1:d
         @views sigma_points[i+1]  = m - L[:, i]*u[i]
@@ -149,4 +158,16 @@ function sigma_points_weights(::GenUnscented, m::AbstractVector, V::AbstractMatr
     weights[1] = 1 - sum(weights[2:end])
 
     return (sigma_points, weights)
+end
+
+function approximate(method::GenUnscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
+    statistics = mean_cov.(distributions)
+    means      = first.(statistics)
+    covs       = last.(statistics)
+    skewnesses = skewnes.(distributions)
+    kurtosises = kurtosis.(distributions, false)
+
+    μ_tilde, Σ_tilde,_,_,_ = Unscented_approximate(method, f, means, covs,skewnesses,kurtosises)
+
+    return convert(promote_variate_type(variate_form(μ_tilde), NormalMeanVariance), μ_tilde, Σ_tilde)
 end

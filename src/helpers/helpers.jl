@@ -1,3 +1,4 @@
+using Distributions
 as_vec(d::Float64) = [d] # Extend vectorization to Float
 as_vec(something)  = vec(something) # Avoid type-piracy, but better to refactor this
 
@@ -67,4 +68,5 @@ end
 import Distributions: UnivariateDistribution
 _cov(d::UnivariateDistribution) = var(d)
 _cov(d::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = var(d)
-_cov(q)                         = cov(q)
+_cov(q::MultivariateDistribution) = cov(q)
+_cov(q::ExponentialFamilyDistribution{T}) where {T <: MultivariateDistribution} = cov(q)
