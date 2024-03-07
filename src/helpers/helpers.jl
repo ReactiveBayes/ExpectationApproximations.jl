@@ -70,3 +70,4 @@ _cov(d::UnivariateDistribution) = var(d)
 _cov(d::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = var(d)
 _cov(q::MultivariateDistribution) = cov(q)
 _cov(q::ExponentialFamilyDistribution{T}) where {T <: MultivariateDistribution} = cov(q)
+

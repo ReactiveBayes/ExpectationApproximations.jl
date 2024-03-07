@@ -11,6 +11,8 @@ include("approximate.jl")
 include("kernels/raw_moment.jl")
 include("kernels/central_moment.jl")
 
+include("functions/functions.jl")
+
 include("methods/deterministic/quadrature/classical/classical_quadrature.jl")
 include("methods/stochastic/importance/importance_sampling.jl")
 include("methods/deterministic/series/linearization.jl")
