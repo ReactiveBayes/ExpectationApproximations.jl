@@ -11,199 +11,199 @@
     skewness(dist::UnivariateGaussianDistributionsFamily) = 0.0
     kurtosis(dist::UnivariateGaussianDistributionsFamily, correction::Bool=false) = 3*var(dist)^2
    
-    # @testset "GenUnscented: Check kurtosis and skewness of Normal" begin
+    @testset "GenUnscented: Check kurtosis and skewness of Normal" begin
 
-    #     dist = Normal(10randn(),5rand())
-    #     mdist = mean(dist)
-    #     vdist = _cov(dist)
-    #     sdist = skewness(dist)
-    #     kdist = kurtosis(dist, false)
-    #     brtol = 1e-4
-    #     method = GenUnscented(1,1)
-    #     g(x) = (x-mdist)^3
-    #     f(x) = (x-mdist)^4
-    #     estimate_skew_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
+        dist = Normal(10randn(),5rand())
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-4
+        method = GenUnscented{Univariate, Univariate}(1,1)
+        g(x) = (x-mdist)^3
+        f(x) = (x-mdist)^4
+        estimate_skew_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
         
-    #     @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
-    #     @test isapprox(estimate_kurtosis_genut ,kdist, rtol = brtol)
-    # end
+        @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
+        @test isapprox(estimate_kurtosis_genut ,kdist, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Check kurtosis and skewness of Gamma" begin
-    #     dist = Gamma(10rand(), 10rand())
-    #     mdist = mean(dist)
-    #     vdist = _cov(dist)
-    #     sdist = skewness(dist)
-    #     kdist = kurtosis(dist, false)
-    #     brtol = 1e-4
-    #     method = GenUnscented(1,1)
-    #     g(x) = (x-mdist)^3
-    #     f(x) = (x-mdist)^4
-    #     estimate_skew_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
+    @testset "GenUnscented: Check kurtosis and skewness of Gamma" begin
+        dist = Gamma(10rand(), 10rand())
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-4
+        method = GenUnscented{Univariate, Univariate}(1,1)
+        g(x) = (x-mdist)^3
+        f(x) = (x-mdist)^4
+        estimate_skew_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
         
-    #     @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
-    #     @test isapprox(estimate_kurtosis_genut , kdist, rtol = brtol)
-    # end
+        @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
+        @test isapprox(estimate_kurtosis_genut , kdist, rtol = brtol)
+    end
 
     
-    # @testset "GenUnscented: Basic integrations with Beta and Gamma with non-linearity [x*y; z^3] " begin
-    #     method = GenUnscented(3, 2)
-    #     dist = (Gamma(8,4),Beta(3,4), Gamma(20,1))
-    #     mdist = mean.(dist)
-    #     vdist = var.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-2
-    #     g(x,y,z) = [x*y; z^3]
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:1e5];
-    #     mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with Beta and Gamma with non-linearity [x*y; z^3] " begin
+        method = GenUnscented{Multivariate, Multivariate}(3, 2)
+        dist = (Gamma(8,4),Beta(3,4), Gamma(20,1))
+        mdist = mean.(dist)
+        vdist = var.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-2
+        g(x,y,z) = [x*y; z^3]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:1e5];
+        mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with Beta, Gamma, Normal" begin
-    #     method = GenUnscented(3, 3)
-    #     dist = (Gamma(8,4),Beta(30,4), NormalMeanVariance(2,1))
-    #     mdist = mean.(dist)
-    #     vdist = var.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-2
-    #     g(x,y,z) = [x*y; sin(z)*x; y/x]
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:1e5];
-    #     mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with Beta, Gamma, Normal" begin
+        method = GenUnscented{Multivariate, Multivariate}(3, 3)
+        dist = (Gamma(8,4),Beta(30,4), NormalMeanVariance(2,1))
+        mdist = mean.(dist)
+        vdist = var.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-2
+        g(x,y,z) = [x*y; sin(z)*x; y/x]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:1e5];
+        mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
 
-    # @testset "GenUnscented: Basic integrations with Poisson, Rayleigh over sin(x*y) and cos(x*y)" begin
-    #     method = GenUnscented(2,2)
-    #     dist = (Poisson(0.1),Rayleigh(1.0))
-    #     mdist = mean.(dist)
-    #     vdist = var.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-1
-    #     g(x,y) = [sin(x*y), cos(x*y)]
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d[1],d[2]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with Poisson, Rayleigh over sin(x*y) and cos(x*y)" begin
+        method = GenUnscented{Multivariate, Multivariate}(2,2)
+        dist = (Poisson(0.1),Rayleigh(1.0))
+        mdist = mean.(dist)
+        vdist = var.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-1
+        g(x,y) = [sin(x*y), cos(x*y)]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d[1],d[2]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Poisson, Rayleigh with sin and multiplication non-linearities" begin
-    #     method = GenUnscented(4,2)
-    #     dist = (MvNormalMeanCovariance([2.0,5.3],[3.0 4.0;4.0 10.0]), Poisson(0.1), Rayleigh(1.0))
-    #     mdist = mean.(dist)
-    #     vdist = _cov.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-1
-    #     g(x,y,z) = [sin(z*y)*x[1], cos(z*y)*x[2]]
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(first(d),d[2],d[3]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Poisson, Rayleigh with sin and multiplication non-linearities" begin
+        method = GenUnscented{Multivariate, Multivariate}(4,2)
+        dist = (MvNormalMeanCovariance([2.0,5.3],[3.0 4.0;4.0 10.0]), Poisson(0.1), Rayleigh(1.0))
+        mdist = mean.(dist)
+        vdist = _cov.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-1
+        g(x,y,z) = [sin(z*y)*x[1], cos(z*y)*x[2]]
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:10000];
+        mapped_samples = map(d -> g(first(d),d[2],d[3]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with outer product" begin
-    #     method = GenUnscented(2, 4)
-    #     dist = MvNormalMeanCovariance([2.0, 5.3],[3.0 4.0;4.0 10.0])
-    #     mdist = mean(dist)
-    #     vdist = _cov(dist)
-    #     sdist = skewness(dist)
-    #     kdist = kurtosis(dist, false)
-    #     brtol = 1e-2
-    #     g(x) = vec(x*x')
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand(dist) for i=1:50000];
-    #     mapped_samples = map(d -> g(d),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with outer product" begin
+        method = GenUnscented{Multivariate, Multivariate}(2, 4)
+        dist = MvNormalMeanCovariance([2.0, 5.3],[3.0 4.0;4.0 10.0])
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-2
+        g(x) = vec(x*x')
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand(dist) for i=1:50000];
+        mapped_samples = map(d -> g(d),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with trace over outer product" begin
-    #     method = GenUnscented(4, 1)
-    #     dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0])))
-    #     mdist = mean(dist)
-    #     vdist = _cov(dist)
-    #     sdist = skewness(dist)
-    #     kdist = kurtosis(dist, false)
-    #     brtol = 1e-2
-    #     g(x) = tr(x*x') 
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with trace over outer product" begin
+        method = GenUnscented{Univariate, Multivariate}(4, 1)
+        dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0])))
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-2
+        g(x) = tr(x*x') 
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Chisq over outer vectorized outer product" begin
-    #     method = GenUnscented(5,16)
-    #     dist = (MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0]))), Chisq(2.0))
-    #     mdist = mean.(dist)
-    #     vdist = _cov.(dist)
-    #     sdist = skewness.(dist)
-    #     kdist = kurtosis.(dist, false)
-    #     brtol = 1e-1
-    #     g(x,ν) = vec(ν*x*x')
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand.(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d[1],d[2]),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Chisq over outer vectorized outer product" begin
+        method = GenUnscented{Multivariate, Multivariate}(5,16)
+        dist = (MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([0.1,1.0,3.0,5.0]))), Chisq(2.0))
+        mdist = mean.(dist)
+        vdist = _cov.(dist)
+        sdist = skewness.(dist)
+        kdist = kurtosis.(dist, false)
+        brtol = 1e-1
+        g(x,ν) = vec(ν*x*x')
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand.(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d[1],d[2]),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
-    #     method = GenUnscented(4,4)
-    #     dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([1e-10,1.0,3.0,1e-8])))
-    #     mdist = mean(dist)
-    #     vdist = _cov(dist)
-    #     sdist = skewness(dist)
-    #     kdist = kurtosis(dist, false)
-    #     brtol = 1e-2
-    #     g(x) = abs.(x) 
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
+        method = GenUnscented{Multivariate, Multivariate}(4,4)
+        dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([1e-10,1.0,3.0,1e-8])))
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-2
+        g(x) = abs.(x) 
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
 
-    # @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
+    @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
 
-    #     dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([1e-10,1.0,3.0,1e-8])))
-       
-    #     mdist = mean(dist)
-    #     vdist = _cov(dist)
-    #     sdist = skewness(dist)
-    #     kdist = kurtosis(dist, false)
-    #     brtol = 1e-2
-    #     method = GenUnscented(length(mdist),1)
-    #     g(x) = abs(x'*x) + abs.(x)'*abs.(x)
-    #     estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
-    #     samples = [rand(dist) for i=1:10000];
-    #     mapped_samples = map(d -> g(d),samples);
-    #     estimate_mc = mean(mapped_samples);
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
-    # end
-
-    @testset "Unscented_approximate: " begin
-   
-        dist = NormalMeanVariance(randn(),0.1rand())
+        dist = MvNormalMeanCovariance([2.0, 5.3, 4.3, 10.2],Matrix(Diagonal([1e-10,1.0,3.0,1e-8])))
        
         mdist = mean(dist)
         vdist = _cov(dist)
         sdist = skewness(dist)
         kdist = kurtosis(dist, false)
         brtol = 1e-2
-        method = GenUnscented(length(mdist),1)
+        method = GenUnscented{Univariate, Multivariate}(length(mdist),1)
+        g(x) = abs(x'*x) + abs.(x)'*abs.(x)
+        estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        samples = [rand(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d),samples);
+        estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+    end
+
+    @testset "Unscented_approximate: Normal with cascaded abs " begin
+   
+        dist = NormalMeanVariance(10randn(),0.1rand())
+       
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = skewness(dist)
+        kdist = kurtosis(dist, false)
+        brtol = 1e-2
+        method = GenUnscented{Univariate, Univariate}(length(mdist),1)
         g(x) = abs(x'*x) + abs.(x)'*abs.(x)
         estimate_genut = ExpectationApproximations.Unscented_approximate(method,(dist, ),g)
 
@@ -211,14 +211,79 @@
         mapped_samples = map(d -> g(d),samples);
         mean_estimate_mc = mean(mapped_samples);
         var_estimate_mc = var(mapped_samples);
-        skewness_estimate_mc = mean(map(d -> (d - mean_estimate_mc)^3, mapped_samples))
-        kurtosis_estimate_mc = mean(map(d -> (d - mean_estimate_mc)^4, mapped_samples))
-
-        @show mean_estimate_mc, var_estimate_mc, skewness_estimate_mc, kurtosis_estimate_mc
-    #     @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test isapprox( estimate_genut[2],  var_estimate_mc, rtol = brtol)
+        @test isapprox( estimate_genut[1] , mean_estimate_mc, rtol = brtol)
     end
 
 
-    
+    @testset "Unscented_approximate: MvNormal with abs " begin
+   
+        dist = MvNormalMeanCovariance(randn(3),Matrix(Diagonal([1e-3,1e-3,1e-3])))
+        brtol = 1e-2
+        method = GenUnscented{Multivariate, Multivariate}(3,3)
+        g(x) = abs.(x)
+        estimate_genut = ExpectationApproximations.Unscented_approximate(method,(dist,),g)
+        
+        samples = [rand(dist) for i=1:10000];
+        mapped_samples = map(d -> g(d),samples);
+        mean_estimate_mc = mean(mapped_samples);
+        var_estimate_mc = cov(mapped_samples);
+        
+        @test isapprox( estimate_genut[1] , mean_estimate_mc, atol = brtol)
+        @test isapprox( estimate_genut[2], var_estimate_mc, atol = brtol)
+    end
+
+    @testset "Unscented_approximate: Multiple MvNormal sum and reduce dimensionality" begin
+        dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(5),diagm(rand(5))))
+        method = GenUnscented{Multivariate, Multivariate}(8,4)
+        g(x,y) = [x + y[1:3]; y[5] ]
+        estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
+        samples = rand.(dist, 100000);
+        mapped_samples = map((x,y) -> g(x, y), eachcol(first(samples)), eachcol(last(samples)));
+        mean_estimate_mc = mean(mapped_samples);
+        cov_estimate_mc = cov(mapped_samples)
+        
+        @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
+        @test isapprox(estimate_genut[2], cov_estimate_mc, rtol = 1e-2)
+
+    end
+
+    @testset "Unscented_approximate: Multiple MvNormal,Gamma, Beta trace scaled by inputs , square and multiplication" begin
+        dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), Gamma(3,4), Beta(0.1))
+        method = GenUnscented{Multivariate, Multivariate}(5,3)
+        g(x,y,z) = [tr(y*x*x'); z^2; z*y]
+        estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
+        samples = rand.(dist, 1000000);
+        mapped_samples = map((x,y,z) -> g(x, y, z), eachcol(first(samples)), getindex(samples,2), last(samples));
+        mean_estimate_mc = mean(mapped_samples);
+        
+        @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
+
+    end
+
+    @testset "Unscented_approximate: Multiple MvNormal,Gamma, Beta trace scaled by inputs , square and multiplication" begin
+        dist = (Poisson(3.0), Gamma(0.1,4), Beta(2,4), )
+        method = GenUnscented{Multivariate, Multivariate}(3,3)
+        g(x,y,z) = [x*y*z; z^2; z*y]
+        estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
+        samples = rand.(dist, 1000000);
+        mapped_samples = map((x,y,z) -> g(x, y, z), first(samples), getindex(samples,2), last(samples));
+        mean_estimate_mc = mean(mapped_samples);
+        
+        @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
+    end
+
+    @testset "approximate: Multiple MvNormal approximate the resulting distribution " begin
+        dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(5),diagm(rand(5))))
+        method = GenUnscented{Multivariate, Multivariate}(8,8)
+        g(x,y) = [x + y[1:3]; y[5]; abs.(y[1:4]).^1.2 ]
+        estimate_genut = ExpectationApproximations.approximate(method,g, dist)
+        samples = rand.(dist, 100000);
+        mapped_samples = map((x,y) -> g(x, y), eachcol(first(samples)), eachcol(last(samples)));
+        mean_estimate_mc = mean(mapped_samples);
+        
+        @test isapprox(mean(estimate_genut), mean_estimate_mc, atol = 1e-1)
+
+    end
 
 end

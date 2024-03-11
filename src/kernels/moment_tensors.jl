@@ -1,0 +1,46 @@
+export MomentGenerator, DiagonalMomentGenerator
+
+using TensorOperations
+
+struct MomentGenerator{T, N, M} <: Kernel
+    μ::M
+end
+
+MomentGenerator(::Val{N}, μ::M) where {N, M} = MomentGenerator{Univariate, N, M}(μ)
+MomentGenerator(::Type{T}, ::Val{N}, μ::M) where {T, N, M} = MomentGenerator{T,N,M}(μ)
+
+function adjust_integrand(moment::MomentGenerator{T, N}, f::F) where {N, T<:Univariate, F}
+    return let μ = float(moment.μ)
+        (x) -> (f(x) - μ)^N 
+    end
+end
+
+function adjust_integrand(moment::MomentGenerator{T, 2}, f::F) where {T<:Multivariate, F}
+
+    return let μ = float(moment.μ)
+        (x...) -> begin
+            Σ = zeros(eltype(μ), length(μ), length(μ))
+            ξ = f(x...) - μ
+            @tensor begin
+                Σ[i,j] = ξ[i]*ξ[j]
+            end
+            return Σ
+        end
+    end
+end
+
+struct DiagonalMomentGenerator{N, M} <: Kernel
+    μ::M
+end
+
+DiagonalMomentGenerator(::Val{N}, μ::M) where {N, M} = DiagonalMomentGenerator{N, M}(μ)
+
+function adjust_integrand(moment::DiagonalMomentGenerator{N}, f::F) where {N, F}
+    return let μ = float(moment.μ)
+        (x...) ->  begin
+            Σ = zeros(eltype(μ), length(μ))
+            map!(y -> y^N, Σ, f(x...) - μ)
+            return Σ
+        end
+    end
+end

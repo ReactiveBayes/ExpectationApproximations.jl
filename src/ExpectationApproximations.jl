@@ -10,6 +10,8 @@ include("approximate.jl")
 
 include("kernels/raw_moment.jl")
 include("kernels/central_moment.jl")
+include("kernels/cross_covariance.jl")
+include("kernels/moment_tensors.jl")
 
 include("functions/functions.jl")
 
