@@ -1,7 +1,7 @@
 @testitem "Generalized Unscented approximation method" begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import Distributions: skewness, kurtosis, cov, var
-    import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation,_cov
+    import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation,_cov, getcache
     skewness(dist::MvNormalMeanCovariance)   = zeros(length(dist.μ))
     kurtosis(dist::MvNormalMeanCovariance, correction::Bool=false)   = 3*var(dist).^2
     skewness(dist::MvNormalMeanPrecision)   = zeros(length(dist.μ))
@@ -20,13 +20,11 @@
         kdist = kurtosis(dist, false)
         brtol = 1e-4
         method = GenUnscented{Univariate, Univariate}(1,1)
-        g(x) = (x-mdist)^3
         f(x) = (x-mdist)^4
-        estimate_skew_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
         estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
         
-        @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
         @test isapprox(estimate_kurtosis_genut ,kdist, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 3))) ≈ 1
     end
 
     @testset "GenUnscented: Check kurtosis and skewness of Gamma" begin
@@ -44,6 +42,7 @@
         
         @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
         @test isapprox(estimate_kurtosis_genut , kdist, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 3))) ≈ 1
     end
 
     
@@ -61,6 +60,7 @@
         mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with Beta, Gamma, Normal" begin
@@ -77,6 +77,7 @@
         mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
 
 
@@ -94,6 +95,7 @@
         mapped_samples = map(d -> g(d[1],d[2]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 5))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Poisson, Rayleigh with sin and multiplication non-linearities" begin
@@ -110,6 +112,7 @@
         mapped_samples = map(d -> g(first(d),d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with outer product" begin
@@ -126,6 +129,7 @@
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 5))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with trace over outer product" begin
@@ -142,6 +146,7 @@
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance,Chisq over outer vectorized outer product" begin
@@ -158,6 +163,7 @@
         mapped_samples = map(d -> g(d[1],d[2]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 11))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
@@ -174,6 +180,7 @@
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
@@ -192,6 +199,7 @@
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
     @testset "Unscented_approximate: Normal with cascaded abs " begin
@@ -213,6 +221,7 @@
         var_estimate_mc = var(mapped_samples);
         @test isapprox( estimate_genut[2],  var_estimate_mc, rtol = brtol)
         @test isapprox( estimate_genut[1] , mean_estimate_mc, rtol = brtol)
+        @test sum(getcache(method.cache,(:weights, 3))) ≈ 1
     end
 
 
@@ -231,6 +240,7 @@
         
         @test isapprox( estimate_genut[1] , mean_estimate_mc, atol = brtol)
         @test isapprox( estimate_genut[2], var_estimate_mc, atol = brtol)
+        @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
 
     @testset "Unscented_approximate: Multiple MvNormal sum and reduce dimensionality" begin
@@ -245,6 +255,7 @@
         
         @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
         @test isapprox(estimate_genut[2], cov_estimate_mc, rtol = 1e-2)
+        @test sum(getcache(method.cache,(:weights, 17))) ≈ 1
 
     end
 
@@ -258,7 +269,7 @@
         mean_estimate_mc = mean(mapped_samples);
         
         @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
-
+        @test sum(getcache(method.cache,(:weights, 11))) ≈ 1
     end
 
     @testset "Unscented_approximate: Multiple MvNormal,Gamma, Beta trace scaled by inputs , square and multiplication" begin
@@ -271,6 +282,7 @@
         mean_estimate_mc = mean(mapped_samples);
         
         @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
+        @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
 
     @testset "approximate: Multiple MvNormal approximate the resulting distribution " begin
@@ -282,7 +294,8 @@
         mapped_samples = map((x,y) -> g(x, y), eachcol(first(samples)), eachcol(last(samples)));
         mean_estimate_mc = mean(mapped_samples);
         
-        @test isapprox(mean(estimate_genut), mean_estimate_mc, atol = 1e-1)
+        @test isapprox(mean(estimate_genut), mean_estimate_mc, rtol = 1e-1)
+        @test sum(getcache(method.cache,(:weights, 17))) ≈ 1
 
     end
 

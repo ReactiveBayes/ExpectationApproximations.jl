@@ -1,7 +1,7 @@
 using ExpectationApproximations, BenchmarkTools
 using Distributions, ExponentialFamily
 import Distributions: skewness, kurtosis, cov, var
-import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation,_cov
+import ExpectationApproximations: GenUnscented, GenConstrainedUnscented, unscented_statistics, approximate_expectation,_cov, sigma_points_weights!
 using LinearAlgebra
 skewness(dist::MvNormalMeanCovariance)   = zeros(length(dist.μ))
 kurtosis(dist::MvNormalMeanCovariance, correction::Bool=false)   = 3*var(dist).^2
@@ -19,8 +19,8 @@ vdist = _cov(dist)
 sdist = skewness(dist)
 kdist = kurtosis(dist, false)
 brtol = 1e-2
+@code_warntype GenUnscented{Multivariate,Univariate}(1,4)
 method = GenUnscented{Multivariate,Univariate}(1,4)
-
 g(x) = [x^2, x^3, x^20, x^8]
 ExpectationApproximations.approximate_expectation(method,dist,g)
 ExpectationApproximations.getcache(method.cache, (:weights, 3))
@@ -98,6 +98,28 @@ estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
 @code_warntype ExpectationApproximations.Unscented_approximate(method,dist,g)
 
 
+lb = ([-2, -1], -3, -4)
+ub = ([3,5],6, 6)
+@code_warntype GenConstrainedUnscented{Multivariate, Multivariate}(lb, ub, 4, 4)
+method = GenConstrainedUnscented{Multivariate, Multivariate}(lb, ub, 4, 4)
+method2 = GenUnscented{Multivariate, Multivariate}(4, 4)
+
+sigma_points_weights!(method, [-1.9, -0.1, 2, 3], diagm(ones(4)), rand(4),rand(4))
+@benchmark sigma_points_weights!(method2, zeros(4), diagm(ones(4)), zeros(4),ones(4))
+@code_warntype sigma_points_weights!(method, zeros(4), diagm(ones(4)), zeros(4), ones(4))
+@benchmark sigma_points_weights!(method, $zeros(4), $diagm(ones(4)), $zeros(4), $ones(4))
+
+points = ExpectationApproximations.getcache(method.cache, (:points, (4, 9)))
+x = Vector{Bool}(undef, 4)
+@benchmark any(map!((x,y) -> x  > y, $x, $points[:, 3] , $[3,5,6,6] ))
+
+sigma_points_weights!(method2, rand(4), diagm(ones(4)), zeros(4), ones(4))
+ExpectationApproximations.getcache(method.cache, (:points, (4,9)))
+ExpectationApproximations.getcache(method.cache, (:weights, 9))
 
 
+method = GenConstrainedUnscented{Univariate,Univariate}((1,), (2,), 1, 1)
+sigma_points_weights!(method, 1.5, 1,1,1)
+ExpectationApproximations.getcache(method.cache, (:points, (1,3)))
 
+method.cache

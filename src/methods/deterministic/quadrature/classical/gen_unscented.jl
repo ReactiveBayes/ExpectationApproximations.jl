@@ -4,8 +4,6 @@ import ExponentialFamily: mean_cov
 using  KWLinalg,TensorCore
 import FillArrays: Eye, Ones, Zeros
 
-
-
 struct GenUnscentedCache
     cache_tensors::Dict{Tuple{Symbol, Tuple{Int, Int, Int}}, Array{Float64, 3}}
     cache_matrices::Dict{Tuple{Symbol, Tuple{Int, Int}}, Matrix{Float64}}
@@ -38,17 +36,15 @@ end
 """
 The `GenUnscented` structure defines the approximation method of Generalized Unscented Transform. 
 """
-struct GenUnscented{Tout <: VariateForm, Tin <: VariateForm, F} <: AbstractApproximationMethod 
+struct GenUnscented{Tout <: VariateForm, Tin <: VariateForm} <: AbstractApproximationMethod 
     inputdim :: Int
     outputdim :: Int
     cache :: GenUnscentedCache
-    svd_functor :: F
 end
 
 
 function GenUnscented{Tout,Tin}(id::Int,od::Int) where {Tout <: VariateForm, Tin <: VariateForm} 
-    f  = svd_functor_divconquer(id,id,Float64)
-    GenUnscented{Tout,Tin, typeof(f)}(id,od, GenUnscentedCache(),f)
+    GenUnscented{Tout,Tin}(id,od, GenUnscentedCache())
 end
 
 
@@ -72,9 +68,10 @@ function copy_and_svd!(A, AC, f)
     f(AC)
 end
 
-function prepare_cache!(cache::GenUnscentedCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector, f::F) where {F}
+function prepare_cache!(cache::GenUnscentedCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector) 
     Vsvd = getcache(cache, (:Vsvd, size(V)))
     Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
+    f  = svd_functor_divconquer(size(V, 1),size(V, 1),Float64)
     svd_object = copy_and_svd!(V, Vsvd, f)
   
     map!(sqrt, Ssvd, svd_object.S)
@@ -94,7 +91,7 @@ function prepare_cache!(cache::GenUnscentedCache, V::AbstractMatrix, S::Abstract
     L3S2 = getcache(cache, (:L3S2, size(S,1)))
     mul!(minK, L4 , hadamard!(L3S2,L3S,L3S))
 
-    any(K .< minK) ? K[K .< minK] .= 1.001 * (minK[K .< minK] .+ 1e-8) : K
+    any(K .< minK) ? K[K .<= minK] .= 1.001 * (minK[K .< minK] .+ 1e-8) : K
 
     L4K = getcache(cache, (:L4K, size(K,1)))
     ldiv!(L4K, fastcholesky!(L4), K)
@@ -133,7 +130,7 @@ end
 #Multivariate sigma points and weights
 function sigma_points_weights!(approximation::GenUnscented, m::AbstractVector, V::AbstractMatrix, S::AbstractVector, K::AbstractVector)
     gen_unscented_cache = approximation.cache 
-    prepare_cache!(gen_unscented_cache, V, S, K, approximation.svd_functor)
+    prepare_cache!(gen_unscented_cache, V, S, K)
     form_generalized_sigma_points!(gen_unscented_cache, m)
 
     return nothing
@@ -143,16 +140,18 @@ end
 function sigma_points_weights!(method::GenUnscented, m::Real, V::Real,S::Real,K::Real)
     L     = sqrt(V)
     invL3 = inv(L^3) 
+    minK  = L^4*(S*inv(L^3))^2
+    K     = (K <= minK) ? 1.001minK : K
     u     = (1/2)*(-S*invL3 + (1/V)*sqrt(4*K - 3*(S^2)/V))
     v     = u + S*invL3
    
     cache = method.cache
-    weights = getweightscacewithzeros(cache, (:weights, 3)) 
-    points  = getpointscachewithzeros(cache, (:points, (1, 3)))
+    weights = getcache(cache, (:weights, 3)) 
+    points  = getcache(cache, (:points, (1, 3)))
     @views begin
-        points[1] = m
-        points[2] = m - u*L
-        points[3] = m + v*L
+        points[1,1] = m
+        points[1,2] = m - u*L
+        points[1,3] = m + v*L
         weights[3] = inv(v*(u+v))
         weights[2] = (v/u)*weights[3]
         weights[1] = 1 - weights[3] - weights[2]
