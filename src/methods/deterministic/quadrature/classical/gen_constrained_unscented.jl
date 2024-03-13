@@ -15,30 +15,30 @@ ub = ([3,5], 5, 8)
 
 The `GenConstrainedUnscented` structure with default parameters can be constructed as `GenConstrainedUnscented()`.
 """
-struct GenConstrainedUnscented{Tout<:VariateForm, Tin <:VariateForm, T, R} <: AbstractApproximationMethod
-    lb::T
-    ub::T
+struct GenConstrainedUnscented{Tout<:VariateForm, Tin <:VariateForm, T1,T2, R} <: AbstractApproximationMethod
+    lb::T1
+    ub::T2
     inputdim::Int
     outputdim::Int
     θ::R
     cache::GenUnscentedCache
 end
 
-function GenConstrainedUnscented{Tout, Tin}(lb::T, ub::T, id::Int, od::Int, θ::R = DEFAULT_Θ)  where {Tout <:VariateForm, Tin<:VariateForm, T, R}
+function GenConstrainedUnscented{Tout, Tin}(lb::T1, ub::T2, id::Int, od::Int, θ::R = DEFAULT_Θ)  where {Tout <:VariateForm, Tin<:VariateForm, T1,T2, R}
     @assert size.(lb) == size.(ub) "Upper bound $(ub) and lower bound $(lb) are not of same size"
     @assert sum(length.(lb)) == id "Sum of the length of upper bound $(ub) and lower bound $(lb) elemets should add up to inputdim"
     @assert all(map(d -> all(first(d) .< getindex(d,2)), zip(lb,ub)))  "Upper bound elements $(ub) should be larger than lower bound elements $(lb) "
     @assert 0 < θ < 1 "Free parameter θ=$(θ) should be in between 0 and 1"
   
-    return GenConstrainedUnscented{Tout, Tin, T, R}(lb, ub, id, od, θ, GenUnscentedCache())
+    return GenConstrainedUnscented{Tout, Tin, T1, T2, R}(lb, ub, id, od, θ, GenUnscentedCache())
 end
 
-GenConstrainedUnscented(lb::T,ub::T,θ::R = DEFAULT_Θ) where {T, R} = GenConstrainedUnscented{Univariate,Univariate}(lb,ub,1,1, θ)
+GenConstrainedUnscented(lb::T1,ub::T2,θ::R = DEFAULT_Θ) where {T1, T2, R} = GenConstrainedUnscented{Univariate,Univariate}(lb,ub,1,1, θ)
 
 """An alias for the [`GenConstrainedUnscented`](@ref) approximation method."""
 const GenCUT = GenConstrainedUnscented
 
-"""An alias for the [`GenUnscented`](@ref) approximation method."""
+"""An alias for the [`GenConstrainedUnscented`](@ref) approximation method."""
 const GenConstrainedUnscentedTransform = GenConstrainedUnscented
 
 getlowerbound(approximation::GenConstrainedUnscented) = approximation.lb
@@ -98,9 +98,8 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, 
     return nothing
 end
 
-
 #Multivariate sigma points and weights
-function form_generalized_constrained_sigma_points!(cache::GenUnscentedCache, m::AbstractVector, lb::T, ub::T, θ::R = DEFAULT_Θ) where {T, R}
+function form_generalized_constrained_sigma_points!(cache::GenUnscentedCache, m::AbstractVector, lb::T1, ub::T2, θ::R = DEFAULT_Θ) where {T1, T2, R}
     dim = length(m)
     form_generalized_sigma_points!(cache, m)
 
@@ -143,8 +142,9 @@ function form_generalized_constrained_sigma_points!(cache::GenUnscentedCache, m:
     end
     
     weights = getcache(cache, (:weights, 2*dim+1))
-    map!((x,y) -> inv(y)/(y+x), view(weights, dim+2:2dim+1) ,u, v)
-    map!((x,y, z) -> z*x/y, view(weights, 2:dim+1),v, u, view(weights, dim+2:2dim+1))
+    
+    map!((x,y) -> inv(y)/(y+x), view(weights, dim+2:2dim+1) ,u, vnew2)
+    map!((x,y, z) -> z*x/y, view(weights, 2:dim+1),vnew2, u, view(weights, dim+2:2dim+1))
     @views weights[1] = 1 - sum(@views weights[2:end])
 
     return nothing
@@ -158,229 +158,316 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Abstra
     return nothing
 end
 
-# function approximate_expectation(method::GenConstrainedUnscented, q, f::F) where {F}
-#     m = mean(q)
-#     V = _cov(q)
-#     S = skewness(q)
-#     K = kurtosis(q, false)
-#     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
-#     return sum(weights .* f.(sigma_points))
-# end
 
-# function approximate_expectation(method::GenConstrainedUnscented, q::Tuple, f::F) where {F}
-#     ms = mean.(q)
-#     ds = size.(ms)
-#     m = vcat(ms...)
-#     V = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,_cov.(q))
-#     S = vcat(skewness.(q)...)
-#     K = vcat(kurtosis.(q, false)...)
-#     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
-#     f_sigma = [f(__splitjoin(sp, ds)...) for sp in sigma_points] #
-#     return sum(weights .* f_sigma)
-# end
+function approximate_expectation(method::GenConstrainedUnscented, q, f::F) where {F}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
 
-# function Unscented_approximate(method::GenConstrainedUnscented, g::G, means::Tuple, covs::Tuple,skewnesses::Tuple, kurtosises::Tuple) where {G}
-#     (m, V, S, K, _) = unscented_statistics(method, Val(false), g, means, covs, skewnesses, kurtosises)
-#     return (m, V, S, K)
-# end
+    approximate_expectation(out_variate_type, in_variate_type, method, q, f, Val(false))
+end
 
-# function unscented_statistics(method::GenConstrainedUnscented, g::G, means::Tuple, covs::Tuple,skewnesses::Tuple, kurtosises::Tuple) where {G}
-#     # By default we compute the `C` component, thus `Val(true)`
-#     return unscented_statistics(method, Val(true), g, means, covs, skewnesses, kurtosises)
-# end
+function approximate_expectation(method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {F, C}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
 
-# # Single univariate variable
-# function unscented_statistics(method::GenConstrainedUnscented, ::Val{C}, g::G, means::Tuple{Real}, covs::Tuple{Real},skewnesses::Tuple{Real}, kurtosises::Tuple{Real}) where {C, G}
-#     m = first(means)
-#     V = first(covs)
-#     S = first(skewnesses)
-#     K = first(kurtosises)
+    approximate_expectation(out_variate_type, in_variate_type, method, q, f, Val(C))
+end
 
-#     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
+function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUnscented, q, f::F,::Val{C}) where {T <: Univariate, F, C}
+    if !C
+        m = mean(q)
+        V = _cov(q)
+        S = _skewness(q)
+        K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache, (:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1)) 
+    map!((x,y) -> y*f(x), transformedpoints, points, weights)
 
-#     g_sigma = g.(sigma_points)
-#     m_tilde = sum(weights .* g_sigma)
-#     V_tilde = sum(weights .* (g_sigma .- m_tilde) .^ 2)
-#     S_tilde = sum(weights .* (g_sigma .- m_tilde) .^ 3)
-#     K_tilde = sum(weights .* (g_sigma .- m_tilde) .^ 4)
+    return sum(transformedpoints)
+end
+function approximate_expectation(::Type{T1}, ::Type{T2},method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T1 <: Univariate, T2 <: Multivariate, F, C}
+    if !C  
+        m = mean(q)
+        V = _cov(q)
+        S = _skewness(q)
+        K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1)) 
+    map!((x,y) -> y*f(x), transformedpoints, eachcol(points), weights)
 
-#     # Compute `C_tilde` only if `C === true`
-#     C_tilde = C ? sum(weights .* (sigma_points .- m) .* (g_sigma .- m_tilde)) : nothing
+    return sum(transformedpoints)
+end
 
-#     return (m_tilde, V_tilde, S_tilde, K_tilde, C_tilde)
-# end
-
-# # Single multivariate variable
-# function unscented_statistics(method::GenConstrainedUnscented, ::Val{C}, g::G, means::Tuple{AbstractVector}, covs::Tuple{AbstractMatrix},skewnesses::Tuple{AbstractVector}, kurtosises::Tuple{AbstractVector} ) where {C, G}
-#     m = first(means)
-#     V = first(covs)
-#     S = first(skewnesses)
-#     K = first(kurtosises)
-
-#     (sigma_points, weights) = sigma_points_weights(method, m, V, S, K)
-
-#     d = length(m)
-
-#     g_sigma = g.(sigma_points)
-#     @inbounds m_tilde = sum(weights[k + 1] * g_sigma[k + 1] for k in 0:(2d))
-#     @inbounds V_tilde = sum(weights[k + 1] * (g_sigma[k + 1] - m_tilde) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d))
-#     @inbounds S_tilde = sum(weights[k + 1]*(g_sigma[k + 1] - m_tilde).^3 for k in 0:2d)
-#     @inbounds K_tilde = sum(weights[k + 1]*(g_sigma[k + 1] - m_tilde).^4 for k in 0:2d)
-#     # Compute `C_tilde` only if `C === true`
-#     @inbounds C_tilde = C ? sum(weights[k + 1] * (sigma_points[k + 1] - m) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d)) : nothing
-
-#     return (m_tilde, V_tilde, S_tilde, K_tilde, C_tilde)
-# end
-
-# # Multiple inbounds of possibly mixed variate type
-# function unscented_statistics(method::GenConstrainedUnscented, ::Val{C}, g::G, ms::Tuple, Vs::Tuple,Ss::Tuple, Ks::Tuple) where {C, G}
-#     ds     = size.(ms)
-#     m      = vcat(ms...)
-#     S      = vcat(Ss...)
-#     K      = vcat(Ks...)
-#     V      = vmapreduce(d -> typeof(d) <: Matrix ? sparse(d) : spdiagm([d]),blockdiag ,Vs)
-#     (sigma_points, weights ) = sigma_points_weights(method, m, V, S, K)
-#     g_sigma = [g(__splitjoin(sp, ds)...) for sp in sigma_points] # Unpack each sigma point in g
-
-#     d = sum(prod.(ds)) # Dimensionality of joint
-#     @inbounds m_tilde = sum(weights[k + 1] * g_sigma[k + 1] for k in 0:(2d)) # Vector
-#     @inbounds V_tilde = sum(weights[k + 1] * (g_sigma[k + 1] - m_tilde) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d)) # Matrix
-#     @inbounds S_tilde = sum(weights[k + 1] * (g_sigma[k + 1] - m_tilde).^3 for k in 0:(2d))
-#     @inbounds K_tilde = sum(weights[k + 1] * (g_sigma[k + 1] - m_tilde).^4 for k in 0:(2d))
-#     # # Compute `C_tilde` only if `C === true`
-#     @inbounds C_tilde = C ? sum(weights[k + 1] * (sigma_points[k + 1] - m) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d)) : nothing
-
-#     return (m_tilde, V_tilde, S_tilde, K_tilde, C_tilde)
-# end
-
-
-# #Univariate sigma points and weights
-# function sigma_points_weights(method::GenConstrainedUnscented, m::Real, V::Real,S::Real,K::Real)
-#     lb = first(getlowerbound(method))
-#     ub = first(getupperbound(method))
-#     @assert lb < m < ub "Mean: $(m) should be within the upper bound: $(ub) and lower bound: $(lb)"
-#     θ     = getθ(method)
-#     l     = sqrt(V)
-#     invL3 = inv(l^3) 
-#     u     = (1/2)*(-S*invL3 + (1/V)*sqrt(4*K - 3*(S^2)/V))
-#     v     = u + S*invL3
-#     #initialize
-#     constrained_sigma_points = (m, m - u*l, m + v*l)
-#     vnew = v
-#     ##lowerbound
-   
-#     if constrained_sigma_points[2] < lb
-#         u = θ*abs((m - lb)/l)    
-#     end
-#     if constrained_sigma_points[3] < lb
-#         vnew = θ*abs((lb - m)/l)
-#     end
+function approximate_expectation(::Type{T1}, ::Type{T2},method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T1 <: Multivariate, T2<:Univariate, F, C}
+    if !C 
+        m = mean(q)
+        V = _cov(q)
+        S = _skewness(q)
+        K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim,2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), points, weights)
     
-
-#     if vnew == v
-#         vnew = u + S*inv(l^3) 
-#         constrained_sigma_points = (m, m - u*l, m + vnew*l)
-#     else
-#         constrained_sigma_points = (m, m - u*l, m + vnew*l)
-#     end
-#     vnew2 = vnew
-#     ##upperbound
+    result = zeros(method.outputdim)
+    for elem = 1:method.outputdim
+        result[elem] = sum(@views transformedpoints[elem, :])
+    end
     
-#     if constrained_sigma_points[2] > ub
-#         u = θ*abs((m - ub)/l) 
-#     end
-#     if constrained_sigma_points[3] > ub
-#         vnew2 = θ*abs((ub - m)/l)
-#     end
+    return result
+end
+
+function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2<:Univariate, F, C}
+    if !C
+        m = mean(q)
+        V = _cov(q)
+        S = _skewness(q)
+        K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachslice(transformedpoints, dims=3), points, weights)
     
-#     if vnew2 == vnew
-#         vnew2                    = u + S*inv(l^3) 
-#         constrained_sigma_points = (m, m - u*l, m + vnew2*l)
-#         auxiliary                = inv(vnew2*(u+vnew2))
-#         constrained_weights      = (1-auxiliary*(vnew2/u +1)  , (vnew2/u)*auxiliary, auxiliary)
-#     else
-#         constrained_sigma_points = (m, m - u*l, m + vnew2*l)
-#         auxiliary                = inv(vnew2*(u+vnew))
-#         constrained_weights      = (1-auxiliary*(vnew2/u +1)  , (vnew2/u)*auxiliary, auxiliary)
-#     end
-#     return constrained_sigma_points, constrained_weights
+    result = zeros(method.outputdim, method.outputdim)
 
-# end
+   for i=1:method.outputdim
+        for j=1:method.outputdim
+            result[i,j] = sum(@views transformedpoints[i, j,:])
+        end
+    end
 
-# #Multivariate sigma points and weights
-# function sigma_points_weights(method::GenConstrainedUnscented, m::AbstractVector, V::AbstractMatrix, S::AbstractVector,K::AbstractVector)
-#     lb = vcat(getlowerbound(method)...)
-#     ub = vcat(getupperbound(method)...)
-#     @assert all(lb .< m .< ub) "Mean: $(m) should be within the upper bound: $(ub) and lower bound: $(lb)"
-#     dim = length(m)
-#     T = promote_type(eltype(m), eltype(V),eltype(S),eltype(K))
-#     θ = getθ(method)
-#     L = cholsqrt(V)
-#     L3    = L.^3
-#     invL3 = cholinv(L3)
-#     invL4 = cholinv(L3 .* L3)
-#     determinant = 4*invL4*K - 3*(invL3*S).^2
-#     u           = (1/2)*(-invL3*S + sqrt.(determinant ) )
-#     v           = u + invL3*S
-#     constrained_sigma_points = Vector{Vector{T}}(undef, 2 * dim + 1)
-#     weights      = Vector{T}(undef, 2 * dim+ 1)
-#     constrained_sigma_points[1] = m
-#     @inbounds for i in 1:dim
-#         @views constrained_sigma_points[i+1]  = m - L[:, i]*u[i]
-#         @views constrained_sigma_points[i+dim+1] = m + L[:, i]*v[i]
-#     end
-#     vnew = v
-#     ## lower part
-#     @inbounds for i=1:dim
-#         if any(constrained_sigma_points[i+1] .< lb)
-#             @views u[i] = θ*minimum(abs.((m - lb) ./ L[:,i]))
-#         end
-#         if any(constrained_sigma_points[dim+i+1] < lb)
-#             @views vnew[i] = θ*minimum(abs.((lb - m) ./ L[:,i]))
-#         end
-#     end
+    return result
+end
+
+function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2 <: Multivariate, F, C}
+    if !C 
+        m = mean(q)
+        V = _cov(q)
+        S = _skewness(q)
+        K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, method.outputdim,2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachslice(transformedpoints,dims=3), eachcol(points), weights)
+
+    result = zeros(method.outputdim, method.outputdim)
+    for i=1:method.outputdim
+        for j=1:method.outputdim
+            result[i,j] = sum(@views transformedpoints[i,j,:])
+        end
+    end
+
+    return result   
+end
+
+function approximate_expectation(::Type{T}, ::Type{T},method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T <: Multivariate, F, C}
+    if !C
+        m = mean(q)
+        V = _cov(q)
+        S = _skewness(q)
+        K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), eachcol(points), weights)
+
+    result = zeros(method.outputdim)
+    for elem = 1:method.outputdim
+        result[elem] = sum(@views transformedpoints[elem, :])
+    end
     
-#     if vnew == v
-#         vnew = u + invL3*S
-#         @inbounds for i in 1:dim
-#             @views constrained_sigma_points[i+1]  = m - L[:, i]*u[i]
-#             @views constrained_sigma_points[i+dim+1] = m + L[:, i]*vnew[i]
-#         end
-#     else 
-#         @inbounds for i in 1:dim
-#             @views constrained_sigma_points[i+1]     = m - L[:, i]*u[i]
-#             @views constrained_sigma_points[i+dim+1] = m + L[:, i]*vnew[i]
-#         end
-#     end 
-#     vnew2 = vnew 
-#     ## upper bound
-#     @inbounds for i=1:dim
-#         if any( constrained_sigma_points[i+1] .> ub )
-#             @views u[i] = θ*minimum(abs.((m - ub) ./ L[:,i]))
-#         end
-#         if any( constrained_sigma_points[dim+i+1] .> ub)
-#             @views vnew2[i] = θ*minimum(abs.((ub - m) ./ L[:,i]))
-#         end
-#     end
-#     if vnew2 == vnew
-#         vnew2 = u + invL3*S
-#         @inbounds for i in 1:dim
-#             @views constrained_sigma_points[i+1]  = m - L[:, i]*u[i]
-#             @views constrained_sigma_points[i+dim+1] = m + L[:, i]*vnew2[i]
-#         end
-#         @inbounds weights[dim+2:end] .=  1 ./ vnew2 ./ ( u + vnew2) 
-#         @inbounds weights[2:dim+1]   .= weights[dim+2:end] .* (vnew2 ./ u)
-#         weights[1] = 1 - sum(weights[2:end])
-#     else
-#         @inbounds for i in 1:dim
-#             @views constrained_sigma_points[i+1]  = m - L[:, i]*u[i]
-#             @views constrained_sigma_points[i+dim+1] = m + L[:, i]*vnew2[i]
-#         end
-#         @inbounds weights[dim+2:end] .=  1 ./ vnew2 ./ ( u + vnew2) 
-#         @inbounds weights[2:dim+1]   .= weights[dim+2:end] .* (vnew2 ./ u)
-#         weights[1] = 1 - sum(weights[2:end])
-#     end
+    return result
+end
 
-#     return (constrained_sigma_points, weights)
-# end
+function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {T1 <: Univariate, T2<: Multivariate, F, C}
+    ms = map(mean,q)
+    ds = size.(ms)
+    if !C    
+        m = reduce(vcat, ms)
+        S = reduce(vcat, map(_skewness, q))
+        K = reduce(vcat, map(_kurtosis, q))
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache 
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim+1)))
+    weights = getcache(cache, (:weights, 2method.inputdim+1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1))
+    map!((x,y) -> y*f(__splitjoin(x, ds)...), transformedpoints, eachcol(points), weights)
 
+    return sum(transformedpoints)
+end
+
+function approximate_expectation(::Type{T},::Type{T}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {T <: Multivariate, F, C}
+    ms = map(mean,q)
+    ds = size.(ms)
+    if !C
+        m = reduce(vcat, ms)
+        S = reduce(vcat, map(_skewness, q))
+        K = reduce(vcat, map(_kurtosis, q))
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache   
+    points = getcache(cache,(:points, (method.inputdim, 2*method.inputdim+1)))
+    weights = getcache(cache,(:weights, 2*method.inputdim+1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachcol(transformedpoints), eachcol(points), weights)
+    result = zeros(method.outputdim)
+    for elem = 1:method.outputdim
+        result[elem] = sum(@views transformedpoints[elem, :])
+    end
+
+    return result
+end
+
+function approximate_expectation(::Type{T1},::Type{T2}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2 <: Multivariate, F, C}
+    ms = map(mean,q)
+    ds = size.(ms)
+
+    if !C
+        m = reduce(vcat, ms)
+        S = reduce(vcat, map(_skewness, q))
+        K = reduce(vcat, map(_kurtosis, q))
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+
+    cache = method.cache 
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim+1)))
+    weights = getcache(cache, (:weights, 2method.inputdim+1))
+  
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachslice(transformedpoints, dims=3),eachcol(points), weights)
+    result = zeros(method.outputdim,method.outputdim)
+    for i=1:method.outputdim
+        for j=1:method.outputdim
+            result[i,j] = sum(@views transformedpoints[i,j,:])
+        end
+    end
+
+    return result   
+end
+
+function Unscented_approximate(method::GenConstrainedUnscented, q, g::G) where {G}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
+
+    unscented_statistics(out_variate_type, in_variate_type, method, Val(false), q, g)
+end
+
+function unscented_statistics(method::GenConstrainedUnscented, q, g::G) where {G}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
+    return unscented_statistics(out_variate_type, in_variate_type, method, Val(true), q, g)
+end
+
+# Univariate in Univariate out
+function unscented_statistics(out_variate::Type{T},in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, q, g::G) where {T<:Univariate, C, G}
+    mresult = approximate_expectation(method, q, g)
+    Vresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(mresult, mean(q)), g), Val(true)) : nothing
+    return mresult,Vresult,Sresult, Kresult, Cresult
+end
+
+# Univariate in Multivariate out
+function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, q, g::G) where {T1<:Multivariate, T2<:Univariate, C, G}
+    mresult = approximate_expectation(method, q, g)
+    Vresult = approximate_expectation(Matrixvariate, Univariate, method, q, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true)) 
+    Sresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(Multivariate, Univariate, mresult, mean(q)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+# Multivariate in Univariate out
+function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, q, g::G) where {T1<:Univariate, T2<:Multivariate, C, G}
+    mresult = approximate_expectation(method, q, g)   
+    Vresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(Univariate, Multivariate, mresult, mean(q)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+#Multivariate in Multivariate out
+function unscented_statistics(out_variate::Type{T},in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, q, g::G) where {T <: Multivariate, C, G}
+    mresult = approximate_expectation(method, q, g)
+    Vresult = approximate_expectation(Matrixvariate, Multivariate, method, q, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+    
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, mean(q)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+#Univariate in Univariate out with q tuple
+function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, q::Tuple, g::G) where { T <: Univariate, C, G}
+    mresult = approximate_expectation(method, first(q), g)
+    Vresult = approximate_expectation(method, first(q), adjust_integrand(MomentGenerator(Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, first(q), adjust_integrand(MomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, first(q), adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(mresult, first(mean.(q))), g), Val(true)) : nothing
+    return mresult,Vresult,Sresult, Kresult, Cresult
+end
+
+#Univariate in Multivariate out with q tuple
+function unscented_statistics(out_variate::Type{T1}, in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, q::Tuple, g::G) where { T1 <: Multivariate,T2 <: Univariate, C, G}
+    mresult = approximate_expectation(method, first(q), g)
+    Vresult = approximate_expectation(Matrixvariate, Univariate, method, first(q), adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, first(q), adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, first(q), adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, first(q), adjust_integrand(CrossCovariance(Multivariate, Univariate, mresult, first(mean.(q)), g)), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+#Multivariate in Multivariate out with q tuple
+function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, q::Tuple, g::G) where { T <: Multivariate, C, G}
+    mresult = approximate_expectation(method, q, g)
+    Vresult = approximate_expectation(Matrixvariate, Multivariate, method, q, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, first(q), adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, reduce(vcat, mean.(q)), g)), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+
+function approximate(method::GenConstrainedUnscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
+
+    μ_tilde, Σ_tilde,_,_,_ = Unscented_approximate(method, distributions, f)
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    return convert(ExponentialFamily.promote_variate_type( out_variate_type, NormalMeanVariance), μ_tilde, Σ_tilde)
+end

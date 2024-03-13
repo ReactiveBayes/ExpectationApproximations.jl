@@ -65,9 +65,28 @@ function __splitjoin(x::AbstractVector, sizes::Tuple)
         return __splitjoinelement(x, start, size)
     end
 end
-import Distributions: UnivariateDistribution
+
+
+import Distributions: UnivariateDistribution, skewness, kurtosis
+export _cov, _skewness, _kurtosis
 _cov(d::UnivariateDistribution) = var(d)
 _cov(d::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = var(d)
 _cov(q::MultivariateDistribution) = cov(q)
 _cov(q::ExponentialFamilyDistribution{T}) where {T <: MultivariateDistribution} = cov(q)
+
+_skewness(dist::MvNormalMeanCovariance)   = zeros(length(dist.μ))
+_kurtosis(dist::MvNormalMeanCovariance)   = map(d -> d^2, 3*var(dist))
+_skewness(dist::MvNormalMeanPrecision)   = zeros(length(dist.μ))
+_kurtosis(dist::MvNormalMeanPrecision)   = map(d -> d^2, 3*var(dist))
+_skewness(dist::MvNormalWeightedMeanPrecision)   = zeros(length(dist.xi))
+_kurtosis(dist::MvNormalWeightedMeanPrecision)   = map(d -> d^2, 3*var(dist))
+
+_skewness(dist::UnivariateGaussianDistributionsFamily) = 0.0
+_kurtosis(dist::UnivariateGaussianDistributionsFamily) = 3*var(dist)^2
+
+_skewness(dist::UnivariateDistribution) = skewness(dist)
+_kurtosis(dist::UnivariateDistribution) = kurtosis(dist, false)
+
+_skewness(ef::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = _skewness(convert(Distribution, ef))
+_kurtosis(ef::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = _kurtosis(convert(Distribution, ef))
 

@@ -1,8 +1,7 @@
 export GenUnscented, GenUT, GenUnscentedTransform
 using BlockArrays, BlockDiagonals
-import ExponentialFamily: mean_cov
 using  KWLinalg,TensorCore
-import FillArrays: Eye, Ones, Zeros
+import FillArrays: Eye, Zeros
 
 struct GenUnscentedCache
     cache_tensors::Dict{Tuple{Symbol, Tuple{Int, Int, Int}}, Array{Float64, 3}}
@@ -42,11 +41,10 @@ struct GenUnscented{Tout <: VariateForm, Tin <: VariateForm} <: AbstractApproxim
     cache :: GenUnscentedCache
 end
 
-
 function GenUnscented{Tout,Tin}(id::Int,od::Int) where {Tout <: VariateForm, Tin <: VariateForm} 
     GenUnscented{Tout,Tin}(id,od, GenUnscentedCache())
 end
-
+GenUnscented() = GenUnscented{Univariate, Unviariate}(1,1)
 
 """An alias for the [`GenUnscented`](@ref) approximation method."""
 const GenUT = GenUnscented
@@ -180,8 +178,8 @@ function approximate_expectation(::Type{T}, ::Type{T}, method::GenUnscented, q, 
     if !C
         m = mean(q)
         V = _cov(q)
-        S = skewness(q)
-        K = kurtosis(q, false)
+        S = _skewness(q)
+        K = _kurtosis(q)
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -197,8 +195,8 @@ function approximate_expectation(::Type{T1}, ::Type{T2},method::GenUnscented, q,
     if !C  
         m = mean(q)
         V = _cov(q)
-        S = skewness(q)
-        K = kurtosis(q, false)
+        S = _skewness(q)
+        K = _kurtosis(q)
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -214,8 +212,8 @@ function approximate_expectation(::Type{T1}, ::Type{T2},method::GenUnscented, q,
     if !C 
         m = mean(q)
         V = _cov(q)
-        S = skewness(q)
-        K = kurtosis(q, false)
+        S = _skewness(q)
+        K = _kurtosis(q)
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -236,8 +234,8 @@ function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenUnscented, q
     if !C
         m = mean(q)
         V = _cov(q)
-        S = skewness(q)
-        K = kurtosis(q, false)
+        S = _skewness(q)
+        K = _kurtosis(q)
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -261,8 +259,8 @@ function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenUnscented, q
     if !C 
         m = mean(q)
         V = _cov(q)
-        S = skewness(q)
-        K = kurtosis(q, false)
+        S = _skewness(q)
+        K = _kurtosis(q)
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -285,8 +283,8 @@ function approximate_expectation(::Type{T}, ::Type{T},method::GenUnscented, q, f
     if !C
         m = mean(q)
         V = _cov(q)
-        S = skewness(q)
-        K = kurtosis(q, false)
+        S = _skewness(q)
+        K = _kurtosis(q)
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -308,8 +306,8 @@ function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenUnscented, q
     ds = size.(ms)
     if !C    
         m = reduce(vcat, ms)
-        S = reduce(vcat, map(skewness, q))
-        K = reduce(vcat, map(x -> kurtosis(x,false), q))
+        S = reduce(vcat, map(_skewness, q))
+        K = reduce(vcat, map(_kurtosis, q))
         V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
         sigma_points_weights!(method, m, V, S, K)
     end
@@ -327,8 +325,8 @@ function approximate_expectation(::Type{T},::Type{T}, method::GenUnscented, q::T
     ds = size.(ms)
     if !C
         m = reduce(vcat, ms)
-        S = reduce(vcat, map(skewness, q))
-        K = reduce(vcat, map(x -> kurtosis(x,false), q))
+        S = reduce(vcat, map(_skewness, q))
+        K = reduce(vcat, map(_kurtosis, q))
         V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
         sigma_points_weights!(method, m, V, S, K)
     end
@@ -351,8 +349,8 @@ function approximate_expectation(::Type{T1},::Type{T2}, method::GenUnscented, q:
 
     if !C
         m = reduce(vcat, ms)
-        S = reduce(vcat, map(skewness, q))
-        K = reduce(vcat, map(x -> kurtosis(x,false), q))
+        S = reduce(vcat, map(_skewness, q))
+        K = reduce(vcat, map(_kurtosis, q))
         V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
         sigma_points_weights!(method, m, V, S, K)
     end
