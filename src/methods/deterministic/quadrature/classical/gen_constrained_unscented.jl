@@ -50,7 +50,7 @@ getθ(approximation::GenConstrainedUnscented)          = approximation.θ
 function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, V::Real, S::Real, K::Real)
     L     = sqrt(V)
     invL3 = inv(L^3) 
-    minK = L^4*(S*inv(L^3))^2
+    minK = L^4*(S*invL3)^2
     K = (K <= minK) ? 1.001minK : K
     u     = (1/2)*(-S*invL3 + (1/V)*sqrt(4*K - 3*(S^2)/V))
     v     = u + S*invL3 
@@ -175,6 +175,23 @@ function approximate_expectation(method::GenConstrainedUnscented, q, f::F, ::Val
     approximate_expectation(out_variate_type, in_variate_type, method, q, f, Val(C))
 end
 
+function approximate_expectation(method::GenConstrainedUnscented, m, V, S, K, f::F) where {F}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
+
+    approximate_expectation(out_variate_type, in_variate_type, method, m, V, S, K, f, Val(false))
+end
+
+function approximate_expectation(method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}) where {F, C}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
+
+    approximate_expectation(out_variate_type, in_variate_type, method, m, V, S, K, f, Val(C))
+end
+
+
 function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUnscented, q, f::F,::Val{C}) where {T <: Univariate, F, C}
     if !C
         m = mean(q)
@@ -191,12 +208,40 @@ function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUns
 
     return sum(transformedpoints)
 end
+
+function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUnscented, m::Real, V::Real, S::Real ,K::Real, f::F,::Val{C}) where {T <: Univariate, F, C}
+    if !C
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache, (:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1)) 
+    map!((x,y) -> y*f(x), transformedpoints, points, weights)
+
+    return sum(transformedpoints)
+end
+
+
 function approximate_expectation(::Type{T1}, ::Type{T2},method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T1 <: Univariate, T2 <: Multivariate, F, C}
     if !C  
         m = mean(q)
         V = _cov(q)
         S = _skewness(q)
         K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1)) 
+    map!((x,y) -> y*f(x), transformedpoints, eachcol(points), weights)
+
+    return sum(transformedpoints)
+end
+
+function approximate_expectation(::Type{T1}, ::Type{T2},method::GenConstrainedUnscented, m::AbstractVector, V::AbstractMatrix, S::AbstractVector, K::AbstractVector, f::F, ::Val{C}) where {T1 <: Univariate, T2 <: Multivariate, F, C}
+    if !C  
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -230,12 +275,52 @@ function approximate_expectation(::Type{T1}, ::Type{T2},method::GenConstrainedUn
     return result
 end
 
+function approximate_expectation(::Type{T1}, ::Type{T2},method::GenConstrainedUnscented, m::Real, V::Real, S::Real, K::Real, f::F, ::Val{C}) where {T1 <: Multivariate, T2<:Univariate, F, C}
+    if !C 
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim,2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), points, weights)
+    
+    result = zeros(method.outputdim)
+    for elem = 1:method.outputdim
+        result[elem] = sum(@views transformedpoints[elem, :])
+    end
+    
+    return result
+end
+
+
 function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2<:Univariate, F, C}
     if !C
         m = mean(q)
         V = _cov(q)
         S = _skewness(q)
         K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachslice(transformedpoints, dims=3), points, weights)
+    
+    result = zeros(method.outputdim, method.outputdim)
+
+   for i=1:method.outputdim
+        for j=1:method.outputdim
+            result[i,j] = sum(@views transformedpoints[i, j,:])
+        end
+    end
+
+    return result
+end
+
+function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, m::Real, V::Real, S::Real, K::Real, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2<:Univariate, F, C}
+    if !C
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -279,12 +364,83 @@ function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedU
     return result   
 end
 
+function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, m::AbstractVector,V::AbstractMatrix,S::AbstractVector,K::AbstractVector, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2 <: Multivariate, F, C}
+    if !C 
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, method.outputdim,2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachslice(transformedpoints,dims=3), eachcol(points), weights)
+
+    result = zeros(method.outputdim, method.outputdim)
+    for i=1:method.outputdim
+        for j=1:method.outputdim
+            result[i,j] = sum(@views transformedpoints[i,j,:])
+        end
+    end
+
+    return result   
+end
+
+function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {T <: Univariate, F, C}
+    ms = map(mean,q)
+    ds = size.(ms)
+    if !C    
+        m = first(ms)
+        S = _skewness(first(q))
+        K = _kurtosis(first(q))
+        V = var(first(q))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache 
+    points = getcache(cache,(:points, 2method.inputdim+1))
+    weights = getcache(cache, (:weights, 2method.inputdim+1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1))
+    map!((x,y) -> y*f(__splitjoin(x, ds)...), transformedpoints, points, weights)
+
+    return sum(transformedpoints)
+end
+
+function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUnscented, m::Tuple, V::Tuple, S::Tuple, K::Tuple, f::F, ::Val{C}) where {T <: Univariate, F, C}
+    ds = size.(m)
+    if !C    
+        sigma_points_weights!(method, first(m), first(V), first(S), first(K))
+    end
+    cache = method.cache 
+    points = getcache(cache,(:points, 2method.inputdim+1))
+    weights = getcache(cache, (:weights, 2method.inputdim+1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1))
+    map!((x,y) -> y*f(__splitjoin(x, ds)...), transformedpoints, points, weights)
+
+    return sum(transformedpoints)
+end
+
 function approximate_expectation(::Type{T}, ::Type{T},method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {T <: Multivariate, F, C}
     if !C
         m = mean(q)
         V = _cov(q)
         S = _skewness(q)
         K = _kurtosis(q)
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+    weights = getcache(cache, (:weights, 2method.inputdim + 1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), eachcol(points), weights)
+
+    result = zeros(method.outputdim)
+    for elem = 1:method.outputdim
+        result[elem] = sum(@views transformedpoints[elem, :])
+    end
+    
+    return result
+end
+
+function approximate_expectation(::Type{T}, ::Type{T}, method::GenConstrainedUnscented, m::AbstractVector, V::AbstractMatrix, S::AbstractVector, K::AbstractVector, f::F, ::Val{C}) where {T <: Multivariate, F, C}
+    if !C
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache
@@ -320,6 +476,24 @@ function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedU
     return sum(transformedpoints)
 end
 
+function approximate_expectation(::Type{T1}, ::Type{T2}, method::GenConstrainedUnscented, ms::Tuple, Vs::Tuple, Ss::Tuple, Ks::Tuple, f::F, ::Val{C}) where {T1 <: Univariate, T2<: Multivariate, F, C}
+    ds = size.(ms)
+    if !C    
+        m = reduce(vcat, ms)
+        S = reduce(vcat, Ss)
+        K = reduce(vcat, Ks)
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], Vs)))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache 
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim+1)))
+    weights = getcache(cache, (:weights, 2method.inputdim+1))
+    transformedpoints = getcache(cache, (:transformedpoints, 2method.inputdim+1))
+    map!((x,y) -> y*f(__splitjoin(x, ds)...), transformedpoints, eachcol(points), weights)
+
+    return sum(transformedpoints)
+end
+
 function approximate_expectation(::Type{T},::Type{T}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {T <: Multivariate, F, C}
     ms = map(mean,q)
     ds = size.(ms)
@@ -328,6 +502,28 @@ function approximate_expectation(::Type{T},::Type{T}, method::GenConstrainedUnsc
         S = reduce(vcat, map(_skewness, q))
         K = reduce(vcat, map(_kurtosis, q))
         V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], map(_cov,q))))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+    cache = method.cache   
+    points = getcache(cache,(:points, (method.inputdim, 2*method.inputdim+1)))
+    weights = getcache(cache,(:weights, 2*method.inputdim+1))
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachcol(transformedpoints), eachcol(points), weights)
+    result = zeros(method.outputdim)
+    for elem = 1:method.outputdim
+        result[elem] = sum(@views transformedpoints[elem, :])
+    end
+
+    return result
+end
+
+function approximate_expectation(::Type{T},::Type{T}, method::GenConstrainedUnscented, ms::Tuple, Vs::Tuple, Ss::Tuple, Ks::Tuple, f::F, ::Val{C}) where {T <: Multivariate, F, C}
+    ds = size.(ms)
+    if !C
+        m = reduce(vcat, ms)
+        S = reduce(vcat, Ss)
+        K = reduce(vcat, Ks)
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], Vs)))
         sigma_points_weights!(method, m, V, S, K)
     end
     cache = method.cache   
@@ -371,6 +567,32 @@ function approximate_expectation(::Type{T1},::Type{T2}, method::GenConstrainedUn
     return result   
 end
 
+function approximate_expectation(::Type{T1},::Type{T2}, method::GenConstrainedUnscented, ms::Tuple, Vs::Tuple, Ss::Tuple, Ks::Tuple, f::F, ::Val{C}) where {T1 <: Matrixvariate, T2 <: Multivariate, F, C}
+    ds = size.(ms)
+    if !C
+        m = reduce(vcat, ms)
+        S = reduce(vcat, Ss)
+        K = reduce(vcat, Ks)
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], Vs)))
+        sigma_points_weights!(method, m, V, S, K)
+    end
+
+    cache = method.cache 
+    points = getcache(cache,(:points, (method.inputdim, 2method.inputdim+1)))
+    weights = getcache(cache, (:weights, 2method.inputdim+1))
+  
+    transformedpoints = getcache(cache, (:transformedpoints, (method.outputdim, method.outputdim, 2method.inputdim+1)))
+    map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachslice(transformedpoints, dims=3),eachcol(points), weights)
+    result = zeros(method.outputdim,method.outputdim)
+    for i=1:method.outputdim
+        for j=1:method.outputdim
+            result[i,j] = sum(@views transformedpoints[i,j,:])
+        end
+    end
+
+    return result   
+end
+
 function Unscented_approximate(method::GenConstrainedUnscented, q, g::G) where {G}
     type_parameters = typeof(method).parameters
     out_variate_type = first(type_parameters)
@@ -379,11 +601,26 @@ function Unscented_approximate(method::GenConstrainedUnscented, q, g::G) where {
     unscented_statistics(out_variate_type, in_variate_type, method, Val(false), q, g)
 end
 
+function Unscented_approximate(method::GenConstrainedUnscented, m, V, S, K, g::G) where {G}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
+
+    unscented_statistics(out_variate_type, in_variate_type, method,Val(false), m, V, S, K, g)
+end
+
 function unscented_statistics(method::GenConstrainedUnscented, q, g::G) where {G}
     type_parameters = typeof(method).parameters
     out_variate_type = first(type_parameters)
     in_variate_type = getindex(type_parameters, 2)
     return unscented_statistics(out_variate_type, in_variate_type, method, Val(true), q, g)
+end
+
+function unscented_statistics(method::GenConstrainedUnscented, m,V,S,K, g::G) where {G}
+    type_parameters = typeof(method).parameters
+    out_variate_type = first(type_parameters)
+    in_variate_type = getindex(type_parameters, 2)
+    return unscented_statistics(out_variate_type, in_variate_type, method,m, V, S, K, Val(true), g)
 end
 
 # Univariate in Univariate out
@@ -394,6 +631,16 @@ function unscented_statistics(out_variate::Type{T},in_variate::Type{T}, method::
     Kresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
 
     Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(mresult, mean(q)), g), Val(true)) : nothing
+    return mresult,Vresult,Sresult, Kresult, Cresult
+end
+
+function unscented_statistics(out_variate::Type{T},in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, m::Real,V::Real,S::Real,K::Real, g::G) where {T<:Univariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(mresult, m), g), Val(true)) : nothing
     return mresult,Vresult,Sresult, Kresult, Cresult
 end
 
@@ -408,6 +655,16 @@ function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
+function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, m::Real, V::Real, S::Real, K::Real, g::G) where {T1<:Multivariate, T2<:Univariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(Matrixvariate, Univariate, method, m, V, S, K, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true)) 
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(Multivariate, Univariate, mresult, m), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
 # Multivariate in Univariate out
 function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, q, g::G) where {T1<:Univariate, T2<:Multivariate, C, G}
     mresult = approximate_expectation(method, q, g)   
@@ -416,6 +673,16 @@ function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method
     Kresult = approximate_expectation(method, q, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
 
     Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(Univariate, Multivariate, mresult, mean(q)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+function unscented_statistics(out_variate::Type{T1},in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, m::AbstractVector, V::AbstractMatrix, S::AbstractVector, K::AbstractVector, g::G) where {T1<:Univariate, T2<:Multivariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)   
+    Vresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(Univariate, Multivariate, mresult, m), g), Val(true)) : nothing
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
@@ -430,6 +697,16 @@ function unscented_statistics(out_variate::Type{T},in_variate::Type{T}, method::
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
+function unscented_statistics(out_variate::Type{T},in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, m::AbstractVector, V::AbstractMatrix, S::AbstractVector, K::AbstractVector, g::G) where {T <: Multivariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(Matrixvariate, Multivariate, method, m, V, S, K, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+    
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, m), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
 #Univariate in Univariate out with q tuple
 function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, q::Tuple, g::G) where { T <: Univariate, C, G}
     mresult = approximate_expectation(method, first(q), g)
@@ -441,6 +718,16 @@ function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method:
     return mresult,Vresult,Sresult, Kresult, Cresult
 end
 
+function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, m::Tuple, V::Tuple, S::Tuple, K::Tuple, g::G) where { T <: Univariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(mresult, m), g), Val(true)) : nothing
+    return mresult,Vresult,Sresult, Kresult, Cresult
+end
+
 #Univariate in Multivariate out with q tuple
 function unscented_statistics(out_variate::Type{T1}, in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, q::Tuple, g::G) where { T1 <: Multivariate,T2 <: Univariate, C, G}
     mresult = approximate_expectation(method, first(q), g)
@@ -448,7 +735,38 @@ function unscented_statistics(out_variate::Type{T1}, in_variate::Type{T2}, metho
     Sresult = approximate_expectation(method, first(q), adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
     Kresult = approximate_expectation(method, first(q), adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
 
-    Cresult = C ? approximate_expectation(method, first(q), adjust_integrand(CrossCovariance(Multivariate, Univariate, mresult, first(mean.(q)), g)), Val(true)) : nothing
+    Cresult = C ? approximate_expectation(method, first(q), adjust_integrand(CrossCovariance(Multivariate, Univariate, mresult, mean(first(q))), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+function unscented_statistics(out_variate::Type{T1}, in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, m::Tuple, V::Tuple, S::Tuple, K::Tuple, g::G) where { T1 <: Multivariate, T2 <: Univariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(Matrixvariate, Univariate, method, m, V, S, K, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(Multivariate, Univariate, mresult, first(m)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+#Multivariate in Univariate out with q tuple
+function unscented_statistics(out_variate::Type{T1}, in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, q::Tuple, g::G) where { T1 <: Univariate, T2 <: Multivariate, C, G}
+    mresult = approximate_expectation(method, q, g)
+    Vresult = approximate_expectation(Matrixvariate, Multivariate, method, q, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, mapreduce(mean, vcat, q)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+function unscented_statistics(out_variate::Type{T1}, in_variate::Type{T2}, method::GenConstrainedUnscented, ::Val{C}, m::Tuple, V::Tuple, S::Tuple, K::Tuple, g::G) where { T1 <: Univariate, T2 <: Multivariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(Matrixvariate, Multivariate, method, m, V, S, K, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, reduce(vcat, m)), g), Val(true)) : nothing
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
@@ -459,10 +777,19 @@ function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method:
     Sresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
     Kresult = approximate_expectation(method, q, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
 
-    Cresult = C ? approximate_expectation(method, first(q), adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, reduce(vcat, mean.(q)), g)), Val(true)) : nothing
+    Cresult = C ? approximate_expectation(method, q, adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, mapreduce(mean,vcat,q)), g), Val(true)) : nothing
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
+function unscented_statistics(out_variate::Type{T}, in_variate::Type{T}, method::GenConstrainedUnscented, ::Val{C}, m::Tuple, V::Tuple, S::Tuple, K::Tuple, g::G) where { T <: Multivariate, C, G}
+    mresult = approximate_expectation(method, m, V, S, K, g)
+    Vresult = approximate_expectation(Matrixvariate, Multivariate, method, m, V, S, K, adjust_integrand(MomentGenerator(Multivariate, Val(2), mresult), g), Val(true))
+    Sresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), g), Val(true))
+    Kresult = approximate_expectation(method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), g), Val(true))
+
+    Cresult = C ? approximate_expectation(method, m, V, S, K, adjust_integrand(CrossCovariance(Multivariate, Multivariate, mresult, reduce(vcat, m)), g), Val(true)) : nothing
+    return mresult, Vresult, Sresult, Kresult, Cresult
+end
 
 function approximate(method::GenConstrainedUnscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
 

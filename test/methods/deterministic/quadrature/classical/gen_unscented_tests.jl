@@ -14,9 +14,14 @@
         f(x) = (x-mdist)^4
         estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
         _,_,_,kestimate = ExpectationApproximations.Unscented_approximate(method, dist, identity)
+
+        estimate_kurtosis_genut_2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist,kdist,f)
+        _, _, _, kestimate2 = ExpectationApproximations.Unscented_approximate(method, mdist,vdist,sdist,kdist, identity)
         
+        @test isapprox(estimate_kurtosis_genut, estimate_kurtosis_genut_2, rtol=brtol)
         @test isapprox(estimate_kurtosis_genut ,kdist, rtol = brtol)
         @test isapprox(estimate_kurtosis_genut ,kestimate, rtol = brtol)
+        @test isapprox(kestimate, kestimate, rtol=brtol)
         @test sum(getcache(method.cache,(:weights, 3))) ≈ 1
     end
 
@@ -32,7 +37,11 @@
         f(x) = (x-mdist)^4
         estimate_skew_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
         estimate_kurtosis_genut = ExpectationApproximations.approximate_expectation(method,dist,f)
-        
+        estimate_skew_genut2 = ExpectationApproximations.approximate_expectation(method, mdist, vdist, sdist, kdist, g)
+        estimate_kurtosis_genut2 = ExpectationApproximations.approximate_expectation(method, mdist, vdist, sdist, kdist, f)
+
+        @test isapprox(estimate_skew_genut, estimate_skew_genut2, rtol=1e-7)
+        @test isapprox(estimate_kurtosis_genut, estimate_kurtosis_genut2, rtol=1e-7)
         @test isapprox(estimate_skew_genut , sdist, rtol = brtol)
         @test isapprox(estimate_kurtosis_genut , kdist, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 3))) ≈ 1
@@ -49,9 +58,11 @@
         brtol = 1e-2
         g(x,y,z) = [x*y; z^3]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand.(dist) for i=1:1e5];
         mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
@@ -66,9 +77,11 @@
         brtol = 1e-2
         g(x,y,z) = [x*y; sin(z)*x; y/x]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand.(dist) for i=1:1e5];
         mapped_samples = map(d -> g(d[1],d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
@@ -84,9 +97,11 @@
         brtol = 1e-1
         g(x,y) = [sin(x*y), cos(x*y)]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand.(dist) for i=1:10000];
         mapped_samples = map(d -> g(d[1],d[2]),samples);
         estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 5))) ≈ 1
     end
@@ -101,10 +116,12 @@
         brtol = 1e-1
         g(x,y,z) = [sin(z*y)*x[1], cos(z*y)*x[2]]
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand.(dist) for i=1:10000];
         mapped_samples = map(d -> g(first(d),d[2],d[3]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
@@ -118,9 +135,11 @@
         brtol = 1e-2
         g(x) = vec(x*x')
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand(dist) for i=1:50000];
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 5))) ≈ 1
     end
@@ -135,10 +154,12 @@
         brtol = 1e-2
         g(x) = tr(x*x') 
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand(dist) for i=1:10000];
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
@@ -152,11 +173,13 @@
         brtol = 1e-1
         g(x,ν) = vec(ν*x*x')
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand.(dist) for i=1:10000];
         mapped_samples = map(d -> g(d[1],d[2]),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 11))) ≈ 1
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
     end
 
     @testset "GenUnscented: Basic integrations with MvNormalMeanCovariance with abs" begin
@@ -169,10 +192,12 @@
         brtol = 1e-2
         g(x) = abs.(x) 
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand(dist) for i=1:10000];
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
         @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
     end
 
@@ -188,11 +213,13 @@
         method = GenUnscented{Univariate, Multivariate}(length(mdist),1)
         g(x) = abs(x'*x) + abs.(x)'*abs.(x)
         estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist, kdist,g)
         samples = [rand(dist) for i=1:10000];
         mapped_samples = map(d -> g(d),samples);
         estimate_mc = mean(mapped_samples);
         @test isapprox( estimate_genut , estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 9))) ≈ 1
+        @test isapprox( estimate_genut, estimate_genut2, rtol=1e-7)
     end
 
     @testset "Unscented_approximate: Normal with cascaded abs " begin
@@ -207,11 +234,13 @@
         method = GenUnscented{Univariate, Univariate}(length(mdist),1)
         g(x) = abs(x'*x) + abs.(x)'*abs.(x)
         estimate_genut = ExpectationApproximations.Unscented_approximate(method,(dist, ),g)
-
+        estimate_genut2 = ExpectationApproximations.Unscented_approximate(method,mdist,vdist,sdist,kdist,g)
         samples = [rand(dist) for i=1:100000];
         mapped_samples = map(d -> g(d),samples);
         mean_estimate_mc = mean(mapped_samples);
         var_estimate_mc = var(mapped_samples);
+        @test isapprox(estimate_genut2[1], estimate_genut[1], rtol=1e-7)
+        @test isapprox(estimate_genut2[2], estimate_genut[2], rtol=1e-7)
         @test isapprox( estimate_genut[2],  var_estimate_mc, rtol = brtol)
         @test isapprox( estimate_genut[1] , mean_estimate_mc, rtol = brtol)
         @test sum(getcache(method.cache,(:weights, 3))) ≈ 1
@@ -225,12 +254,18 @@
         method = GenUnscented{Multivariate, Multivariate}(3,3)
         g(x) = abs.(x)
         estimate_genut = ExpectationApproximations.Unscented_approximate(method,(dist,),g)
-        
+        mdist = mean(dist)
+        vdist = _cov(dist)
+        sdist = _skewness(dist)
+        kdist = _kurtosis(dist)
+        estimate_genut2 = ExpectationApproximations.Unscented_approximate(method,mdist,vdist,sdist,kdist,g)
         samples = [rand(dist) for i=1:10000];
         mapped_samples = map(d -> g(d),samples);
         mean_estimate_mc = mean(mapped_samples);
         var_estimate_mc = cov(mapped_samples);
         
+        @test isapprox(estimate_genut2[1], estimate_genut[1], rtol=1e-7)
+        @test isapprox(estimate_genut2[2], estimate_genut[2], rtol=1e-7)
         @test isapprox( estimate_genut[1] , mean_estimate_mc, atol = brtol)
         @test isapprox( estimate_genut[2], var_estimate_mc, atol = brtol)
         @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
@@ -240,12 +275,19 @@
         dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(5),diagm(rand(5))))
         method = GenUnscented{Multivariate, Multivariate}(8,4)
         g(x,y) = [x + y[1:3]; y[5] ]
+        mdist = mean.(dist)
+        vdist = _cov.(dist)
+        sdist = _skewness.(dist)
+        kdist = _kurtosis.(dist)
         estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.Unscented_approximate(method,mdist,vdist,sdist,kdist,g)
         samples = rand.(dist, 100000);
         mapped_samples = map((x,y) -> g(x, y), eachcol(first(samples)), eachcol(last(samples)));
         mean_estimate_mc = mean(mapped_samples);
         cov_estimate_mc = cov(mapped_samples)
         
+        @test isapprox(estimate_genut2[1], estimate_genut[1], rtol=1e-7)
+        @test isapprox(estimate_genut2[2], estimate_genut[2], rtol=1e-7)
         @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
         @test isapprox(estimate_genut[2], cov_estimate_mc, rtol = 1e-2)
         @test sum(getcache(method.cache,(:weights, 17))) ≈ 1
@@ -256,11 +298,18 @@
         dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), Gamma(3,4), Beta(0.1))
         method = GenUnscented{Multivariate, Multivariate}(5,3)
         g(x,y,z) = [tr(y*x*x'); z^2; z*y]
+        mdist = mean.(dist)
+        vdist = _cov.(dist)
+        sdist = _skewness.(dist)
+        kdist = _kurtosis.(dist)
         estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.Unscented_approximate(method,mdist,vdist,sdist,kdist,g)
         samples = rand.(dist, 1000000);
         mapped_samples = map((x,y,z) -> g(x, y, z), eachcol(first(samples)), getindex(samples,2), last(samples));
         mean_estimate_mc = mean(mapped_samples);
         
+        @test isapprox(estimate_genut2[1], estimate_genut[1], rtol=1e-7)
+        @test isapprox(estimate_genut2[2], estimate_genut[2], rtol=1e-7)
         @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
         @test sum(getcache(method.cache,(:weights, 11))) ≈ 1
     end
@@ -269,24 +318,36 @@
         dist = (Poisson(3.0), Gamma(0.1,4), Beta(2,4), )
         method = GenUnscented{Multivariate, Multivariate}(3,3)
         g(x,y,z) = [x*y*z; z^2; z*y]
+        mdist = mean.(dist)
+        vdist = _cov.(dist)
+        sdist = _skewness.(dist)
+        kdist = _kurtosis.(dist)
         estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
+        estimate_genut2 = ExpectationApproximations.Unscented_approximate(method,mdist,vdist,sdist,kdist,g)
         samples = rand.(dist, 1000000);
         mapped_samples = map((x,y,z) -> g(x, y, z), first(samples), getindex(samples,2), last(samples));
         mean_estimate_mc = mean(mapped_samples);
         
+        @test isapprox(estimate_genut2[1], estimate_genut[1], rtol=1e-7)
+        @test isapprox(estimate_genut2[2], estimate_genut[2], rtol=1e-7)
         @test isapprox(estimate_genut[1], mean_estimate_mc, rtol = 1e-2)
         @test sum(getcache(method.cache,(:weights, 7))) ≈ 1
     end
 
     @testset "approximate: Multiple MvNormal approximate the resulting distribution " begin
-        dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(5),diagm(rand(5))))
+        dist = (MvNormalMeanCovariance([1, 2, 3 ],rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance([10.0, 0.9,0.1,1.0, 0.75],diagm(rand(5))))
         method = GenUnscented{Multivariate, Multivariate}(8,8)
         g(x,y) = [x + y[1:3]; y[5]; abs.(y[1:4]).^1.2 ]
+        mdist = mean.(dist)
+        vdist = _cov.(dist)
+        sdist = _skewness.(dist)
+        kdist = _kurtosis.(dist)
         estimate_genut = ExpectationApproximations.approximate(method,g, dist)
         samples = rand.(dist, 100000);
         mapped_samples = map((x,y) -> g(x, y), eachcol(first(samples)), eachcol(last(samples)));
         mean_estimate_mc = mean(mapped_samples);
         
+
         @test isapprox(mean(estimate_genut), mean_estimate_mc, rtol = 1e-1)
         @test sum(getcache(method.cache,(:weights, 17))) ≈ 1
 

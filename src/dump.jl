@@ -57,8 +57,8 @@ mean((trans_samples .- msamples).^4,dims=2)
 approximate_expectation(method, dist, ExpectationApproximations.adjust_integrand(DiagonalMomentGenerator(Val(3), mdist), g))
 
 
-@benchmark ExpectationApproximations.Unscented_approximate(method,(dist, ),g)
-@code_warntype ExpectationApproximations.Unscented_approximate(method,(dist, ),g)
+@benchmark ExpectationApproximations.Unscented_approximate(method,dist,g)
+@code_warntype ExpectationApproximations.Unscented_approximate(method,dist,g)
 @code_warntype ExpectationApproximations.adjust_integrand(MomentGenerator(Multivariate, Val(2), mdist), g)
 @benchmark ExpectationApproximations.Unscented_approximate(method,(dist, ),g)
 @code_warntype ExpectationApproximations.adjust_integrand(DiagonalMomentGenerator(Val(2), zeros(5)), g)
