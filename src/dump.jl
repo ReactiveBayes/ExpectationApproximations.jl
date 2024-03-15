@@ -1,7 +1,7 @@
 using ExpectationApproximations, BenchmarkTools
 using Distributions, ExponentialFamily
 import Distributions: skewness, kurtosis, cov, var
-import ExpectationApproximations: GenUnscented, GenConstrainedUnscented, unscented_statistics, approximate_expectation,_cov, sigma_points_weights!
+import ExpectationApproximations: GenUnscented, GenConstrainedUnscented, unscented_statistics, approximate_expectation,_cov, sigma_points_weights!, FromTo
 using LinearAlgebra
 skewness(dist::MvNormalMeanCovariance)   = zeros(length(dist.μ))
 kurtosis(dist::MvNormalMeanCovariance, correction::Bool=false)   = 3*var(dist).^2
@@ -19,8 +19,8 @@ vdist = _cov(dist)
 sdist = skewness(dist)
 kdist = kurtosis(dist, false)
 brtol = 1e-2
-@code_warntype GenUnscented{Multivariate,Univariate}(1,4)
-method = GenUnscented{Multivariate,Univariate}(1,4)
+@code_warntype GenUnscented{FromTo(Univariate, Multivariate)}(1,4)
+method = GenUnscented{FromTo(Univariate, Multivariate)}(1,4)
 g(x) = [x^2, x^3, x^20, x^8]
 ExpectationApproximations.approximate_expectation(method,dist,g)
 ExpectationApproximations.getcache(method.cache, (:weights, 3))
@@ -43,12 +43,11 @@ vdist = _cov(dist)
 sdist = skewness(dist)
 kdist = kurtosis(dist, false)
 brtol = 1e-2
-method = GenUnscented{Multivariate, Multivariate}(20,20)
+method = GenUnscented{FromTo(Multivariate, Multivariate)}(20,20)
 g(x) = abs.(x)
 m = ExpectationApproximations.approximate_expectation(method,dist,g)
 method.cache
 ExpectationApproximations.getcache(method.cache, (:weights, 41))
-res = ExpectationApproximations.Unscented_approximate(method,dist,g)
 samples = rand(dist, 1000000)
 trans_samples = g.(samples)
 msamples = mean(trans_samples,dims=2)
@@ -57,17 +56,17 @@ mean((trans_samples .- msamples).^4,dims=2)
 approximate_expectation(method, dist, ExpectationApproximations.adjust_integrand(DiagonalMomentGenerator(Val(3), mdist), g))
 
 
-@benchmark ExpectationApproximations.Unscented_approximate(method,dist,g)
-@code_warntype ExpectationApproximations.Unscented_approximate(method,dist,g)
+@benchmark ExpectationApproximations.unscented_statistics(method,dist,g)
+@code_warntype ExpectationApproximations.unscented_statistics(method,dist,g)
 @code_warntype ExpectationApproximations.adjust_integrand(MomentGenerator(Multivariate, Val(2), mdist), g)
-@benchmark ExpectationApproximations.Unscented_approximate(method,(dist, ),g)
+@benchmark ExpectationApproximations.unscented_statistics(method,(dist, ),g)
 @code_warntype ExpectationApproximations.adjust_integrand(DiagonalMomentGenerator(Val(2), zeros(5)), g)
 
 @code_warntype ExpectationApproximations.unscented_statistics(method,Val(true),(dist, ),g)
 @code_warntype approximate_expectation(method, dist, g)
 
 dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(5),diagm(rand(5))))
-method = GenUnscented{Multivariate, Multivariate}(8,4)
+method = GenUnscented{FromTo(Multivariate, Multivariate)}(8,4)
 g(x,y) = [x + y[1:3]; y[5] ]
 @code_warntype ExpectationApproximations.approximate(method,g, dist)
 
@@ -85,14 +84,10 @@ end
 ds = size.(mean.(dist))
 
 dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(5),diagm(rand(5))))
-method = GenUnscented{Multivariate, Multivariate}(8,4)
+method = GenUnscented{FromTo(Multivariate, Multivariate)}(8,4)
 g(x,y) = [x + y[1:3]; y[5] ]
-estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
-# samples = [rand(dist) for i=1:10000];
-# mapped_samples = map(d -> g(d),samples);
-# @benchmark map(d -> g(d),samples)
-# mean_estimate_mc = mean(mapped_samples);
-# var_estimate_mc = cov(mapped_samples);
+estimate_genut = ExpectationApproximations.unscented_statistics(method,dist,g)
+
 
 @benchmark ExpectationApproximations.approximate_expectation(method,dist,g, Val(false))
 @code_warntype ExpectationApproximations.Unscented_approximate(method,dist,g)
@@ -100,9 +95,9 @@ estimate_genut = ExpectationApproximations.Unscented_approximate(method,dist,g)
 
 lb = ([-2, -1], -3, -4)
 ub = ([3,5],6, 6)
-@code_warntype GenConstrainedUnscented{Multivariate, Multivariate}(lb, ub, 4, 4)
-method = GenConstrainedUnscented{Multivariate, Multivariate}(lb, ub, 4, 4)
-method2 = GenUnscented{Multivariate, Multivariate}(4, 4)
+@code_warntype GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 4, 4)
+method = GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 4, 4)
+method2 = GenUnscented{FromTo(Multivariate, Multivariate)}(4, 4)
 
 sigma_points_weights!(method, [-1.9, -0.1, 2, 3], diagm(ones(4)), rand(4),rand(4))
 @benchmark sigma_points_weights!(method2, zeros(4), diagm(ones(4)), zeros(4),ones(4))
@@ -118,7 +113,7 @@ ExpectationApproximations.getcache(method.cache, (:points, (4,9)))
 ExpectationApproximations.getcache(method.cache, (:weights, 9))
 
 
-method = GenConstrainedUnscented{Univariate,Univariate}((1,), (2,), 1, 1)
+method = GenConstrainedUnscented{FromTo(Univariate,Univariate)}((1,), (2,), 1, 1)
 sigma_points_weights!(method, 1.5, 1,1,1)
 ExpectationApproximations.getcache(method.cache, (:points, (1,3)))
 
@@ -127,10 +122,10 @@ method.cache
 
 
 dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), Gamma(3,4), Beta(0.1))
-method = GenUnscented{Multivariate, Multivariate}(5,3)
+method = GenUnscented{FromTo(Multivariate, Multivariate)}(5,9)
 g(x,y,z) = z*y*x*x'
 mdist = mean.(dist)
 vdist = _cov.(dist)
 sdist = _skewness.(dist)
 kdist = _kurtosis.(dist)
-estimate_genut = ExpectationApproximations.approximate_expectation(Matrixvariate, Multivariate,method,dist,g,Val(false))
+estimate_genut = ExpectationApproximations.approximate_expectation(method,dist,g)

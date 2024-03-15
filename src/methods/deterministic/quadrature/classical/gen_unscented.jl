@@ -8,15 +8,15 @@ The `GenUnscented` structure defines the approximation method of Generalized Uns
 """
 struct GenUnscented{T <: FromTo} <: AbstractApproximationMethod 
     inputdim :: Int
-    outputdim :: Int
+    outputdim :: Tuple
     cache :: ApproximationCache
 end
 
-function GenUnscented{T}(id::Int,od::Int) where {T <: FromTo} 
+function GenUnscented{T}(id::Int,od::Tuple) where {T <: FromTo} 
     GenUnscented{T}(id,od, ApproximationCache())
 end
 
-GenUnscented() = GenUnscented{FromTo(Univariate, Univariate)}(1,1)
+GenUnscented() = GenUnscented{FromTo(Univariate, Univariate)}(1,(1,))
 
 """An alias for the [`GenUnscented`](@ref) approximation method."""
 const GenUT = GenUnscented
@@ -219,7 +219,7 @@ end
 
 function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenUnscented, m, V, S, K, f::F, ::Val{C}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate}
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
-    Vresult = approximate_expectation(FromTo(Tin, Matrixvariate), method, m, V, S, K, adjust_integrand(MomentGenerator(Tin, Val(2), mresult), f), Val(true)) 
+    Vresult = approximate_expectation(FromTo(Tin, Matrixvariate), GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.outputdim),first(method.outputdim))), m, V, S, K, adjust_integrand(MomentGenerator(Tin, Val(2), mresult), f), Val(false)) 
     Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f), Val(true)) 
     Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f), Val(true)) 
 

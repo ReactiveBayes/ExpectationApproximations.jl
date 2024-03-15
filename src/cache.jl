@@ -34,5 +34,5 @@ function gettransformedpoints(::Type{FromTo{Tin, Tout}}, method::AbstractApproxi
 end
 
 gettransformedpoints(::Type{T}, cache::ApproximationCache, id, _) where {T <: Univariate} = getcache(cache, (:transformedpoints, 2*id+1))
-gettransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Multivariate} = getcache(cache, (:transformedpoints, (od, 2*id+1)))
-gettransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Matrixvariate} = getcache(cache, (:transformedpoints, (od,od, 2*id+1)))
+gettransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Multivariate} = getcache(cache, (:transformedpoints, (first(od), 2*id+1)))
+gettransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Matrixvariate} = getcache(cache, (:transformedpoints, (first(od), last(od), 2*id+1)))

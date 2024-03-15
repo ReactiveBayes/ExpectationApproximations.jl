@@ -11,6 +11,32 @@ struct UnscentedExtra{T, R, M, C}
     Wc :: C
 end
 
+function UnscentedExtra(dim::Int64; alpha::Real = default_alpha, beta::Real = default_beta, kappa::Real = default_kappa)
+    α = alpha
+    β = beta
+    κ = kappa
+    λ = α^2 * (dim + κ) - dim
+    Wm = ones(2 * dim + 1)
+    Wc = ones(2 * dim + 1)
+    Wm ./= (2 * (dim + λ))
+    Wc ./= (2 * (dim + λ))
+    Wm[1] = λ / (dim + λ)
+    Wc[1] = λ / (dim + λ) + (1 - α^2 + β)
+    return UnscentedExtra(dim, λ, Wm, Wc)
+end
+
+UnscentedExtra() = UnscentedExtra(1)
+
+struct UnscentedParameters{A, B, K} <: AbstractApproximationMethod
+    α::A
+    β::B
+    κ::K
+    e::UnscentedExtra
+    cov::Bool
+end
+
+UnscentedParameters(dim::Int) = UnscentedParameters(default_alpha,default_beta, default_kappa, UnscentedExtra(dim),false)
+UnscentedParameters() = UnscentedParameters(1)
 """
 The `Unscented` structure defines the approximation method of the `Delta` and `Flow` factor nodes. 
 More specifically, it contains the hyperparameters used for sigma points computation.
@@ -22,32 +48,15 @@ More specifically, it contains the hyperparameters used for sigma points computa
 The `Unscented` structure with default parameters can be constructed as `Unscented()`.
 """
 
-struct Unscented{A, B, K, E} <: AbstractApproximationMethod
-    α::A
-    β::B
-    κ::K
-    e::E
-    cov::Bool
+struct Unscented{T <: FromTo} <: AbstractApproximationMethod 
+    inputdim :: Int
+    outputdim :: Int
+    parameters :: UnscentedParameters
+    cache :: ApproximationCache
 end
 
-# Structure constructor
-function Unscented(; alpha::A = default_alpha, beta::B = default_beta, kappa::K = default_kappa, cov = false) where {A <: Real, B <: Real, K <: Real}
-    return Unscented{A, B, K, Nothing}(alpha, beta, kappa, nothing, cov)
-end
-
-function Unscented(dim::Int64; alpha::Real = default_alpha, beta::Real = default_beta, kappa::Real = default_kappa)
-    α = alpha
-    β = beta
-    κ = kappa
-    λ = α^2 * (dim + κ) - dim
-    Wm = ones(2 * dim + 1)
-    Wc = ones(2 * dim + 1)
-    Wm ./= (2 * (dim + λ))
-    Wc ./= (2 * (dim + λ))
-    Wm[1] = λ / (dim + λ)
-    Wc[1] = λ / (dim + λ) + (1 - α^2 + β)
-    return Unscented(α, β, κ, UnscentedExtra(dim, λ, Wm, Wc))
-end
+Unscented{T}(id::Int,od::Int) where {T <: FromTo}  = Unscented{T}(id,od, UnscentedParameters(id), ApproximationCache())
+Unscented() = Unscented{FromTo(Univariate, Univariate)}(1,1)
 
 """An alias for the [`Unscented`](@ref) approximation method."""
 const UT = Unscented
@@ -73,7 +82,35 @@ getλ(extra::UnscentedExtra)  = extra.λ
 getWm(extra::UnscentedExtra) = extra.Wm
 getWc(extra::UnscentedExtra) = extra.Wc
 
-# Copied and refactored from ForneyLab.jl
+"""Return the sigma points and weights for a Gaussian distribution"""
+function sigma_points_weights!(method::Unscented, m::Real, V::Real)
+    alpha  = getα(method)
+    beta   = getβ(method)
+    kappa  = getκ(method)
+    lambda = (1 + kappa) * alpha^2 - 1
+
+    if (1 + lambda) < 0
+        @warn "`(1 + lambda)` in the sigma points computation routine is negative. This may lead to the incorrect results. Adjust the `alpha`, `kappa` and `beta` parameters."
+    end
+
+    l = sqrt((1 + lambda) * V)
+
+    sigma_points = (m, m + l, m - l)
+    weights_m    = (lambda / (1 + lambda), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
+    weights_c    = (weights_m[1] + (1 - alpha^2 + beta), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
+
+    return (sigma_points, weights_m, weights_c)
+end
+
+
+
+
+
+
+
+
+
+
 
 function approximate_expectation(method::Unscented, q, f::F) where {F}
     res = Unscented_approximate(method, f, (mean(q),), (var(q),))
@@ -164,25 +201,7 @@ function unscented_statistics(method::Unscented, ::Val{C}, g::G, ms::Tuple, Vs::
     return (m_tilde, V_tilde, C_tilde)
 end
 
-"""Return the sigma points and weights for a Gaussian distribution"""
-function sigma_points_weights(method::Unscented, m::Real, V::Real)
-    alpha  = getα(method)
-    beta   = getβ(method)
-    kappa  = getκ(method)
-    lambda = (1 + kappa) * alpha^2 - 1
 
-    if (1 + lambda) < 0
-        @warn "`(1 + lambda)` in the sigma points computation routine is negative. This may lead to the incorrect results. Adjust the `alpha`, `kappa` and `beta` parameters."
-    end
-
-    l = sqrt((1 + lambda) * V)
-
-    sigma_points = (m, m + l, m - l)
-    weights_m    = (lambda / (1 + lambda), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
-    weights_c    = (weights_m[1] + (1 - alpha^2 + beta), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
-
-    return (sigma_points, weights_m, weights_c)
-end
 
 function sigma_points_weights(method::Unscented, m::AbstractVector, V::AbstractMatrix)
     d      = length(m)

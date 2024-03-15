@@ -5,9 +5,9 @@
     @testset "sigma_points_weights!: check sigma points are in the bounds and weights are normalized" begin
         lb = ([2, 1], 3, 4)
         ub = ([3,5],6, 6)
-        @inferred GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 4, 4)
+        @inferred GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 4, (4,))
 
-        method = GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 4, 4)
+        method = GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 4, (4,))
         m = [2.2, 3.1, 3.5, 4.2]
         V = diagm(rand(4))
         S = zeros(4)
@@ -49,7 +49,7 @@
         ub =(Inf,Inf)
         lb = (0, 0)
 
-        method = GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 2, 2, 0.9)
+        method = GenConstrainedUnscented{FromTo(Multivariate, Multivariate)}(lb, ub, 2, (2,), 0.9)
         @inferred sigma_points_weights!(method, m, P ,S, K)
         points = getcache(method.cache, (:points, (2, 5)))
         weights = getcache(method.cache, (:weights, 5))
@@ -71,7 +71,7 @@
         sdist = _skewness(dist)
         kdist = _kurtosis(dist)
         brtol = 1e-4
-        method = GenConstrainedUnscented{FromTo(Univariate, Univariate)}(lb,ub,1,1, 0.99)
+        method = GenConstrainedUnscented{FromTo(Univariate, Univariate)}(lb,ub,1,(1,), 0.99)
         sigma_points_weights!(method, mdist, vdist ,sdist, kdist)
         points = getcache(method.cache, (:points, (1, 3)))
         weights = getcache(method.cache, (:weights, 3))
