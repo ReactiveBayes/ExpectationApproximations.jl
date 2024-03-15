@@ -123,3 +123,14 @@ sigma_points_weights!(method, 1.5, 1,1,1)
 ExpectationApproximations.getcache(method.cache, (:points, (1,3)))
 
 method.cache
+
+
+
+dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), Gamma(3,4), Beta(0.1))
+method = GenUnscented{Multivariate, Multivariate}(5,3)
+g(x,y,z) = z*y*x*x'
+mdist = mean.(dist)
+vdist = _cov.(dist)
+sdist = _skewness.(dist)
+kdist = _kurtosis.(dist)
+estimate_genut = ExpectationApproximations.approximate_expectation(Matrixvariate, Multivariate,method,dist,g,Val(false))
