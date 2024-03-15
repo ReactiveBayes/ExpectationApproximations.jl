@@ -3,10 +3,11 @@ module ExpectationApproximations
 using ExponentialFamily, BayesBase, FastCholesky
 
 include("helpers/helpers.jl")
-
+include("helpers/weighted_sum.jl")
 include("transforms.jl")
 include("log.jl")
 include("approximate.jl")
+include("cache.jl")
 
 include("kernels/raw_moment.jl")
 include("kernels/central_moment.jl")

@@ -3,125 +3,20 @@ using BlockArrays, BlockDiagonals
 using  KWLinalg,TensorCore
 import FillArrays: Eye, Zeros
 
-struct GenUnscentedCache
-    cache_tensors::Dict{Tuple{Symbol, Tuple{Int, Int, Int}}, Array{Float64, 3}}
-    cache_matrices::Dict{Tuple{Symbol, Tuple{Int, Int}}, Matrix{Float64}}
-    cache_vectors::Dict{Tuple{Symbol, Int}, Vector{Float64}}
-end
-
-struct FromTo{Tin <: VariateForm, Tout<:VariateForm} end
-
-FromTo(Tin::Type{T1}, Tout::Type{T2}) where {T1 <:VariateForm, T2<:VariateForm} = FromTo{Tin, Tout}
-
-getinputvariate(FT::Type{T}) where {T <: FromTo} = first(FT.parameters)
-getoutputvariate(FT::Type{T}) where {T <: FromTo} = last(FT.parameters)
-
-GenUnscentedCache() = GenUnscentedCache(Dict{Tuple{Symbol, Tuple{Int, Int, Int}}, Array{Float64, 3}}(),Dict{Tuple{Symbol, Tuple{Int, Int}}, Matrix{Float64}}(), Dict{Tuple{Symbol, Int}, Vector{Float64}}())
-
-function getcache(cache::GenUnscentedCache, label::Tuple{Symbol, Tuple{Int, Int, Int}})
-    return get!(() -> Array{Float64}(undef, first(label[2]), getindex(label[2],2),last(label[2])), cache.cache_tensors, label)
-end
-
-function getcache(cache::GenUnscentedCache, label::Tuple{Symbol, Tuple{Int, Int}})
-    return get!(() -> Matrix{Float64}(undef, label[2]), cache.cache_matrices, label)
-end
-
-function getcache(cache::GenUnscentedCache, label::Tuple{Symbol, Int})
-    return get!(() -> Vector{Float64}(undef, label[2]), cache.cache_vectors, label)
-end
-
-function getpointscachewithzeros(cache::GenUnscentedCache, label::Tuple{Symbol, Tuple{Int,Int}})
-    return get!(() -> Zeros(label[2]), cache.cache_matrices, label)
-end
-
-function getweightscacewithzeros(cache::GenUnscentedCache, label::Tuple{Symbol, Int})
-    return get!(() -> Zeros(label[2]), cache.cache_vectors, label)
-end
-
-
 """
 The `GenUnscented` structure defines the approximation method of Generalized Unscented Transform. 
 """
 struct GenUnscented{T <: FromTo} <: AbstractApproximationMethod 
     inputdim :: Int
     outputdim :: Int
-    cache :: GenUnscentedCache
+    cache :: ApproximationCache
 end
 
 function GenUnscented{T}(id::Int,od::Int) where {T <: FromTo} 
-    GenUnscented{T}(id,od, GenUnscentedCache())
+    GenUnscented{T}(id,od, ApproximationCache())
 end
+
 GenUnscented() = GenUnscented{FromTo(Univariate, Univariate)}(1,1)
-
-getpoints(method::AbstractApproximationMethod) = getcache(method.cache,(:points, (method.inputdim, 2method.inputdim + 1)))
-getweights(method::AbstractApproximationMethod) = getcache(method.cache, (:weights, 2method.inputdim+1))
-function gettransformedpoints(::Type{FromTo{Tin, Tout}}, method::AbstractApproximationMethod) where {Tin, Tout}
-    gettransformedpoints(Tout, method.cache, method.inputdim, method.outputdim)
-end
-
-gettransformedpoints(::Type{T}, cache::GenUnscentedCache, id, _) where {T <: Univariate} = getcache(cache, (:transformedpoints, 2*id+1))
-gettransformedpoints(::Type{T}, cache::GenUnscentedCache, id, od) where {T <: Multivariate} = getcache(cache, (:transformedpoints, (od, 2*id+1)))
-gettransformedpoints(::Type{T}, cache::GenUnscentedCache, id, od) where {T <: Matrixvariate} = getcache(cache, (:transformedpoints, (od,od, 2*id+1)))
-
-function weighted_sum(::Type{FromTo{T, T}},method, points, weights, transformedpoints, f::F, ds) where {F, T <: Univariate}
-    isnothing(ds) ? map!((x,y) -> y*f(x), transformedpoints, points, weights) : map!((x,y) -> y*f(__splitjoin(x, ds)...), transformedpoints, points, weights)
-    return sum(transformedpoints)
-end
-
-function weighted_sum(::Type{FromTo{Tin, Tout}},method, points, weights, transformedpoints, f::F, ds) where {F, Tout<:Univariate, Tin<:Multivariate}
-    isnothing(ds) ? map!((x,y) -> y*f(x), transformedpoints, eachcol(points), weights) : map!((x,y) -> y*f(__splitjoin(x, ds)...), transformedpoints, eachcol(points), weights)
-    return sum(transformedpoints)
-end
-
-function weighted_sum(::Type{FromTo{Tin, Tout}},method, points, weights, transformedpoints, f::F, ds) where {F, Tout <:Multivariate, Tin<:Univariate}
-    isnothing(ds) ? map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), points, weights) :  map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachcol(transformedpoints), points, weights)
-    
-    result = zeros(method.outputdim)
-    for elem = 1:method.outputdim
-        result[elem] = sum(@views transformedpoints[elem, :])
-    end
-    
-    return result
-end
-
-function weighted_sum(::Type{FromTo{T, T}},method, points, weights, transformedpoints, f::F, ds) where {F, T <: Multivariate}
-    isnothing(ds) ? map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), eachcol(points), weights) : map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachcol(transformedpoints), eachcol(points), weights)
-    result = zeros(method.outputdim)
-    for elem = 1:method.outputdim
-        result[elem] = sum(@views transformedpoints[elem, :])
-    end
-
-    return result
-end
-
-function weighted_sum(::Type{FromTo{Tin, Tout}}, method, points, weights, transformedpoints, f::F, ds) where {F, Tout <: Matrixvariate, Tin<:Univariate}
-    isnothing(ds) ? map!((x,y) -> lmul!(y, f(x)), eachslice(transformedpoints, dims=3), points, weights) : map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachslice(transformedpoints,dims=3), points, weights)
-    
-    result = zeros(method.outputdim, method.outputdim)
-
-   for i=1:method.outputdim
-        for j=1:method.outputdim
-            result[i,j] = sum(@views transformedpoints[i, j,:])
-        end
-    end
-
-    return result
-end
-
-function weighted_sum(::Type{FromTo{Tin, Tout}}, method, points, weights, transformedpoints, f::F, ds) where {F, Tout <: Matrixvariate, Tin<:Multivariate}
-    isnothing(ds) ? map!((x,y) -> lmul!(y, f(x)), eachslice(transformedpoints, dims=3), eachcol(points), weights) : map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachslice(transformedpoints,dims=3), eachcol(points), weights)
-
-    result = zeros(method.outputdim, method.outputdim)
-    for i=1:method.outputdim
-        for j=1:method.outputdim
-            result[i,j] = sum(@views transformedpoints[i,j,:])
-        end
-    end
-
-    return result   
-end
-
-
 
 """An alias for the [`GenUnscented`](@ref) approximation method."""
 const GenUT = GenUnscented
@@ -129,7 +24,7 @@ const GenUT = GenUnscented
 """An alias for the [`GenUnscented`](@ref) approximation method."""
 const GenUnscentedTransform = GenUnscented
 
-function mul_A_B_At!(cache::GenUnscentedCache, A, B)
+function mul_A_B_At!(cache::ApproximationCache, A, B)
     AB = getcache(cache, (:mul_A_B_At!_AB, (size(A, 1), size(B, 2))))
     ABAt = getcache(cache, (:mul_A_B_At!_ABAt, (size(AB, 1), size(A, 1))))
     mul!(AB, A, B)
@@ -143,7 +38,7 @@ function copy_and_svd!(A, AC, f)
     f(AC)
 end
 
-function prepare_cache!(cache::GenUnscentedCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector) 
+function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector) 
     Vsvd = getcache(cache, (:Vsvd, size(V)))
     Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
     f  = svd_functor_divconquer(size(V, 1),size(V, 1),Float64)
@@ -180,7 +75,7 @@ function prepare_cache!(cache::GenUnscentedCache, V::AbstractMatrix, S::Abstract
     return nothing
 end
 
-function form_generalized_sigma_points!(cache::GenUnscentedCache, m::AbstractVector)
+function form_generalized_sigma_points!(cache::ApproximationCache, m::AbstractVector)
     d = length(m)
     weights = getcache(cache, (:weights, 2d + 1)) 
     points  = getcache(cache, (:points, (d, 2d + 1)))

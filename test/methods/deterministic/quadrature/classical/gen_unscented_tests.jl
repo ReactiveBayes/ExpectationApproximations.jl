@@ -22,7 +22,7 @@
 
     @testset "GenUnscented: Check kurtosis and skewness of Normal" begin
 
-        dist = NormalMeanVariance(10randn(),5rand())
+        dist = NormalMeanVariance(10.0, 3.0)
         mdist = mean(dist)
         vdist = _cov(dist)
         sdist = _skewness(dist)

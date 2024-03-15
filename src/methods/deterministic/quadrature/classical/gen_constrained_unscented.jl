@@ -21,7 +21,7 @@ struct GenConstrainedUnscented{T <: FromTo, T1,T2, R} <: AbstractApproximationMe
     inputdim::Int
     outputdim::Int
     θ::R
-    cache::GenUnscentedCache
+    cache::ApproximationCache
 end
 
 function GenConstrainedUnscented{T}(lb::T1, ub::T2, id::Int, od::Int, θ::R = DEFAULT_Θ)  where {T <: FromTo, T1,T2, R}
@@ -30,7 +30,7 @@ function GenConstrainedUnscented{T}(lb::T1, ub::T2, id::Int, od::Int, θ::R = DE
     @assert all(map(d -> all(first(d) .< getindex(d,2)), zip(lb,ub)))  "Upper bound elements $(ub) should be larger than lower bound elements $(lb) "
     @assert 0 < θ < 1 "Free parameter θ=$(θ) should be in between 0 and 1"
   
-    return GenConstrainedUnscented{T, T1, T2, R}(lb, ub, id, od, θ, GenUnscentedCache())
+    return GenConstrainedUnscented{T, T1, T2, R}(lb, ub, id, od, θ, ApproximationCache())
 end
 
 GenConstrainedUnscented(lb::T1,ub::T2,θ::R = DEFAULT_Θ) where {T1, T2, R} = GenConstrainedUnscented{FromTo(Univariate,Univariate)}(lb,ub,1,1, θ)
@@ -98,7 +98,7 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, 
 end
 
 #Multivariate sigma points and weights
-function form_generalized_constrained_sigma_points!(cache::GenUnscentedCache, m::AbstractVector, lb::T1, ub::T2, θ::R = DEFAULT_Θ) where {T1, T2, R}
+function form_generalized_constrained_sigma_points!(cache::ApproximationCache, m::AbstractVector, lb::T1, ub::T2, θ::R = DEFAULT_Θ) where {T1, T2, R}
     dim = length(m)
     form_generalized_sigma_points!(cache, m)
 

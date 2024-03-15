@@ -90,3 +90,9 @@ _kurtosis(dist::UnivariateDistribution) = kurtosis(dist, false)
 _skewness(ef::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = _skewness(convert(Distribution, ef))
 _kurtosis(ef::ExponentialFamilyDistribution{T}) where {T <: UnivariateDistribution} = _kurtosis(convert(Distribution, ef))
 
+struct FromTo{Tin <: VariateForm, Tout<:VariateForm} end
+
+FromTo(Tin::Type{T1}, Tout::Type{T2}) where {T1 <:VariateForm, T2<:VariateForm} = FromTo{Tin, Tout}
+
+getinputvariate(FT::Type{T}) where {T <: FromTo} = first(FT.parameters)
+getoutputvariate(FT::Type{T}) where {T <: FromTo} = last(FT.parameters)
