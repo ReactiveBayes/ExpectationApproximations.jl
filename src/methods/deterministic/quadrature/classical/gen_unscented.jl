@@ -4,7 +4,11 @@ using  KWLinalg,TensorCore
 import FillArrays: Eye, Zeros
 
 """
-The `GenUnscented` structure defines the approximation method of Generalized Unscented Transform. 
+The `GenUnscented` structure defines the approximation method of Generalized Unscented Transform.
+# Arguments
+- `inputdim`: Dimension of inputs. Tuple is not allowed #1
+- `outputdim`: Dimensions of outputs. Should be a tuple. i.e outputdim = (2,) or (3,4) #2
+- `cache`: cache holds all temporary variables #3
 """
 struct GenUnscented{T <: FromTo} <: AbstractApproximationMethod 
     inputdim :: Int

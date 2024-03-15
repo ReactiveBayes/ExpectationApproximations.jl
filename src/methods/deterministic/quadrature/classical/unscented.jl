@@ -50,13 +50,13 @@ The `Unscented` structure with default parameters can be constructed as `Unscent
 
 struct Unscented{T <: FromTo} <: AbstractApproximationMethod 
     inputdim :: Int
-    outputdim :: Int
+    outputdim :: Tuple
     parameters :: UnscentedParameters
     cache :: ApproximationCache
 end
 
-Unscented{T}(id::Int,od::Int) where {T <: FromTo}  = Unscented{T}(id,od, UnscentedParameters(id), ApproximationCache())
-Unscented() = Unscented{FromTo(Univariate, Univariate)}(1,1)
+Unscented{T}(id::Int,od::Tuple) where {T <: FromTo}  = Unscented{T}(id, od, UnscentedParameters(id), ApproximationCache())
+Unscented() = Unscented{FromTo(Univariate, Univariate)}(1,(1,))
 
 """An alias for the [`Unscented`](@ref) approximation method."""
 const UT = Unscented
@@ -95,11 +95,24 @@ function sigma_points_weights!(method::Unscented, m::Real, V::Real)
 
     l = sqrt((1 + lambda) * V)
 
-    sigma_points = (m, m + l, m - l)
-    weights_m    = (lambda / (1 + lambda), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
-    weights_c    = (weights_m[1] + (1 - alpha^2 + beta), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
+    weights = getweights(method)
+    points  = getpoints(method)
 
-    return (sigma_points, weights_m, weights_c)
+    @views begin
+        points[1,1] = m
+        points[1,2] = m + l
+        points[1,3] = m - l
+        weights[1] = lambda / (1 + lambda)
+        weights[2] = 1 / (2 * (1 + lambda))
+        weights[3] = 1 / (2 * (1 + lambda))
+    end
+
+    # sigma_points = (m, m + l, m - l)
+    # weights_m    = (lambda / (1 + lambda), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
+    # weights_c    = (weights_m[1] + (1 - alpha^2 + beta), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
+
+    # return (sigma_points, weights_m, weights_c)
+    return nothing
 end
 
 

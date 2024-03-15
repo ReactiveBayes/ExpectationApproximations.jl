@@ -8,12 +8,15 @@ The `GenConstrainedUnscented` structure defines the approximation method of Gene
 # Arguments
 - `lb`: lower bound on the sigma points #1
 - `ub`: upper bound on the sigma points #2
+- `inputdim`: Dimension of inputs. Tuple is not allowed #3
+- `outputdim`: Dimensions of outputs. Should be a tuple. i.e outputdim = (2,) or (3,4) #4
+- `θ`: internal parameter controlling resampling of sigma points. Between 0 and 1 #5
+- `cache`: cache holds all temporary variables #6
 lb = (1,) will imply univariate 
 ub = (3,)
 lb = ([2,1], 3, 4) will imply first variable is 2 two dimensional, 2nd and 3rd variable are univariate
 ub = ([3,5], 5, 8)
 
-The `GenConstrainedUnscented` structure with default parameters can be constructed as `GenConstrainedUnscented()`.
 """
 struct GenConstrainedUnscented{T <: FromTo, T1,T2, R} <: AbstractApproximationMethod
     lb::T1
