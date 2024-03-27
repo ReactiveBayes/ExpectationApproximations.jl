@@ -17,7 +17,7 @@ end
 
 function adjust_integrand(moment::MomentGenerator{T, 2}, f::F) where {T<:Multivariate, F}
 
-    return let μ = float(moment.μ)
+    return let μ = float(reduce(vcat, moment.μ))
         (x...) -> begin
             Σ = zeros(eltype(μ), length(μ), length(μ))
             ξ = f(x...) - μ

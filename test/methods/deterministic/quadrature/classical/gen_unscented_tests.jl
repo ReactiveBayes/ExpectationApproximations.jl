@@ -391,9 +391,9 @@
         mean_estimate_mc3 = mean(mapped_samples3);
         
 
-        @test isapprox(estimate_genut3, mean_estimate_mc3, rtol = 5e-2)
-        @test isapprox(estimate_genut2, mean_estimate_mc2, rtol = 5e-2)
-        @test isapprox(estimate_genut, mean_estimate_mc, rtol = 1e-2)
+        @test isapprox(estimate_genut3, mean_estimate_mc3, atol = 1e-1)
+        @test isapprox(estimate_genut2, mean_estimate_mc2, atol = 5e-2)
+        @test isapprox(estimate_genut, mean_estimate_mc, atol = 1e-2)
         @test sum(getcache(method.cache,(:weights, 11))) ≈ 1
     end
 

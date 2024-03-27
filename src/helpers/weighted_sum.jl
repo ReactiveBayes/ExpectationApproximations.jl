@@ -11,8 +11,7 @@ end
 
 function weighted_sum(::Type{FromTo{Tin, Tout}},method, points, weights, transformedpoints, f::F, ds) where {F, Tout <:Multivariate, Tin<:Univariate}
     isnothing(ds) ? map!((x,y) -> lmul!(y, f(x)), eachcol(transformedpoints), points, weights) :  map!((x,y) -> lmul!(y, f(__splitjoin(x, ds)...)), eachcol(transformedpoints), points, weights)
-    
-    result = zeros(first(method.outputdim))
+    result = zeros( first(method.outputdim))
     for elem = 1:first(method.outputdim)
         result[elem] = sum(@views transformedpoints[elem, :])
     end

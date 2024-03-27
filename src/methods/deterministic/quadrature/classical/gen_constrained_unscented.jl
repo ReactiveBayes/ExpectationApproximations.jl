@@ -18,25 +18,25 @@ lb = ([2,1], 3, 4) will imply first variable is 2 two dimensional, 2nd and 3rd v
 ub = ([3,5], 5, 8)
 
 """
-struct GenConstrainedUnscented{T <: FromTo, T1,T2, R} <: AbstractApproximationMethod
+struct GenConstrainedUnscented{T <: FromTo, T1, T2,I, O, R} <: AbstractApproximationMethod
     lb::T1
     ub::T2
-    inputdim::Int
-    outputdim::Tuple
+    inputdim::I
+    outputdim::O
     θ::R
     cache::ApproximationCache
 end
 
-function GenConstrainedUnscented{T}(lb::T1, ub::T2, id::Int, od::Tuple, θ::R = DEFAULT_Θ)  where {T <: FromTo, T1,T2, R}
+function GenConstrainedUnscented{T}(lb::T1, ub::T2, id::I, od::O, θ::R = DEFAULT_Θ)  where {T <: FromTo, T1,T2,I,O, R}
     @assert size.(lb) == size.(ub) "Upper bound $(ub) and lower bound $(lb) are not of same size"
     @assert sum(length.(lb)) == id "Sum of the length of upper bound $(ub) and lower bound $(lb) elemets should add up to inputdim"
     @assert all(map(d -> all(first(d) .< getindex(d,2)), zip(lb,ub)))  "Upper bound elements $(ub) should be larger than lower bound elements $(lb) "
     @assert 0 < θ < 1 "Free parameter θ=$(θ) should be in between 0 and 1"
   
-    return GenConstrainedUnscented{T, T1, T2, R}(lb, ub, id, od, θ, ApproximationCache())
+    return GenConstrainedUnscented{T, T1, T2, I, O, R}(lb, ub, id, od, θ, ApproximationCache())
 end
 
-GenConstrainedUnscented(lb::T1,ub::T2,θ::R = DEFAULT_Θ) where {T1, T2, R} = GenConstrainedUnscented{FromTo(Univariate,Univariate)}(lb,ub,1,(1,), θ)
+GenConstrainedUnscented(lb::T1,ub::T2,θ::R = DEFAULT_Θ) where {T1, T2, R} = GenConstrainedUnscented{FromTo(Univariate,Univariate)}(lb,ub,1,1, θ)
 
 """An alias for the [`GenConstrainedUnscented`](@ref) approximation method."""
 const GenCUT = GenConstrainedUnscented
@@ -250,12 +250,20 @@ function unscented_statistics(method::GenConstrainedUnscented, m, V, S, K, f::F,
 end
 
 function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate}
+    T = FromTo(Tin, Matrixvariate)
+    method2 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.outputdim),first(method.outputdim)))
+    
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
-    Vresult = approximate_expectation(FromTo(Tin, Matrixvariate), GenConstrainedUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.outputdim),first(method.outputdim))), m, V, S, K, adjust_integrand(MomentGenerator(Tin, Val(2), mresult), f), Val(false)) 
+    Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tin, Val(2), mresult), f), Val(false)) 
     Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f), Val(true)) 
     Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f), Val(true)) 
 
-    Cresult = C ? approximate_expectation(FT, method, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(true)) : nothing
+    if C
+        method3 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.inputdim),first(method.outputdim)))
+        Cresult = approximate_expectation(T, method3, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false))
+    else
+        Cresult = nothing
+    end
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
@@ -264,8 +272,12 @@ function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstraine
     Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f), Val(true)) 
     Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f), Val(true)) 
     Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f), Val(true)) 
-
-    Cresult = C ? approximate_expectation(FT, method, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(true)) : nothing
+    if C
+        method2 = GenUnscented{FromTo(Tin, Tout)}(method.inputdim, (first(method.inputdim), first(method.outputdim)))
+        Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false))
+    else
+        Cresult = nothing
+    end
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
