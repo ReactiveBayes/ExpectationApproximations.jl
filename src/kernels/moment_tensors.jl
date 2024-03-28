@@ -11,18 +11,31 @@ MomentGenerator(::Type{T}, ::Val{N}, μ::M) where {T, N, M} = MomentGenerator{T,
 
 function adjust_integrand(moment::MomentGenerator{T, N}, f::F) where {N, T<:Univariate, F}
     return let μ = float(moment.μ)
-        (x) -> (f(x) - μ)^N 
+        (x...) -> (f(x...) - μ)^N 
     end
 end
 
 function adjust_integrand(moment::MomentGenerator{T, 2}, f::F) where {T<:Multivariate, F}
-
-    return let μ = float(reduce(vcat, moment.μ))
+    return let μ = float(moment.μ)
         (x...) -> begin
             Σ = zeros(eltype(μ), length(μ), length(μ))
             ξ = f(x...) - μ
             @tensor begin
                 Σ[i,j] = ξ[i]*ξ[j]
+            end
+            return Σ
+        end
+    end
+end
+
+
+function adjust_integrand(moment::MomentGenerator{T, 3}, f::F) where {T<:Multivariate, F}
+    return let μ = float(moment.μ)
+        (x...) -> begin
+            Σ = zeros(eltype(μ), length(μ), length(μ), length(μ))
+            ξ = f(x...) - μ
+            @tensor begin
+                Σ[i,j,k] = ξ[i]*ξ[j]*ξ[k]
             end
             return Σ
         end

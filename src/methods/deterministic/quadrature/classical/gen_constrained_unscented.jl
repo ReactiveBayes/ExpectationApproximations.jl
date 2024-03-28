@@ -254,7 +254,7 @@ function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstraine
     method2 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.outputdim),first(method.outputdim)))
     
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
-    Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tin, Val(2), mresult), f), Val(false)) 
+    Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f), Val(false)) 
     Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f), Val(true)) 
     Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f), Val(true)) 
 
@@ -273,7 +273,8 @@ function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstraine
     Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f), Val(true)) 
     Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f), Val(true)) 
     if C
-        method2 = GenUnscented{FromTo(Tin, Tout)}(method.inputdim, (first(method.inputdim), first(method.outputdim)))
+        T = FromTo(Tin, Tin)
+        method2 = GenUnscented{T}(method.inputdim, method.inputdim)
         Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false))
     else
         Cresult = nothing

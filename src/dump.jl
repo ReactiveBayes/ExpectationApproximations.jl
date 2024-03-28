@@ -22,7 +22,7 @@ brtol = 1e-2
 @code_warntype GenUnscented{FromTo(Univariate, Multivariate)}(1,4)
 method = GenUnscented{FromTo(Univariate, Multivariate)}(1,4)
 g(x) = [x^2, x^3, x^20, x^8]
-ExpectationApproximations.approximate_expectation(method,dist,g)
+ExpectationApproximations.unscented_statistics(method,dist,g, Val(true))
 ExpectationApproximations.getcache(method.cache, (:weights, 3))
 
 
@@ -154,3 +154,26 @@ weights = ExpectationApproximations.getWc(method)
 points = ExpectationApproximations.getpoints(method)
 tp = map((x,y) -> x.^2, eachcol(points), weights)
 sum(map((x,y) -> y*(x - [2,2])*(x - [2,2])', tp, weights))
+
+
+
+mg = MomentGenerator(Multivariate, Val(2), [3.0, 1.0])
+f = (x) -> x.^3
+@code_warntype ExpectationApproximations.adjust_integrand(mg, f)
+
+
+
+dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,diagm(ones(3))))), MvNormalMeanCovariance(randn(2),diagm(rand(2))))
+method = Unscented{FromTo(Multivariate, Univariate)}(5,1)
+g(x,y) =  x'*x + y'*y
+estimate_genut = ExpectationApproximations.unscented_statistics(method,dist,g,Val(true))
+
+
+@benchmark ExpectationApproximations.unscented_statistics(method,dist,g, Val(true))
+@code_warntype ExpectationApproximations.unscented_statistics(method,dist,g, Val(true))
+ExpectationApproximations.unscented_statistics(method,dist,g, Val(true))
+
+
+method = Unscented{FromTo(Univariate,Univariate)}(1,1)
+sigma_points_weights!(method, 1.5, 1,1,1)
+ExpectationApproximations.unscented_statistics(method, Gamma(0.1, 0.1), x -> x^3, Val(true))
