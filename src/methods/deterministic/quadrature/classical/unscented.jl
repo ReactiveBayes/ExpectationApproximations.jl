@@ -140,21 +140,21 @@ end
 
 unscented_statistics(method::Unscented, q, f::F) where {F} = unscented_statistics(first(typeof(method).parameters), method, q, f, Val(false))
 unscented_statistics(method::Unscented, q, f::F, ::Val{C}) where {F, C} = unscented_statistics(first(typeof(method).parameters), method, q, f, Val(C))
-unscented_statistics(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, map(mean, q), map(_cov, q), f, Val(C))
-unscented_statistics(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, mean(q), _cov(q), f, Val(C))
-unscented_statistics(method::Unscented, m, V, f::F) where {F} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(false))
-unscented_statistics(method::Unscented, m, V, f::F, ::Val{C}) where {F, C} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(C))
+unscented_statistics(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, map(mean, q), map(_cov, q), f, Val(C), Val(true))
+unscented_statistics(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, mean(q), _cov(q), f, Val(C),Val(false))
+unscented_statistics(method::Unscented, m, V, f::F,::Val{Tu}) where {F,Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(false), Val(Tu))
+unscented_statistics(method::Unscented, m, V, f::F, ::Val{C},::Val{Tu}) where {F, C,Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(C), Val(Tu))
 
 
-function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate}
+function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
     T = FromTo(Tin, Matrixvariate)
     method2 = Unscented{T}(method.inputdim,(first(method.outputdim),first(method.outputdim)), method.parameters)
 
     mresult = approximate_expectation(FT, method, m, V, f, Val(false))
-    Vresult = approximate_expectation(T, method2, m, V, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f), Val(false); covariance_weights = true) 
+    Vresult = approximate_expectation(T, method2, m, V, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false); covariance_weights = true) 
     if C
         method3 = Unscented{T}(method.inputdim,(first(method.inputdim),first(method.outputdim)), method.parameters)
-        Cresult = approximate_expectation(T, method3, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false); covariance_weights = true)
+        Cresult = approximate_expectation(T, method3, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat,m)), f, Val(Tu)), Val(false); covariance_weights = true)
     else
         Cresult = nothing
     end
@@ -162,13 +162,13 @@ function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m,
     return mresult, Vresult, Cresult
 end
 
-function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate}
+function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, f, Val(false))
-    Vresult = approximate_expectation(FT, method, m, V, adjust_integrand(MomentGenerator(Val(2), mresult), f), Val(true); covariance_weights = true) 
+    Vresult = approximate_expectation(FT, method, m, V, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true); covariance_weights = true) 
     if C
         T = FromTo(Tin, Tin)
         method2 = Unscented{T}(method.inputdim, method.inputdim, method.parameters)
-        Cresult = approximate_expectation(T, method2, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false); covariance_weights = true)
+        Cresult = approximate_expectation(T, method2, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat,m)), f, Val(Tu)), Val(false); covariance_weights = true)
     else
         Cresult = nothing
     end

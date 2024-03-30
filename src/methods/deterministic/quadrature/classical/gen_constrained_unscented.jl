@@ -224,7 +224,7 @@ end
 
 function unscented_statistics(method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {F, C}
     T = first(typeof(method).parameters)
-    return unscented_statistics(T, method, q, f, Val(C))
+    return unscented_statistics(T, method, q, f, Val(C), Val(true))
 end
 
 function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo}
@@ -232,50 +232,50 @@ function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q::T
     V = map(_cov, q)
     S = map(_skewness, q)
     K = map(_kurtosis, q)
-    return unscented_statistics(FT, method, m, V, S, K, f, Val(C))
+    return unscented_statistics(FT, method, m, V, S, K, f, Val(C), Val(false))
 end
 
 function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo}
-    return unscented_statistics(FT, method, mean(q), _cov(q), _skewness(q), _kurtosis(q), f, Val(C))
+    return unscented_statistics(FT, method, mean(q), _cov(q), _skewness(q), _kurtosis(q), f, Val(C), Val(false))
 end
 
-function unscented_statistics(method::GenConstrainedUnscented, m, V, S, K, f::F) where {F}
+function unscented_statistics(method::GenConstrainedUnscented, m, V, S, K, f::F,::Val{Tu}) where {F, Tu}
     T = first(typeof(method).parameters)
-    return unscented_statistics(T, method, m, V, S, K, f, Val(false))
+    return unscented_statistics(T, method, m, V, S, K, f, Val(false), Val(Tu))
 end
 
-function unscented_statistics(method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}) where {F, C}
+function unscented_statistics(method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tu}
     T = first(typeof(method).parameters)
-    return unscented_statistics(T, method, m, V, S, K, f, Val(C))
+    return unscented_statistics(T, method, m, V, S, K, f, Val(C), Val(Tu))
 end
 
-function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate}
+function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
     T = FromTo(Tin, Matrixvariate)
     method2 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.outputdim),first(method.outputdim)))
     
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
-    Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f), Val(false)) 
-    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f), Val(true)) 
-    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f), Val(true)) 
+    Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false)) 
+    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true)) 
+    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true)) 
 
     if C
         method3 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim,(first(method.inputdim),first(method.outputdim)))
-        Cresult = approximate_expectation(T, method3, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false))
+        Cresult = approximate_expectation(T, method3, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat,m)), f, Val(Tu)), Val(false))
     else
         Cresult = nothing
     end
     return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
-function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate}
+function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
-    Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f), Val(true)) 
-    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f), Val(true)) 
-    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f), Val(true)) 
+    Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true)) 
+    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true)) 
+    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true)) 
     if C
         T = FromTo(Tin, Tin)
         method2 = GenUnscented{T}(method.inputdim, method.inputdim)
-        Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, m), f), Val(false))
+        Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat,m)), f, Val(Tu)), Val(false))
     else
         Cresult = nothing
     end

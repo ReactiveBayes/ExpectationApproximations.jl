@@ -8,25 +8,25 @@
         od = (1, )
         T = FromTo(Univariate, Univariate)
         unscented_parameters = UnscentedParameters(2, 3, 4)
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), 0.0, 1.0,(x) -> x, Val(true))) .≈ (0.0, 1.0, 1.0))
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), 0.0, 1.0,(x) -> x^2, Val(true))) .≈ (1.0, 2.0, 0.0))
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), -3.0, 1.0, (x) -> x^2, Val(true))) .≈ (10.0, 38.0, -6.0))
-        @test all(isapprox.(@inferred(unscented_statistics(Unscented{T}(id, od), 0.0, 1.0, (x) -> sin(x) + cos(x), Val(true))), (0.5, 1.5, 1.0); atol = 1e-6))
-        @test all(isapprox.(@inferred(unscented_statistics(Unscented{T}(id, od), -3.0, 3.0, (x) -> sin(x) + cos(x), Val(true))), (0.56555582, 7.91911820, -2.54661619); atol = 1e-6))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), 0.0, 1.0,(x) -> x, Val(true),Val(false))) .≈ (0.0, 1.0, 1.0))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), 0.0, 1.0,(x) -> x^2, Val(true),Val(false))) .≈ (1.0, 2.0, 0.0))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), -3.0, 1.0, (x) -> x^2, Val(true),Val(false))) .≈ (10.0, 38.0, -6.0))
+        @test all(isapprox.(@inferred(unscented_statistics(Unscented{T}(id, od), 0.0, 1.0, (x) -> sin(x) + cos(x), Val(true),Val(false))), (0.5, 1.5, 1.0); atol = 1e-6))
+        @test all(isapprox.(@inferred(unscented_statistics(Unscented{T}(id, od), -3.0, 3.0, (x) -> sin(x) + cos(x), Val(true),Val(false))), (0.56555582, 7.91911820, -2.54661619); atol = 1e-6))
 
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), 0.0, 3.0,(x) -> x, Val(true))) .≈ (0.0, 3.0, 3.0))
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), -1.0, 1.0 , (x) -> x^2, Val(true))) .≈ (2.0, 23.0, -2.0))
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), 0.0, 3.0, (x) -> x^2, Val(true))) .≈ (3.0, 171.0, 0.0))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), 0.0, 3.0,(x) -> x, Val(true), Val(false))) .≈ (0.0, 3.0, 3.0))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), -1.0, 1.0 , (x) -> x^2, Val(true), Val(false))) .≈ (2.0, 23.0, -2.0))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), 0.0, 3.0, (x) -> x^2, Val(true), Val(false))) .≈ (3.0, 171.0, 0.0))
         @test all(
             isapprox.(
-                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), 0.0, 1.0, (x) -> sin(x) + cos(x), Val(true))),
+                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), 0.0, 1.0, (x) -> sin(x) + cos(x), Val(true), Val(false))),
                 (0.9381025804009704, 0.11996354864504076, -0.21718431835123952);
                 atol = 1e-6
             )
         )
         @test all(
             isapprox.(
-                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), -3.0, 3.0, (x) -> sin(x) + cos(x), Val(true))),
+                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), -3.0, 3.0, (x) -> sin(x) + cos(x), Val(true),Val(false))),
                 (-1.0806538600139532, 0.08398591776750242, -0.32685086597452473);
                 atol = 1e-6
             )
@@ -39,15 +39,15 @@
         T = FromTo(Multivariate, Multivariate)
         unscented_parameters = UnscentedParameters(2, 3, 4)
         unscented_parameters2 = UnscentedParameters(0.5, 0.1, 0.2)
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), [0.0, 0.0], [1.0 0.0; 0.0 1.0], (x) -> x, Val(true))) .≈ ([0.0, 0.0], [1.0 0.0; 0.0 1.0], [1.0 0.0; 0.0 1.0]))
-        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), [2.0, -3.0], [4.0 -1.0; -1.0 2.0], (x) -> x, Val(true))) .≈ ([2.0, -3.0], [4.0 -1.0; -1.0 2.0], [4.0 -1.0; -1.0 2.0]))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), [0.0, 0.0], [1.0 0.0; 0.0 1.0], (x) -> x, Val(true), Val(false))) .≈ ([0.0, 0.0], [1.0 0.0; 0.0 1.0], [1.0 0.0; 0.0 1.0]))
+        @test all(@inferred(unscented_statistics(Unscented{T}(id, od), [2.0, -3.0], [4.0 -1.0; -1.0 2.0], (x) -> x, Val(true), Val(false))) .≈ ([2.0, -3.0], [4.0 -1.0; -1.0 2.0], [4.0 -1.0; -1.0 2.0]))
 
         @test all(
-            isapprox.(@inferred(unscented_statistics(Unscented{T}(id, od), [1.0, -1.0], [1.0 0.0; 0.0 1.0],(x) -> x .^ 2, Val(true))), ([2.0, 2.0], [6.0 2.0; 2.0 6.0], [2.0 0; 0.0 -2.0]), atol = 1e-4)
+            isapprox.(@inferred(unscented_statistics(Unscented{T}(id, od), [1.0, -1.0], [1.0 0.0; 0.0 1.0],(x) -> x .^ 2, Val(true), Val(false))), ([2.0, 2.0], [6.0 2.0; 2.0 6.0], [2.0 0; 0.0 -2.0]), atol = 1e-4)
         )
         @test all(
             isapprox.(
-                @inferred(unscented_statistics(Unscented{T}(id, od), [2.0, -3.0], [4.0 -1.0; -1.0 2.0],(x) -> x .^ 2, Val(true))),
+                @inferred(unscented_statistics(Unscented{T}(id, od), [2.0, -3.0], [4.0 -1.0; -1.0 2.0],(x) -> x .^ 2, Val(true), Val(false))),
                 ([8.0, 11.0], [96.0 40.0; 40.0 80.0], [16.0 6.0; -4.0 -12.0]),
                 atol = 1e-4
             )
@@ -55,24 +55,24 @@
 
         # Compared against the ForneyLab implementation
         @test all(
-            @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters),[0.0, 0.0],[1.0 0.0; 0.0 1.0],(x) -> x, Val(true))) .≈
+            @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters),[0.0, 0.0],[1.0 0.0; 0.0 1.0],(x) -> x, Val(true), Val(false))) .≈
             ([0.0, 0.0], [1.0 0.0; 0.0 1.0], [1.0 0.0; 0.0 1.0])
         )
         @test all(
-            @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), [2.0, -3.0],[4.0 -1.0; -1.0 2.0],(x) -> x, Val(true))) .≈
+            @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), [2.0, -3.0],[4.0 -1.0; -1.0 2.0],(x) -> x, Val(true), Val(false))) .≈
             ([2.0, -3.0], [4.0 -1.0; -1.0 2.0], [4.0 -1.0; -1.0 2.0])
         )
 
         @test all(
             isapprox.(
-                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), [1.0, -1.0], [1.0 0.0; 0.0 1.0], (x) -> x .^ 2, Val(true) )),
+                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters), [1.0, -1.0], [1.0 0.0; 0.0 1.0], (x) -> x .^ 2, Val(true), Val(false))),
                 ([2.0, 2.0], [27.0 -1.0; -1.0 27.0], [2.0 0; 0.0 -2.0]),
                 atol = 1e-4
             )
         )
         @test all(
             isapprox.(
-                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters2),[2.0, -3.0],[4.0 -1.0; -1.0 2.0], (x) -> x .+ 1, Val(true))),
+                @inferred(unscented_statistics(Unscented{T}(id, od, unscented_parameters2),[2.0, -3.0],[4.0 -1.0; -1.0 2.0], (x) -> x .+ 1, Val(true), Val(false))),
                 ([3.0, -2.0], [4.0 -1.0; -1.0 2.0], [4.0 -1.0; -1.0 2.0]),
                 atol = 1e-4
             )

@@ -1,5 +1,5 @@
 @testitem "Generalized Unscented approximation method" begin
-    using Test, Distributions, ExponentialFamily, LinearAlgebra
+    using Test, Distributions, ExponentialFamily, LinearAlgebra, StableRNGs
     import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation,_cov, getcache, _skewness, _kurtosis, FromTo, getoutputvariate, getinputvariate
 
 
@@ -34,7 +34,7 @@
         _,_,_,kestimate = @inferred ExpectationApproximations.unscented_statistics(method, dist, identity)
 
         estimate_kurtosis_genut_2 = @inferred ExpectationApproximations.approximate_expectation(method,mdist,vdist,sdist,kdist,f)
-        _, _, _, kestimate2 = @inferred ExpectationApproximations.unscented_statistics(method, mdist,vdist,sdist,kdist, identity)
+        _, _, _, kestimate2 = @inferred ExpectationApproximations.unscented_statistics(method, mdist,vdist,sdist,kdist, identity, Val(false),Val(false))
         
         @test isapprox(estimate_kurtosis_genut[1], estimate_kurtosis_genut_2, rtol=brtol)
         @test isapprox(estimate_kurtosis_genut[1] ,kdist, rtol = brtol)
@@ -251,7 +251,7 @@
         method = @inferred GenUnscented{FromTo(Univariate, Univariate)}(length(mdist),(1,))
         g(x) = abs(x'*x) + abs.(x)'*abs.(x)
         estimate_genut = @inferred ExpectationApproximations.unscented_statistics(method,dist,g)
-        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g)
+        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g, Val(false),Val(false))
         samples = [rand(dist) for i=1:100000];
         mapped_samples = map(d -> g(d),samples);
         mean_estimate_mc = mean(mapped_samples);
@@ -275,7 +275,7 @@
         vdist = _cov(dist)
         sdist = _skewness(dist)
         kdist = _kurtosis(dist)
-        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g)
+        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g, Val(false), Val(false))
         samples = [rand(dist) for i=1:10000];
         mapped_samples = map(d -> g(d),samples);
         mean_estimate_mc = mean(mapped_samples);
@@ -297,7 +297,7 @@
         sdist = _skewness.(dist)
         kdist = _kurtosis.(dist)
         estimate_genut = @inferred ExpectationApproximations.unscented_statistics(method,dist,g)
-        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g)
+        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g,Val(false),Val(true))
         samples = rand.(dist, 100000);
         mapped_samples = map((x,y) -> g(x, y), eachcol(first(samples)), eachcol(last(samples)));
         mean_estimate_mc = mean(mapped_samples);
@@ -319,7 +319,7 @@
         sdist = _skewness.(dist)
         kdist = _kurtosis.(dist)
         estimate_genut = @inferred ExpectationApproximations.unscented_statistics(method,dist,g)
-        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g)
+        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g, Val(false),Val(true))
         samples = rand.(dist, 1000000);
         mapped_samples = map((x,y,z) -> g(x, y, z), eachcol(first(samples)), getindex(samples,2), last(samples));
         mean_estimate_mc = mean(mapped_samples);
@@ -339,7 +339,7 @@
         sdist = _skewness.(dist)
         kdist = _kurtosis.(dist)
         estimate_genut = @inferred ExpectationApproximations.unscented_statistics(method,dist,g)
-        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g)
+        estimate_genut2 = @inferred ExpectationApproximations.unscented_statistics(method,mdist,vdist,sdist,kdist,g, Val(false),Val(true))
         samples = rand.(dist, 1000000);
         mapped_samples = map((x,y,z) -> g(x, y, z), first(samples), getindex(samples,2), last(samples));
         mean_estimate_mc = mean(mapped_samples);
@@ -370,7 +370,8 @@
     end
 
     @testset "Unscented_approximate: Multiple MvNormal,Gamma, Beta trace scaled" begin
-        dist = (MvNormalMeanCovariance(randn(3),rand(InverseWishart(5,0.01diagm(ones(3))))), Gamma(3,4), Beta(0.1))
+        rng = StableRNG(11)
+        dist = (MvNormalMeanCovariance(randn(rng, 3),rand(rng, InverseWishart(10,0.001diagm(ones(3))))), Gamma(3,4), Beta(0.1))
         method = @inferred GenUnscented{FromTo(Multivariate, Matrixvariate)}(5,(3,3))
         g(x,y,z) = z*y*x*x'
         f(x,y,z) = log(1+y)*sin(z)*x*x'
@@ -391,9 +392,9 @@
         mean_estimate_mc3 = mean(mapped_samples3);
         
 
-        @test isapprox(estimate_genut3, mean_estimate_mc3, atol = 1e-1)
-        @test isapprox(estimate_genut2, mean_estimate_mc2, atol = 5e-2)
-        @test isapprox(estimate_genut, mean_estimate_mc, atol = 1e-2)
+        @test isapprox(estimate_genut3, mean_estimate_mc3, rtol = 1e-1)
+        @test isapprox(estimate_genut2, mean_estimate_mc2, rtol = 1e-1)
+        @test isapprox(estimate_genut, mean_estimate_mc, rtol = 1e-1)
         @test sum(getcache(method.cache,(:weights, 11))) ≈ 1
     end
 

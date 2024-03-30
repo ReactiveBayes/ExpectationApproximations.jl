@@ -51,8 +51,8 @@ m = ExpectationApproximations.approximate_expectation(method,dist,g)
 method.cache
 ExpectationApproximations.getcache(method.cache, (:weights, 41))
 samples = rand(dist, 1000000)
-trans_samples = g.(samples)
-msamples = mean(trans_samples,dims=2)
+trans_samples = @benchmark g.(samples)
+msamples = @benchmark mean(trans_samples,dims=2)
 cov(trans_samples,dims=2)
 mean((trans_samples .- msamples).^4,dims=2)
 approximate_expectation(method, dist, ExpectationApproximations.adjust_integrand(DiagonalMomentGenerator(Val(3), mdist), g))
@@ -140,7 +140,7 @@ ExpectationApproximations.UnscentedExtra(2;alpha=1)
 
 method = Unscented{ExpectationApproximations.FromTo(Univariate, Univariate)}(2,(2, ), ExpectationApproximations.UnscentedParameters()) 
 
-sigma_points_weights!(method, [0.1,10] , diagm(ones(2)))
+@benchmark sigma_points_weights!(method, $[0.1,10] , $diagm(ones(2)))
 
 ExpectationApproximations.getpoints(method)
 id = 2
@@ -177,3 +177,19 @@ ExpectationApproximations.unscented_statistics(method,dist,g, Val(true))
 method = Unscented{FromTo(Univariate,Univariate)}(1,1)
 sigma_points_weights!(method, 1.5, 1,1,1)
 ExpectationApproximations.unscented_statistics(method, Gamma(0.1, 0.1), x -> x^3, Val(true))
+
+MomentGenerator(Multivariate, Val(3), [3.0, 1.0])
+f = (x) -> x.^3
+@code_warntype ExpectationApproximations.adjust_integrand(mg, f)
+
+
+function testg(args)
+    return +(args...)
+end
+
+@code_warntype testg(Real[ 1, 2.0 ])
+
+
+@code_warntype testg((1, 2.0))
+
+[-27.0 -9.0; -9.0 -3.0;;; -9.0 -3.0; -3.0 -1.0]
