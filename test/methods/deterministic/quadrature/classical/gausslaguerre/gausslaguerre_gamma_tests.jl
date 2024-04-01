@@ -56,8 +56,8 @@ end
         for f in ((x) -> pdf(d2, x), LogIntegrand((x) -> logpdf(d2, x)), d2)
             method = ClassicalQuadrature(GaussLaguerre(n), strategy)
             C      = approximate(Expectation(), method, d1, f)
-            m      = approximate(RawMoment(Val(1), C), method, d1, f)
-            v      = approximate(CentralMoment(Val(2), C, m), method, d1, f)
+            m      = approximate(MeasureAdjustedRawMomentGenerator(Val(1), C), method, d1, f)
+            v      = approximate(MeasureAdjustedMomentGenerator(Val(2), C, m), method, d1, f)
 
             # base rel tolerance 
             brtol = btol(strategy, n)

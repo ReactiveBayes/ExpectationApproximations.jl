@@ -26,8 +26,9 @@
         f = (x, y) -> [x, y ]
         adjustedf = @inferred adjust_integrand(mg, f)
 
-        # @test @inferred(adjustedf(0.0,0.0)) == [4.0 6.0; 6.0 9.0]    
-        # @test @inferred(adjustedf(1.0,0.0)) == [1, 3]*[1,3]'  
+        @test @inferred(adjustedf(0.0,0.0)) == [0.0 0.0; 0.0 0.0]   
+        @test @inferred(adjustedf(1.0,0.0)) == [-1.0 0.0; -3.0 0.0]  
+        @test @inferred(adjustedf(0.0,1.0)) == [0.0 -2.0; 0.0 -2.0] 
     end
 
 end

@@ -9,8 +9,8 @@ include("log.jl")
 include("approximate.jl")
 include("cache.jl")
 
-include("kernels/raw_moment.jl")
-include("kernels/central_moment.jl")
+include("kernels/measure_adjusted_raw_moment.jl")
+include("kernels/measure_adjusted_moment_tensors.jl")
 include("kernels/cross_covariance.jl")
 include("kernels/moment_tensors.jl")
 
