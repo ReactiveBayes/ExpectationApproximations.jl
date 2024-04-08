@@ -48,6 +48,10 @@ getlowerbound(approximation::GenConstrainedUnscented) = approximation.lb
 getupperbound(approximation::GenConstrainedUnscented) = approximation.ub
 getθ(approximation::GenConstrainedUnscented)          = approximation.θ
 
+
+getpoints(method::GenConstrainedUnscented) = getcache(method.cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+getweights(method::GenConstrainedUnscented) = getcache(method.cache, (:weights, 2method.inputdim+1))
+
 ## Univariate sigma points and weights
 function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, V::Real, S::Real, K::Real)
     L     = sqrt(V)
@@ -198,7 +202,7 @@ function approximate_expectation(FT::Type{T}, method::GenConstrainedUnscented, m
     !C ? sigma_points_weights!(method, m, V, S, K) : nothing
     points = getpoints(method)
     weights = getweights(method)
-    transformedpoints = gettransformedpoints(FT, method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
     return weighted_sum(FT, method, points, weights, transformedpoints, f, nothing)
 end
 
@@ -212,7 +216,7 @@ function approximate_expectation(FT::Type{T}, method::GenConstrainedUnscented, m
     end
     points = getpoints(method)
     weights = getweights(method)
-    transformedpoints = gettransformedpoints(FT, method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
 
     return weighted_sum(FT, method, points, weights, transformedpoints, f, size.(ms))
 end

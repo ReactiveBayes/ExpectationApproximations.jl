@@ -26,13 +26,11 @@ function getweightscacewithzeros(cache::ApproximationCache, label::Tuple{Symbol,
     return get!(() -> Zeros(label[2]), cache.cache_vectors, label)
 end
 
-getpoints(method::AbstractApproximationMethod) = getcache(method.cache,(:points, (method.inputdim, 2method.inputdim + 1)))
-getweights(method::AbstractApproximationMethod) = getcache(method.cache, (:weights, 2method.inputdim+1))
 
-function gettransformedpoints(::Type{FromTo{Tin, Tout}}, method::AbstractApproximationMethod) where {Tin, Tout}
-    gettransformedpoints(Tout, method.cache, method.inputdim, method.outputdim)
+function getunscentedtransformedpoints(::Type{FromTo{Tin, Tout}}, method::AbstractApproximationMethod) where {Tin, Tout}
+    getunscentedtransformedpoints(Tout, method.cache, method.inputdim, method.outputdim)
 end
 
-gettransformedpoints(::Type{T}, cache::ApproximationCache, id, _) where {T <: Univariate} = getcache(cache, (:transformedpoints, 2*id+1))
-gettransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Multivariate} = getcache(cache, (:transformedpoints, (first(od), 2*id+1)))
-gettransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Matrixvariate} = getcache(cache, (:transformedpoints, (first(od), last(od), 2*id+1)))
+getunscentedtransformedpoints(::Type{T}, cache::ApproximationCache, id, _) where {T <: Univariate} = getcache(cache, (:transformedpoints, 2*id+1))
+getunscentedtransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Multivariate} = getcache(cache, (:transformedpoints, (first(od), 2*id+1)))
+getunscentedtransformedpoints(::Type{T}, cache::ApproximationCache, id, od) where {T <: Matrixvariate} = getcache(cache, (:transformedpoints, (first(od), last(od), 2*id+1)))

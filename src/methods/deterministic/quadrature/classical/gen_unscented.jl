@@ -22,6 +22,9 @@ end
 
 GenUnscented() = GenUnscented{FromTo(Univariate, Univariate), Int, Int}(1,1)
 
+getpoints(method::GenUnscented) = getcache(method.cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+getweights(method::GenUnscented) = getcache(method.cache, (:weights, 2method.inputdim+1))
+
 """An alias for the [`GenUnscented`](@ref) approximation method."""
 const GenUT = GenUnscented
 
@@ -170,7 +173,7 @@ function approximate_expectation(FT::Type{T}, method::GenUnscented, m, V, S, K, 
     !C ? sigma_points_weights!(method, m, V, S, K) : nothing
     points = getpoints(method)
     weights = getweights(method)
-    transformedpoints = gettransformedpoints(FT, method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
     return weighted_sum(FT, method, points, weights, transformedpoints, f, nothing)
 end
 
@@ -184,7 +187,7 @@ function approximate_expectation(FT::Type{T}, method::GenUnscented, ms::Tuple, V
     end
     points = getpoints(method)
     weights = getweights(method)
-    transformedpoints = gettransformedpoints(FT, method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
     return weighted_sum(FT, method, points, weights, transformedpoints, f, size.(ms))
 end
 

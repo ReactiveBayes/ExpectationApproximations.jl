@@ -45,6 +45,9 @@ Unscented{T}(id::I,od::O, parameters::UnscentedParameters) where { T <: FromTo, 
 Unscented{T}(id::I,od::O) where {T <: FromTo, I, O}  = Unscented{T, I, O}(id, od, UnscentedParameters(), ApproximationCache(), UnscentedExtra(id))
 Unscented() = Unscented{FromTo(Univariate, Univariate)}(1, 1)
 
+getpoints(method::Unscented) = getcache(method.cache,(:points, (method.inputdim, 2method.inputdim + 1)))
+getweights(method::Unscented) = getcache(method.cache, (:weights, 2method.inputdim+1))
+
 """An alias for the [`Unscented`](@ref) approximation method."""
 const UT = Unscented
 
@@ -121,7 +124,7 @@ function approximate_expectation(FT::Type{T}, method::Unscented, m, V, f::F, ::V
     !C ? sigma_points_weights!(method, m, V) : nothing
     points = getpoints(method)
     weights = covariance_weights ?  getWc(method) : getWm(method)
-    transformedpoints = gettransformedpoints(FT, method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
     return weighted_sum(FT, method, points, weights, transformedpoints, f, nothing)
 end
 
@@ -133,7 +136,7 @@ function approximate_expectation(FT::Type{T}, method::Unscented, ms::Tuple, Vs::
     end
     points = getpoints(method)
     weights = covariance_weights ? getWc(method) : getWm(method)
-    transformedpoints = gettransformedpoints(FT, method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
 
     return weighted_sum(FT, method, points, weights, transformedpoints, f, size.(ms))
 end
