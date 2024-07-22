@@ -2,7 +2,7 @@ export GenConstrainedUnscented, GenCUT, GenConstrainedUnscentedTransform
 using BlockArrays, BlockDiagonals
 using KWLinalg, TensorCore
 
-const DEFAULT_Θ = 0.5
+const DEFAULT_resampling_parameter = 0.5
 """
 The `GenConstrainedUnscented` structure defines the approximation method of Generalized Constrained Unscented Transform.
 # Arguments
@@ -10,7 +10,7 @@ The `GenConstrainedUnscented` structure defines the approximation method of Gene
 - `ub`: upper bound on the sigma points #2
 - `inputdim`: Dimension of inputs. Tuple is not allowed #3
 - `outputdim`: Dimensions of outputs. Should be a tuple. i.e outputdim = (2,) or (3,4) #4
-- `θ`: internal parameter controlling resampling of sigma points. Between 0 and 1 #5
+- `resampling_parameter`: internal parameter controlling resampling of sigma points. Between 0 and 1 #5
 - `cache`: cache holds all temporary variables #6
 lb = (1,) will imply univariate 
 ub = (3,)
@@ -23,20 +23,20 @@ struct GenConstrainedUnscented{T <: FromTo, T1, T2, I, O, R} <: AbstractApproxim
     ub::T2
     inputdim::I
     outputdim::O
-    θ::R
+    resampling_parameter::R
     cache::ApproximationCache
 end
 
-function GenConstrainedUnscented{T}(lb::T1, ub::T2, id::I, od::O, θ::R = DEFAULT_Θ) where {T <: FromTo, T1, T2, I, O, R}
+function GenConstrainedUnscented{T}(lb::T1, ub::T2, id::I, od::O, resampling_parameter::R = DEFAULT_resampling_parameter) where {T <: FromTo, T1, T2, I, O, R}
     @assert size.(lb) == size.(ub) "Upper bound $(ub) and lower bound $(lb) are not of same size"
     @assert sum(length.(lb)) == id "Sum of the length of upper bound $(ub) and lower bound $(lb) elemets should add up to inputdim"
     @assert all(map(d -> all(first(d) .< getindex(d, 2)), zip(lb, ub))) "Upper bound elements $(ub) should be larger than lower bound elements $(lb) "
-    @assert 0 < θ < 1 "Free parameter θ=$(θ) should be in between 0 and 1"
+    @assert 0 < resampling_parameter < 1 "Free parameter resampling_parameter=$(resampling_parameter) should be in between 0 and 1"
 
-    return GenConstrainedUnscented{T, T1, T2, I, O, R}(lb, ub, id, od, θ, ApproximationCache())
+    return GenConstrainedUnscented{T, T1, T2, I, O, R}(lb, ub, id, od, resampling_parameter, ApproximationCache())
 end
 
-GenConstrainedUnscented(lb::T1, ub::T2, θ::R = DEFAULT_Θ) where {T1, T2, R} = GenConstrainedUnscented{FromTo(Univariate, Univariate)}(lb, ub, 1, 1, θ)
+GenConstrainedUnscented(lb::T1, ub::T2, resampling_parameter::R = DEFAULT_resampling_parameter) where {T1, T2, R} = GenConstrainedUnscented{FromTo(Univariate, Univariate)}(lb, ub, 1, 1, resampling_parameter)
 
 """An alias for the [`GenConstrainedUnscented`](@ref) approximation method."""
 const GenCUT = GenConstrainedUnscented
@@ -46,7 +46,7 @@ const GenConstrainedUnscentedTransform = GenConstrainedUnscented
 
 getlowerbound(approximation::GenConstrainedUnscented) = approximation.lb
 getupperbound(approximation::GenConstrainedUnscented) = approximation.ub
-getθ(approximation::GenConstrainedUnscented)          = approximation.θ
+getresampling_parameter(approximation::GenConstrainedUnscented)          = approximation.resampling_parameter
 
 getpoints(method::GenConstrainedUnscented) = getcache(method.cache, (:points, (method.inputdim, 2method.inputdim + 1)))
 getweights(method::GenConstrainedUnscented) = getcache(method.cache, (:weights, 2method.inputdim + 1))
@@ -62,7 +62,7 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, 
 
     lb = first(getlowerbound(approximation))
     ub = first(getupperbound(approximation))
-    θ  = getθ(approximation)
+    resampling_parameter  = getresampling_parameter(approximation)
 
     cache   = approximation.cache
     weights = getcache(cache, (:weights, 3))
@@ -76,8 +76,8 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, 
         weights[1] = 1 - weights[3] - weights[2]
     end
     ##lowerbound
-    u = @views points[1, 2] < lb ? θ * abs((m - lb) / L) : u
-    vnew = @views points[1, 3] < lb ? θ * abs((lb - m) / L) : v
+    u = @views points[1, 2] < lb ? resampling_parameter * abs((m - lb) / L) : u
+    vnew = @views points[1, 3] < lb ? resampling_parameter * abs((lb - m) / L) : v
     vnew = vnew == v ? u + S * invL3 : vnew
     @views begin
         points[1, 1] = m
@@ -85,8 +85,8 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, 
         points[1, 3] = m + vnew * L
     end
     ##upperbound
-    u = @views points[1, 2] > ub ? θ * abs((m - ub) / L) : u
-    vnew2 = @views points[1, 3] > ub ? θ * abs((ub - m) / L) : vnew
+    u = @views points[1, 2] > ub ? resampling_parameter * abs((m - ub) / L) : u
+    vnew2 = @views points[1, 3] > ub ? resampling_parameter * abs((ub - m) / L) : vnew
     vnew2 = vnew2 == vnew ? u + S * invL3 : vnew2
     @views begin
         points[1, 1] = m
@@ -104,7 +104,7 @@ function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, 
 end
 
 #Multivariate sigma points and weights
-function form_generalized_constrained_sigma_points!(cache::ApproximationCache, m::AbstractVector, lb::T1, ub::T2, θ::R = DEFAULT_Θ) where {T1, T2, R}
+function form_generalized_constrained_sigma_points!(cache::ApproximationCache, m::AbstractVector, lb::T1, ub::T2, resampling_parameter::R = DEFAULT_resampling_parameter) where {T1, T2, R}
     dim = length(m)
     form_generalized_sigma_points!(cache, m)
 
@@ -124,12 +124,12 @@ function form_generalized_constrained_sigma_points!(cache::ApproximationCache, m
     ## lower bound
     @inbounds for i in 1:dim
         @views u[i] = if any(map!((x, y) -> isless(x, y), comparator[1:dim], points[:, i + 1], lowerbound))
-            minimum(map!((x, y, z) -> θ * abs((x - y) / z), tmp, m, lowerbound, @views L[:, i]))
+            minimum(map!((x, y, z) -> resampling_parameter * abs((x - y) / z), tmp, m, lowerbound, @views L[:, i]))
         else
             u[i]
         end
         @views vnew[i] = if any(map!((x, y) -> isless(x, y), comparator[(dim + 1):end], points[:, dim + i + 1], lowerbound))
-            minimum(map!((x, y, z) -> θ * abs(x - y) / z, tmp, lowerbound, m, @views L[:, i]))
+            minimum(map!((x, y, z) -> resampling_parameter * abs(x - y) / z, tmp, lowerbound, m, @views L[:, i]))
         else
             v[i]
         end
@@ -145,12 +145,12 @@ function form_generalized_constrained_sigma_points!(cache::ApproximationCache, m
     ## upper bound
     @inbounds for i in 1:dim
         @views u[i] = if any(map!((x, y) -> x > y, comparator[1:dim], points[:, i + 1], upperbound))
-            minimum(map!((x, y, z) -> θ * abs((x - y) / z), tmp, m, upperbound, @views L[:, i]))
+            minimum(map!((x, y, z) -> resampling_parameter * abs((x - y) / z), tmp, m, upperbound, @views L[:, i]))
         else
             u[i]
         end
         @views vnew2[i] = if any(map!((x, y) -> x > y, comparator[(dim + 1):end], points[:, dim + i + 1], upperbound))
-            minimum(map!((x, y, z) -> θ * abs((y - x) / z), tmp, m, upperbound, @views L[:, i]))
+            minimum(map!((x, y, z) -> resampling_parameter * abs((y - x) / z), tmp, m, upperbound, @views L[:, i]))
         else
             vnew[i]
         end
@@ -174,7 +174,7 @@ end
 function sigma_points_weights!(approximation::GenConstrainedUnscented, m::AbstractVector, V::AbstractMatrix, S::AbstractVector, K::AbstractVector)
     gen_unscented_cache = approximation.cache
     prepare_cache!(gen_unscented_cache, V, S, K)
-    form_generalized_constrained_sigma_points!(gen_unscented_cache, m, getlowerbound(approximation), getupperbound(approximation), getθ(approximation))
+    form_generalized_constrained_sigma_points!(gen_unscented_cache, m, getlowerbound(approximation), getupperbound(approximation), getresampling_parameter(approximation))
 
     return nothing
 end
