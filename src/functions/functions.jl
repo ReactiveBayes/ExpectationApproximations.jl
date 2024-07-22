@@ -7,9 +7,8 @@ function inplace(f::Function)
     return (y, x...) -> begin
         y .= f(x...)
         return y
-    end   
+    end
 end
-
 
 """
     FunctionWithMemory{F <: Function, M}
@@ -17,7 +16,7 @@ end
 A function with memory.	Calling this function is equivalent to calling `f.f(x..., f.memory)`.
 """
 struct FunctionWithMemory{F <: Function, M} <: Function
-    f :: F
-    memory :: M
+    f::F
+    memory::M
 end
 (f::FunctionWithMemory)(x...) = f.f(x..., f.memory)

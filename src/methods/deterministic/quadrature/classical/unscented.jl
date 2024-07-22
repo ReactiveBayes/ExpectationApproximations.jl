@@ -23,30 +23,30 @@ end
 
 UnscentedExtra() = UnscentedExtra(1)
 
-struct UnscentedParameters{A, B, K} 
+struct UnscentedParameters{A, B, K}
     α::A
     β::B
     κ::K
     cov::Bool
 end
 UnscentedParameters(α::A, β::B, κ::K) where {A, B, K} = UnscentedParameters(α, β, κ, false)
-UnscentedParameters() = UnscentedParameters(default_alpha,default_beta, default_kappa,false)
+UnscentedParameters() = UnscentedParameters(default_alpha, default_beta, default_kappa, false)
 
-struct Unscented{T <: FromTo, I, O} <: AbstractApproximationMethod 
-    inputdim :: I
-    outputdim :: O
-    parameters :: UnscentedParameters
-    cache :: ApproximationCache
-    extra :: UnscentedExtra
+struct Unscented{T <: FromTo, I, O} <: AbstractApproximationMethod
+    inputdim::I
+    outputdim::O
+    parameters::UnscentedParameters
+    cache::ApproximationCache
+    extra::UnscentedExtra
 end
 
-
-Unscented{T}(id::I,od::O, parameters::UnscentedParameters) where { T <: FromTo, I, O} = Unscented{T, I, O}(id, od, parameters, ApproximationCache(), UnscentedExtra(id; alpha=parameters.α, beta = parameters.β, kappa = parameters.κ))
-Unscented{T}(id::I,od::O) where {T <: FromTo, I, O}  = Unscented{T, I, O}(id, od, UnscentedParameters(), ApproximationCache(), UnscentedExtra(id))
+Unscented{T}(id::I, od::O, parameters::UnscentedParameters) where {T <: FromTo, I, O} =
+    Unscented{T, I, O}(id, od, parameters, ApproximationCache(), UnscentedExtra(id; alpha = parameters.α, beta = parameters.β, kappa = parameters.κ))
+Unscented{T}(id::I, od::O) where {T <: FromTo, I, O} = Unscented{T, I, O}(id, od, UnscentedParameters(), ApproximationCache(), UnscentedExtra(id))
 Unscented() = Unscented{FromTo(Univariate, Univariate)}(1, 1)
 
-getpoints(method::Unscented) = getcache(method.cache,(:points, (method.inputdim, 2method.inputdim + 1)))
-getweights(method::Unscented) = getcache(method.cache, (:weights, 2method.inputdim+1))
+getpoints(method::Unscented) = getcache(method.cache, (:points, (method.inputdim, 2method.inputdim + 1)))
+getweights(method::Unscented) = getcache(method.cache, (:weights, 2method.inputdim + 1))
 
 """An alias for the [`Unscented`](@ref) approximation method."""
 const UT = Unscented
@@ -75,13 +75,12 @@ function sigma_points_weights!(method::Unscented, m::Real, V::Real)
     lambda = getλ(method)
     l = sqrt((1 + lambda) * V)
 
-    points  = getpoints(method)
+    points = getpoints(method)
     @inbounds begin
-        @views points[1,1] = m
-        @views points[1,2] = m + l
-        @views points[1,3] = m - l
+        @views points[1, 1] = m
+        @views points[1, 2] = m + l
+        @views points[1, 3] = m - l
     end
-
 
     return nothing
 end
@@ -94,28 +93,29 @@ function sigma_points_weights!(method::Unscented, m::AbstractVector, V::Abstract
 
     Vsvd = getcache(cache, (:Vsvd, size(V)))
     Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
-    f  = svd_functor_divconquer(size(V, 1),size(V, 1), Float64)
-    svd_object = copy_and_svd!((d+lambda)*V, Vsvd, f)
-  
+    f = svd_functor_divconquer(size(V, 1), size(V, 1), Float64)
+    svd_object = copy_and_svd!((d + lambda) * V, Vsvd, f)
+
     map!(sqrt, Ssvd, svd_object.S)
     mul_A_B_At!(cache, svd_object.U, Diagonal(Ssvd))
 
     L = getcache(cache, (:mul_A_B_At!_ABAt, size(V)))
 
-    sigma_points = getpoints(method)  
+    sigma_points = getpoints(method)
     @views sigma_points[:, 1] = m
 
     @inbounds for (L_vec, i) in zip(eachcol(L), 1:d)
-        map!((L_scal, j) -> m[j] + L_scal, view(sigma_points, :, i+1), L_vec, 1:d)
-        map!((L_scal, j) -> m[j] - L_scal, view(sigma_points, :, d+i+1), L_vec, 1:d)
+        map!((L_scal, j) -> m[j] + L_scal, view(sigma_points, :, i + 1), L_vec, 1:d)
+        map!((L_scal, j) -> m[j] - L_scal, view(sigma_points, :, d + i + 1), L_vec, 1:d)
     end
-     
+
     return nothing
 end
 
 approximate_expectation(method::Unscented, q, f::F) where {F} = approximate_expectation(first(typeof(method).parameters), method, q, f, Val(false))
 approximate_expectation(method::Unscented, q, f::F, ::Val{C}) where {F, C} = approximate_expectation(first(typeof(method).parameters), method, q, f, Val(C))
-approximate_expectation(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} = approximate_expectation(FT, method, map(mean, q), map(_cov, q), f, Val(C))
+approximate_expectation(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} =
+    approximate_expectation(FT, method, map(mean, q), map(_cov, q), f, Val(C))
 approximate_expectation(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = approximate_expectation(FT, method, mean(q), _cov(q), f, Val(C))
 approximate_expectation(method::Unscented, m, V, f::F) where {F} = approximate_expectation(first(typeof(method).parameters), method, m, V, f, Val(false))
 approximate_expectation(method::Unscented, m, V, f::F, ::Val{C}) where {F, C} = approximate_expectation(first(typeof(method).parameters), method, m, V, f, Val(C))
@@ -123,7 +123,7 @@ approximate_expectation(method::Unscented, m, V, f::F, ::Val{C}) where {F, C} = 
 function approximate_expectation(FT::Type{T}, method::Unscented, m, V, f::F, ::Val{C}; covariance_weights::Bool = false) where {F, C, T <: FromTo}
     !C ? sigma_points_weights!(method, m, V) : nothing
     points = getpoints(method)
-    weights = covariance_weights ?  getWc(method) : getWm(method)
+    weights = covariance_weights ? getWc(method) : getWm(method)
     transformedpoints = getunscentedtransformedpoints(FT, method)
     return weighted_sum(FT, method, points, weights, transformedpoints, f, nothing)
 end
@@ -132,7 +132,7 @@ function approximate_expectation(FT::Type{T}, method::Unscented, ms::Tuple, Vs::
     if !C
         m = reduce(vcat, ms)
         V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], Vs)))
-        sigma_points_weights!(method, m, V) 
+        sigma_points_weights!(method, m, V)
     end
     points = getpoints(method)
     weights = covariance_weights ? getWc(method) : getWm(method)
@@ -143,35 +143,43 @@ end
 
 unscented_statistics(method::Unscented, q, f::F) where {F} = unscented_statistics(first(typeof(method).parameters), method, q, f, Val(false))
 unscented_statistics(method::Unscented, q, f::F, ::Val{C}) where {F, C} = unscented_statistics(first(typeof(method).parameters), method, q, f, Val(C))
-unscented_statistics(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, map(mean, q), map(_cov, q), f, Val(C), Val(true))
-unscented_statistics(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, mean(q), _cov(q), f, Val(C),Val(false))
-unscented_statistics(method::Unscented, m, V, f::F,::Val{Tu}) where {F,Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(false), Val(Tu))
-unscented_statistics(method::Unscented, m, V, f::F, ::Val{C},::Val{Tu}) where {F, C,Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(C), Val(Tu))
+unscented_statistics(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} =
+    unscented_statistics(FT, method, map(mean, q), map(_cov, q), f, Val(C), Val(true))
+unscented_statistics(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, mean(q), _cov(q), f, Val(C), Val(false))
+unscented_statistics(method::Unscented, m, V, f::F, ::Val{Tu}) where {F, Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(false), Val(Tu))
+unscented_statistics(method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(C), Val(Tu))
 
-
-function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
+function unscented_statistics(
+    FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
+) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
     T = FromTo(Tin, Matrixvariate)
-    method2 = Unscented{T}(method.inputdim,(first(method.outputdim),first(method.outputdim)), method.parameters)
+    method2 = Unscented{T}(method.inputdim, (first(method.outputdim), first(method.outputdim)), method.parameters)
 
     mresult = approximate_expectation(FT, method, m, V, f, Val(false))
-    Vresult = approximate_expectation(T, method2, m, V, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false); covariance_weights = true) 
+    Vresult = approximate_expectation(T, method2, m, V, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false); covariance_weights = true)
     if C
-        method3 = Unscented{T}(method.inputdim,(first(method.inputdim),first(method.outputdim)), method.parameters)
-        Cresult = approximate_expectation(T, method3, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat,m)), f, Val(Tu)), Val(false); covariance_weights = true)
+        method3 = Unscented{T}(method.inputdim, (first(method.inputdim), first(method.outputdim)), method.parameters)
+        Cresult = approximate_expectation(
+            T, method3, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false); covariance_weights = true
+        )
     else
         Cresult = nothing
     end
-    
+
     return mresult, Vresult, Cresult
 end
 
-function unscented_statistics(FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
+function unscented_statistics(
+    FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
+) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, f, Val(false))
-    Vresult = approximate_expectation(FT, method, m, V, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true); covariance_weights = true) 
+    Vresult = approximate_expectation(FT, method, m, V, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true); covariance_weights = true)
     if C
         T = FromTo(Tin, Tin)
         method2 = Unscented{T}(method.inputdim, method.inputdim, method.parameters)
-        Cresult = approximate_expectation(T, method2, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat,m)), f, Val(Tu)), Val(false); covariance_weights = true)
+        Cresult = approximate_expectation(
+            T, method2, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false); covariance_weights = true
+        )
     else
         Cresult = nothing
     end
@@ -182,5 +190,5 @@ function approximate(method::Unscented, f::F, distributions::NTuple{N, NormalDis
     μ_tilde, Σ_tilde = unscented_statistics(method, distributions, f, Val(false))
     type_parameters = first(typeof(method).parameters)
     out_variate_type = getoutputvariate(type_parameters)
-    return convert(ExponentialFamily.promote_variate_type( out_variate_type, NormalMeanVariance), μ_tilde, Σ_tilde)
+    return convert(ExponentialFamily.promote_variate_type(out_variate_type, NormalMeanVariance), μ_tilde, Σ_tilde)
 end

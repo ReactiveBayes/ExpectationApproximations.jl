@@ -6,7 +6,7 @@ struct MeasureAdjustedRawMomentGenerator{T, N, C} <: Kernel
 end
 
 MeasureAdjustedRawMomentGenerator(::Val{N}, c::C) where {N, C} = MeasureAdjustedRawMomentGenerator{Univariate, N, C}(c)
-MeasureAdjustedRawMomentGenerator(::Type{T}, ::Val{N}, c::C) where {T, N, C} =  MeasureAdjustedRawMomentGenerator{T, N, C}(c)
+MeasureAdjustedRawMomentGenerator(::Type{T}, ::Val{N}, c::C) where {T, N, C} = MeasureAdjustedRawMomentGenerator{T, N, C}(c)
 
 adjust_integrand(moment::MeasureAdjustedRawMomentGenerator, f::F) where {F} = adjust_integrand(moment, f, Val(false))
 
