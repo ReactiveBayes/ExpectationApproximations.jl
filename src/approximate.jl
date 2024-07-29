@@ -24,8 +24,6 @@ function adjust_result end
 struct Expectation end
 struct AsDistribution end
 
-##
-
 as_integrand(f::F) where {F}  = f
 as_integrand(f::LogIntegrand) = f
 as_integrand(f::Distribution) = LogIntegrand((x) -> logpdf(f, x))

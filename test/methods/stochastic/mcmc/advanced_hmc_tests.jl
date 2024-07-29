@@ -39,7 +39,6 @@
     end
 end
 
-
 @testitem "AHMC: simple expectation with respect to normal" begin
     include("./advanced_hmc_setuptests.jl")
     true_dist = NormalMeanVariance(5.0, 6.0)

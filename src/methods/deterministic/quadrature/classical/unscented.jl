@@ -4,50 +4,49 @@ const default_alpha = 1e-3 # Default value for the spread parameter
 const default_beta = 2.0
 const default_kappa = 0.0
 
-struct UnscentedExtra{T, R, M, C}
-    L  :: T
+struct UnscentedExtra{R, M, C}
     λ  :: R
     Wm :: M
     Wc :: C
 end
 
-"""
-The `Unscented` structure defines the approximation method of the `Delta` and `Flow` factor nodes. 
-More specifically, it contains the hyperparameters used for sigma points computation.
-# Arguments
-- `α`: Spread parameter for unscented transform #1
-- `β`: Algorithm parameter for incorporating prior information on the (non-Gaussian) distribution of Delta node input
-- `κ`: Spread parameter for unscented transform #2
-- `e`: Internal cache
-The `Unscented` structure with default parameters can be constructed as `Unscented()`.
-"""
-
-struct Unscented{A, B, K, E} <: AbstractApproximationMethod
-    α::A
-    β::B
-    κ::K
-    e::E
-    cov::Bool
-end
-
-# Structure constructor
-function Unscented(; alpha::A = default_alpha, beta::B = default_beta, kappa::K = default_kappa, cov = false) where {A <: Real, B <: Real, K <: Real}
-    return Unscented{A, B, K, Nothing}(alpha, beta, kappa, nothing, cov)
-end
-
-function Unscented(dim::Int64; alpha::Real = default_alpha, beta::Real = default_beta, kappa::Real = default_kappa)
-    α = alpha
-    β = beta
-    κ = kappa
-    λ = α^2 * (dim + κ) - dim
+function UnscentedExtra(dim::Int64; alpha::Real = default_alpha, beta::Real = default_beta, kappa::Real = default_kappa)
+    λ = alpha^2 * (dim + kappa) - dim
     Wm = ones(2 * dim + 1)
     Wc = ones(2 * dim + 1)
     Wm ./= (2 * (dim + λ))
     Wc ./= (2 * (dim + λ))
     Wm[1] = λ / (dim + λ)
-    Wc[1] = λ / (dim + λ) + (1 - α^2 + β)
-    return Unscented(α, β, κ, UnscentedExtra(dim, λ, Wm, Wc))
+    Wc[1] = λ / (dim + λ) + (1 - alpha^2 + beta)
+    return UnscentedExtra(λ, Wm, Wc)
 end
+
+UnscentedExtra() = UnscentedExtra(1)
+
+struct UnscentedParameters{A, B, K}
+    α::A
+    β::B
+    κ::K
+    cov::Bool
+end
+UnscentedParameters(α::A, β::B, κ::K) where {A, B, K} = UnscentedParameters(α, β, κ, false)
+UnscentedParameters() = UnscentedParameters(default_alpha, default_beta, default_kappa, false)
+
+struct Unscented{T <: FromTo, I, O} <: AbstractApproximationMethod
+    inputdim::I
+    outputdim::O
+    parameters::UnscentedParameters
+    cache::ApproximationCache
+    extra::UnscentedExtra
+end
+
+Unscented{T}(id::I, od::O, parameters::UnscentedParameters) where {T <: FromTo, I, O} =
+    Unscented{T, I, O}(id, od, parameters, ApproximationCache(), UnscentedExtra(id; alpha = parameters.α, beta = parameters.β, kappa = parameters.κ))
+Unscented{T}(id::I, od::O) where {T <: FromTo, I, O} = Unscented{T, I, O}(id, od, UnscentedParameters(), ApproximationCache(), UnscentedExtra(id))
+Unscented() = Unscented{FromTo(Univariate, Univariate)}(1, 1)
+
+getpoints(method::Unscented) = getcache(method.cache, (:points, (method.inputdim, 2method.inputdim + 1)))
+getweights(method::Unscented) = getcache(method.cache, (:weights, 2method.inputdim + 1))
 
 """An alias for the [`Unscented`](@ref) approximation method."""
 const UT = Unscented
@@ -61,170 +60,135 @@ getα(approximation::Unscented) = approximation.α
 getβ(approximation::Unscented) = approximation.β
 getκ(approximation::Unscented) = approximation.κ
 
-getextra(approximation::Unscented) = approximation.e
+getextra(approximation::Unscented) = approximation.extra
 
-getL(approximation::Unscented)  = getL(getextra(approximation))
 getλ(approximation::Unscented)  = getλ(getextra(approximation))
 getWm(approximation::Unscented) = getWm(getextra(approximation))
 getWc(approximation::Unscented) = getWc(getextra(approximation))
 
-getL(extra::UnscentedExtra)  = extra.L
 getλ(extra::UnscentedExtra)  = extra.λ
 getWm(extra::UnscentedExtra) = extra.Wm
 getWc(extra::UnscentedExtra) = extra.Wc
 
-# Copied and refactored from ForneyLab.jl
-
-function approximate_expectation(method::Unscented, q, f::F) where {F}
-    res = Unscented_approximate(method, f, (mean(q),), (var(q),))
-    return_covariance = method.cov
-    if return_covariance
-        return res
-    else
-        return first(res)
-    end
-end
-
-function approximate_expectation(method::Unscented, q::Tuple, f::F) where {F}
-    res = Unscented_approximate(method, f, mean.(q), var.(q))
-    return_covariance = method.cov
-    if return_covariance
-        return res
-    else
-        return first(res)
-    end
-end
-
-function Unscented_approximate(method::Unscented, f::F, means::Tuple, covs::Tuple) where {F}
-    # `Val(false)` indicates that we do not compute the `C` component
-    (m, V, _) = unscented_statistics(method, Val(false), f, means, covs)
-    return (m, V)
-end
-#############
-
-function unscented_statistics(method::Unscented, g::G, means::Tuple, covs::Tuple) where {G}
-    # By default we compute the `C` component, thus `Val(true)`
-    return unscented_statistics(method, Val(true), g, means, covs)
-end
-
-# Single univariate variable
-function unscented_statistics(method::Unscented, ::Val{C}, g::G, means::Tuple{Real}, covs::Tuple{Real}) where {C, G}
-    m = first(means)
-    V = first(covs)
-
-    (sigma_points, weights_m, weights_c) = sigma_points_weights(method, m, V)
-
-    g_sigma = g.(sigma_points)
-    m_tilde = sum(weights_m .* g_sigma)
-    V_tilde = sum(weights_c .* (g_sigma .- m_tilde) .^ 2)
-
-    # Compute `C_tilde` only if `C === true`
-    C_tilde = C ? sum(weights_c .* (sigma_points .- m) .* (g_sigma .- m_tilde)) : nothing
-
-    return (m_tilde, V_tilde, C_tilde)
-end
-
-# Single multivariate inbound
-function unscented_statistics(method::Unscented, ::Val{C}, g::G, means::Tuple{AbstractVector}, covs::Tuple{AbstractMatrix}) where {C, G}
-    m = first(means)
-    V = first(covs)
-
-    (sigma_points, weights_m, weights_c) = sigma_points_weights(method, m, V)
-
-    d = length(m)
-
-    g_sigma = g.(sigma_points)
-    @inbounds m_tilde = sum(weights_m[k + 1] * g_sigma[k + 1] for k in 0:(2d))
-    @inbounds V_tilde = sum(weights_c[k + 1] * (g_sigma[k + 1] - m_tilde) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d))
-
-    # Compute `C_tilde` only if `C === true`
-    @inbounds C_tilde = C ? sum(weights_c[k + 1] * (sigma_points[k + 1] - m) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d)) : nothing
-
-    return (m_tilde, V_tilde, C_tilde)
-end
-
-# Multiple inbounds of possibly mixed variate type
-function unscented_statistics(method::Unscented, ::Val{C}, g::G, ms::Tuple, Vs::Tuple) where {C, G}
-    joint = convert(JointNormal, ms, Vs)
-
-    (m, V) = mean_cov(joint)
-    ds     = dimensionalities(joint)
-
-    (sigma_points, weights_m, weights_c) = sigma_points_weights(method, m, V)
-
-    g_sigma = [g(__splitjoin(sp, ds)...) for sp in sigma_points] # Unpack each sigma point in g
-
-    d = sum(prod.(ds)) # Dimensionality of joint
-    @inbounds m_tilde = sum(weights_m[k + 1] * g_sigma[k + 1] for k in 0:(2d)) # Vector
-    @inbounds V_tilde = sum(weights_c[k + 1] * (g_sigma[k + 1] - m_tilde) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d)) # Matrix
-
-    # Compute `C_tilde` only if `C === true`
-    @inbounds C_tilde = C ? sum(weights_c[k + 1] * (sigma_points[k + 1] - m) * (g_sigma[k + 1] - m_tilde)' for k in 0:(2d)) : nothing
-
-    return (m_tilde, V_tilde, C_tilde)
-end
-
 """Return the sigma points and weights for a Gaussian distribution"""
-function sigma_points_weights(method::Unscented, m::Real, V::Real)
-    alpha  = getα(method)
-    beta   = getβ(method)
-    kappa  = getκ(method)
-    lambda = (1 + kappa) * alpha^2 - 1
-
-    if (1 + lambda) < 0
-        @warn "`(1 + lambda)` in the sigma points computation routine is negative. This may lead to the incorrect results. Adjust the `alpha`, `kappa` and `beta` parameters."
-    end
-
+function sigma_points_weights!(method::Unscented, m::Real, V::Real)
+    lambda = getλ(method)
     l = sqrt((1 + lambda) * V)
 
-    sigma_points = (m, m + l, m - l)
-    weights_m    = (lambda / (1 + lambda), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
-    weights_c    = (weights_m[1] + (1 - alpha^2 + beta), 1 / (2 * (1 + lambda)), 1 / (2 * (1 + lambda)))
-
-    return (sigma_points, weights_m, weights_c)
-end
-
-function sigma_points_weights(method::Unscented, m::AbstractVector, V::AbstractMatrix)
-    d      = length(m)
-    alpha  = getα(method)
-    beta   = getβ(method)
-    kappa  = getκ(method)
-    lambda = (d + kappa) * alpha^2 - d
-
-    if (d + lambda) < 0
-        @warn "`(d + lambda)` in the sigma points computation routine is negative. This may lead to the incorrect results. Adjust the `alpha`, `kappa` and `beta` parameters."
+    points = getpoints(method)
+    @inbounds begin
+        @views points[1, 1] = m
+        @views points[1, 2] = m + l
+        @views points[1, 3] = m - l
     end
 
-    T = promote_type(eltype(m), eltype(V))
-
-    sigma_points = Vector{Vector{T}}(undef, 2 * d + 1)
-    weights_m    = Vector{T}(undef, 2 * d + 1)
-    weights_c    = Vector{T}(undef, 2 * d + 1)
-
-    L = cholsqrt((d + lambda) * V)
-
-    sigma_points[1] = m
-    weights_m[1]    = lambda / (d + lambda)
-    weights_c[1]    = weights_m[1] + (1 - alpha^2 + beta)
-
-    @inbounds for i in 1:d
-        @views sigma_points[2 * i] = m + L[:, i]
-        @views sigma_points[2 * i + 1] = m - L[:, i]
-    end
-
-    @inbounds weights_m[2:end] .= 1 / (2 * (d + lambda))
-    @inbounds weights_c[2:end] .= 1 / (2 * (d + lambda))
-
-    return (sigma_points, weights_m, weights_c)
+    return nothing
 end
 
-# This function extends the `Unscented` approximation method in case if all inputs are from the `NormalDistributionsFamily`
+function sigma_points_weights!(method::Unscented, m::AbstractVector, V::AbstractMatrix)
+    d = method.inputdim
+    cache = method.cache
+
+    lambda = getλ(method)
+
+    Vsvd = getcache(cache, (:Vsvd, size(V)))
+    Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
+    f = svd_functor_divconquer(size(V, 1), size(V, 1), Float64)
+    svd_object = copy_and_svd!((d + lambda) * V, Vsvd, f)
+
+    map!(sqrt, Ssvd, svd_object.S)
+    mul_A_B_At!(cache, svd_object.U, Diagonal(Ssvd))
+
+    L = getcache(cache, (:mul_A_B_At!_ABAt, size(V)))
+
+    sigma_points = getpoints(method)
+    @views sigma_points[:, 1] = m
+
+    @inbounds for (L_vec, i) in zip(eachcol(L), 1:d)
+        map!((L_scal, j) -> m[j] + L_scal, view(sigma_points, :, i + 1), L_vec, 1:d)
+        map!((L_scal, j) -> m[j] - L_scal, view(sigma_points, :, d + i + 1), L_vec, 1:d)
+    end
+
+    return nothing
+end
+
+approximate_expectation(method::Unscented, q, f::F) where {F} = approximate_expectation(first(typeof(method).parameters), method, q, f, Val(false))
+approximate_expectation(method::Unscented, q, f::F, ::Val{C}) where {F, C} = approximate_expectation(first(typeof(method).parameters), method, q, f, Val(C))
+approximate_expectation(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} =
+    approximate_expectation(FT, method, map(mean, q), map(_cov, q), f, Val(C))
+approximate_expectation(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = approximate_expectation(FT, method, mean(q), _cov(q), f, Val(C))
+approximate_expectation(method::Unscented, m, V, f::F) where {F} = approximate_expectation(first(typeof(method).parameters), method, m, V, f, Val(false))
+approximate_expectation(method::Unscented, m, V, f::F, ::Val{C}) where {F, C} = approximate_expectation(first(typeof(method).parameters), method, m, V, f, Val(C))
+
+function approximate_expectation(FT::Type{T}, method::Unscented, m, V, f::F, ::Val{C}; covariance_weights::Bool = false) where {F, C, T <: FromTo}
+    !C ? sigma_points_weights!(method, m, V) : nothing
+    points = getpoints(method)
+    weights = covariance_weights ? getWc(method) : getWm(method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
+    return weighted_sum(FT, method, points, weights, transformedpoints, f, nothing)
+end
+
+function approximate_expectation(FT::Type{T}, method::Unscented, ms::Tuple, Vs::Tuple, f::F, ::Val{C}; covariance_weights::Bool = false) where {F, C, T <: FromTo}
+    if !C
+        m = reduce(vcat, ms)
+        V = BlockDiagonal(collect(map(x -> typeof(x) <: Matrix ? x : [x;;], Vs)))
+        sigma_points_weights!(method, m, V)
+    end
+    points = getpoints(method)
+    weights = covariance_weights ? getWc(method) : getWm(method)
+    transformedpoints = getunscentedtransformedpoints(FT, method)
+
+    return weighted_sum(FT, method, points, weights, transformedpoints, f, size.(ms))
+end
+
+unscented_statistics(method::Unscented, q, f::F) where {F} = unscented_statistics(first(typeof(method).parameters), method, q, f, Val(false))
+unscented_statistics(method::Unscented, q, f::F, ::Val{C}) where {F, C} = unscented_statistics(first(typeof(method).parameters), method, q, f, Val(C))
+unscented_statistics(FT::Type{T}, method::Unscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo} =
+    unscented_statistics(FT, method, map(mean, q), map(_cov, q), f, Val(C), Val(true))
+unscented_statistics(FT::Type{T}, method::Unscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo} = unscented_statistics(FT, method, mean(q), _cov(q), f, Val(C), Val(false))
+unscented_statistics(method::Unscented, m, V, f::F, ::Val{Tu}) where {F, Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(false), Val(Tu))
+unscented_statistics(method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(C), Val(Tu))
+
+function unscented_statistics(
+    FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
+) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
+    T = FromTo(Tin, Matrixvariate)
+    method2 = Unscented{T}(method.inputdim, (first(method.outputdim), first(method.outputdim)), method.parameters)
+
+    mresult = approximate_expectation(FT, method, m, V, f, Val(false))
+    Vresult = approximate_expectation(T, method2, m, V, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false); covariance_weights = true)
+    if C
+        method3 = Unscented{T}(method.inputdim, (first(method.inputdim), first(method.outputdim)), method.parameters)
+        Cresult = approximate_expectation(
+            T, method3, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false); covariance_weights = true
+        )
+    else
+        Cresult = nothing
+    end
+
+    return mresult, Vresult, Cresult
+end
+
+function unscented_statistics(
+    FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
+) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
+    mresult = approximate_expectation(FT, method, m, V, f, Val(false))
+    Vresult = approximate_expectation(FT, method, m, V, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true); covariance_weights = true)
+    if C
+        T = FromTo(Tin, Tin)
+        method2 = Unscented{T}(method.inputdim, method.inputdim, method.parameters)
+        Cresult = approximate_expectation(
+            T, method2, m, V, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false); covariance_weights = true
+        )
+    else
+        Cresult = nothing
+    end
+    return mresult, Vresult, Cresult
+end
+
 function approximate(method::Unscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
-    statistics = mean_cov.(distributions)
-    means      = first.(statistics)
-    covs       = last.(statistics)
-
-    μ_tilde, Σ_tilde = approximate(method, f, means, covs)
-
-    return convert(promote_variate_type(variate_form(μ_tilde), NormalMeanVariance), μ_tilde, Σ_tilde)
+    μ_tilde, Σ_tilde = unscented_statistics(method, distributions, f, Val(false))
+    type_parameters = first(typeof(method).parameters)
+    out_variate_type = getoutputvariate(type_parameters)
+    return convert(ExponentialFamily.promote_variate_type(out_variate_type, NormalMeanVariance), μ_tilde, Σ_tilde)
 end

@@ -44,7 +44,6 @@ end
 
         cvi_factor = CVIFactor(convert(ExponentialFamilyDistribution, g1), convert(ExponentialFamilyDistribution, g2))
 
-
         product = ExpectationApproximations.approximate_distribution(test.method, cvi_factor)
         analytical_product = prod(ClosedProd(), g1, g2)
 
