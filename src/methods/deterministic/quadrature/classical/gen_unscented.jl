@@ -63,7 +63,6 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
 
     L3S = getcache(cache, (:L3S, size(S, 1)))
     ldiv!(L3S, fastcholesky!(L3), S)
-
     minK = getcache(cache, (:minK, size(K, 1)))
     L3S2 = getcache(cache, (:L3S2, size(S, 1)))
     mul!(minK, L4, hadamard!(L3S2, L3S, L3S))
@@ -75,7 +74,8 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
 
     u = getcache(cache, (:u, size(K, 1)))
     v = getcache(cache, (:v, size(K, 1)))
-    map!(sqrt, L3S2, mul!(L3S2, Eye{eltype(L3S2)}(size(V, 1)), L4K, 4, -3))
+    map!(abs, L3S2, mul!(L3S2, Eye{eltype(L3S2)}(size(V, 1)), L4K, 4, -3))
+    map!(sqrt, L3S2, L3S2)
     map!((x, y) -> (-x + y) / 2, u, L3S, L3S2)
     map!((x, y) -> x + y, v, u, L3S)
 
