@@ -50,8 +50,19 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
     f = svd_functor_divconquer(size(V, 1), size(V, 1), Float64)
     svd_object = copy_and_svd!(V, Vsvd, f)
-
-    map!(sqrt, Ssvd, svd_object.S)
+    
+    # Use a numerical stability approach that won't introduce NaNs
+    # Find a small positive threshold relative to the largest singular value
+    max_s = maximum(abs, svd_object.S)
+    tol = max_s * eps(Float64) * max(size(V)...)
+    
+    # Replace very small values with a small positive number instead of zero
+    # This prevents numerical instability without introducing NaNs
+    map!(s -> max(abs(s), tol), Ssvd, svd_object.S)
+    
+    # Apply cholsqrt safely to the conditioned values
+    map!(cholsqrt, Ssvd, Ssvd)
+    
     mul_A_B_At!(cache, svd_object.U, Diagonal(Ssvd))
 
     L3 = getcache(cache, (:L3, size(V)))
