@@ -62,7 +62,7 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     hadamard!(L4, L3, getcache(cache, (:mul_A_B_At!_ABAt, size(V))))
 
     L3S = getcache(cache, (:L3S, size(S, 1)))
-    ldiv!(L3S, fastcholesky!(L3), S)
+    ldiv!(L3S, cholesky!(Hermitian(L3); check=true), S)
     minK = getcache(cache, (:minK, size(K, 1)))
     L3S2 = getcache(cache, (:L3S2, size(S, 1)))
     mul!(minK, L4, hadamard!(L3S2, L3S, L3S))
@@ -70,7 +70,7 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     any(K .< minK) ? K[K .<= minK] .= 1.001 * (minK[K .< minK] .+ 1e-8) : K
 
     L4K = getcache(cache, (:L4K, size(K, 1)))
-    ldiv!(L4K, fastcholesky!(L4), K)
+    ldiv!(L4K, cholesky!(Hermitian(L4); check=true), K)
 
     u = getcache(cache, (:u, size(K, 1)))
     v = getcache(cache, (:v, size(K, 1)))
