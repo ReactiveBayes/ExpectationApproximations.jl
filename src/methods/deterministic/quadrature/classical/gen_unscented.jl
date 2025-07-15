@@ -48,7 +48,8 @@ end
 function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector)
     Vsvd = getcache(cache, (:Vsvd, size(V)))
     Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
-    f = svd_functor_divconquer(size(V, 1), size(V, 1), Float64)
+    T = eltype(V)
+    f = svd_functor_divconquer(size(V, 1), size(V, 1), T)
     svd_object = copy_and_svd!(V, Vsvd, f)
 
     map!(x -> sqrt(abs(x + 1e-8)), Ssvd, svd_object.S)
@@ -62,7 +63,7 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     hadamard!(L4, L3, getcache(cache, (:mul_A_B_At!_ABAt, size(V))))
 
     L3S = getcache(cache, (:L3S, size(S, 1)))
-    ldiv!(L3S, cholesky!(Hermitian(L3); check=true), S)
+    ldiv!(L3S, cholesky!(Hermitian(Symmetric((L3 + L3')/2)); check=true), S)
     minK = getcache(cache, (:minK, size(K, 1)))
     L3S2 = getcache(cache, (:L3S2, size(S, 1)))
     mul!(minK, L4, hadamard!(L3S2, L3S, L3S))
@@ -262,7 +263,7 @@ function unscented_statistics(
     end
 end
 
-function approximate(method::GenUnscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
+function approximate(method::GenUnscented, f::F, distributions) where {F}
     μ_tilde, Σ_tilde = unscented_statistics(method, distributions, f, Val(false))
     type_parameters = first(typeof(method).parameters)
     out_variate_type = getoutputvariate(type_parameters)
