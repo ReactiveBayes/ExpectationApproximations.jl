@@ -1,6 +1,5 @@
 using StatsFuns: logistic
 using StatsFuns: softmax, softmax!
-using LoopVectorization
 using SpecialFunctions: gamma, loggamma
 
 import LinearAlgebra
