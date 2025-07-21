@@ -244,12 +244,12 @@ function unscented_statistics(method::GenConstrainedUnscented, q, f::F, ::Val{C}
     return unscented_statistics(T, method, q, f, Val(C), Val(true))
 end
 
-function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}) where {F, C, T <: FromTo}
+function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q::Tuple, f::F, ::Val{C}, ::Val{Tu}) where {F, C, T <: FromTo, Tu}
     m = map(mean, q)
     V = map(_cov, q)
     S = map(_skewness, q)
     K = map(_kurtosis, q)
-    return unscented_statistics(FT, method, m, V, S, K, f, Val(C), Val(false))
+    return unscented_statistics(FT, method, m, V, S, K, f, Val(C), Val(Tu))
 end
 
 function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {F, C, T <: FromTo}
@@ -274,16 +274,18 @@ function unscented_statistics(
 
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false))
-    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
-    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
-
+   
     if C
+        Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
+        Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
+    
         method3 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim, (first(method.inputdim), first(method.outputdim)))
         Cresult = approximate_expectation(T, method3, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
+        return mresult, Vresult, Sresult, Kresult, Cresult
     else
-        Cresult = nothing
+        return mresult, Vresult
     end
-    return mresult, Vresult, Sresult, Kresult, Cresult
+    
 end
 
 function unscented_statistics(
@@ -291,21 +293,30 @@ function unscented_statistics(
 ) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true))
-    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
-    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
     if C
+        Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
+        Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
         T = FromTo(Tin, Tin)
         method2 = GenUnscented{T}(method.inputdim, method.inputdim)
         Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
+        return mresult, Vresult, Sresult, Kresult, Cresult
     else
-        Cresult = nothing
+        return mresult, Vresult 
     end
-    return mresult, Vresult, Sresult, Kresult, Cresult
+end
+
+function unscented_statistics(FT::Type{T}, method::GenConstrainedUnscented, q::MvNormalMeanCovariance, f::F, ::Val{C}, ::Val{Tu}) where {F, C, T <: FromTo, Tu}
+    m = mean(q)
+    V = _cov(q)
+    S = _skewness(q)
+    K = _kurtosis(q)
+    return unscented_statistics(FT, method, m, V, S, K, f, Val(C), Val(Tu))
 end
 
 function approximate(method::GenConstrainedUnscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
     ## Not optimal as it computes higher order statitstics
-    μ_tilde, Σ_tilde, _, _, _ = unscented_statistics(method, distributions, f, Val(false))
+
+    μ_tilde, Σ_tilde = unscented_statistics(method, distributions, f, Val(false))
     type_parameters = first(typeof(method).parameters)
     out_variate_type = getoutputvariate(type_parameters)
     return convert(ExponentialFamily.promote_variate_type(out_variate_type, NormalMeanVariance), μ_tilde, Σ_tilde)

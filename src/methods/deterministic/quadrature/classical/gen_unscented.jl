@@ -48,10 +48,11 @@ end
 function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector)
     Vsvd = getcache(cache, (:Vsvd, size(V)))
     Ssvd = getcache(cache, (:Ssvd, size(V, 1)))
-    f = svd_functor_divconquer(size(V, 1), size(V, 1), Float64)
+    T = eltype(V)
+    f = svd_functor_divconquer(size(V, 1), size(V, 1), T)
     svd_object = copy_and_svd!(V, Vsvd, f)
 
-    map!(sqrt, Ssvd, svd_object.S)
+    map!(x -> sqrt(abs(x + 1e-8)), Ssvd, svd_object.S)
     mul_A_B_At!(cache, svd_object.U, Diagonal(Ssvd))
 
     L3 = getcache(cache, (:L3, size(V)))
@@ -62,7 +63,7 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     hadamard!(L4, L3, getcache(cache, (:mul_A_B_At!_ABAt, size(V))))
 
     L3S = getcache(cache, (:L3S, size(S, 1)))
-    ldiv!(L3S, fastcholesky!(L3), S)
+    ldiv!(L3S, cholesky!(Hermitian(Symmetric((L3 + L3')/2)); check=true), S)
     minK = getcache(cache, (:minK, size(K, 1)))
     L3S2 = getcache(cache, (:L3S2, size(S, 1)))
     mul!(minK, L4, hadamard!(L3S2, L3S, L3S))
@@ -70,7 +71,7 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     any(K .< minK) ? K[K .<= minK] .= 1.001 * (minK[K .< minK] .+ 1e-8) : K
 
     L4K = getcache(cache, (:L4K, size(K, 1)))
-    ldiv!(L4K, fastcholesky!(L4), K)
+    ldiv!(L4K, cholesky!(Hermitian(L4); check=true), K)
 
     u = getcache(cache, (:u, size(K, 1)))
     v = getcache(cache, (:v, size(K, 1)))
@@ -96,11 +97,10 @@ function form_generalized_sigma_points!(cache::ApproximationCache, m::AbstractVe
         map!((L_scal, j) -> m[j] + v_scal * L_scal, view(points, :, d + i + 1), L_vec, 1:d)
     end
 
-    map!((x, y) -> inv(y) / (y + x), view(weights, (d + 2):(2d + 1)), u, v)
+    map!((x, y) -> cholinv(y) / (y + x), view(weights, (d + 2):(2d + 1)), u, v)
     map!((x, y, z) -> z * x / y, view(weights, 2:(d + 1)), v, u, view(weights, (d + 2):(2d + 1)))
 
     weights[1] = 1 - sum(@views weights[2:end])
-
     return nothing
 end
 
@@ -230,15 +230,18 @@ function unscented_statistics(
 
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false))
-    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
-    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
+
     if C
+        Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
+        Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
         method3 = GenUnscented{T}(method.inputdim, (first(method.inputdim), first(method.outputdim)))
         Cresult = approximate_expectation(T, method3, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
+
+        return mresult, Vresult, Sresult, Kresult, Cresult
     else
-        Cresult = nothing
+        return mresult, Vresult
     end
-    return mresult, Vresult, Sresult, Kresult, Cresult
+    
 end
 
 function unscented_statistics(
@@ -246,21 +249,22 @@ function unscented_statistics(
 ) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true))
-    Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
-    Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
+
     if C
+        Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
+        Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
         T = FromTo(Tin, Tin)
         method2 = GenUnscented{T}(method.inputdim, method.inputdim)
         Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
+    
+        return mresult, Vresult, Sresult, Kresult, Cresult
     else
-        Cresult = nothing
+        return mresult, Vresult
     end
-    return mresult, Vresult, Sresult, Kresult, Cresult
 end
 
-function approximate(method::GenUnscented, f::F, distributions::NTuple{N, NormalDistributionsFamily}) where {F, N}
-    ## Not optimal as it computes higher order statitstics
-    μ_tilde, Σ_tilde, _, _, _ = unscented_statistics(method, distributions, f, Val(false))
+function approximate(method::GenUnscented, f::F, distributions) where {F}
+    μ_tilde, Σ_tilde = unscented_statistics(method, distributions, f, Val(false))
     type_parameters = first(typeof(method).parameters)
     out_variate_type = getoutputvariate(type_parameters)
     return convert(ExponentialFamily.promote_variate_type(out_variate_type, NormalMeanVariance), μ_tilde, Σ_tilde)

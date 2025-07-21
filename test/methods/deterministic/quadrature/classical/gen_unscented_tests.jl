@@ -387,3 +387,107 @@
         @test sum(getcache(method.cache, (:weights, 11))) ≈ 1
     end
 end
+
+@testitem "GenUnscented: Numerical stability improvements" begin
+    using Test, Distributions, ExponentialFamily, LinearAlgebra, Random
+    import ExpectationApproximations: GenUnscented, prepare_cache!, _cov, _skewness, _kurtosis, approximate_expectation, FromTo
+
+    @testset "Handle ill-conditioned covariance matrix" begin
+        # Create matrix with extremely small eigenvalues
+        d = 4
+        V = Matrix{Float64}(I, d, d)
+        V[1,1] = 1e-7  # Nearly zero diagonal element
+        V[2,2] = 1e-10  # Small diagonal element
+        
+        # Create method for testing
+        method = GenUnscented{FromTo(Multivariate, Multivariate)}(d, (2,))
+        m = zeros(d)
+        S = zeros(d)  # Skewness vector
+        K = fill(3.0, d)  # Kurtosis vector (normal distribution value)
+        
+        # This should not throw or produce NaNs
+        ExpectationApproximations.sigma_points_weights!(method, m, V, S, K)
+        
+        # Check if weights are valid (sum to 1 and no NaNs)
+        weights = ExpectationApproximations.getweights(method)
+        @test all(isfinite, weights)
+        @test sum(weights) ≈ 1.0
+        
+        # Check if points contain no NaNs
+        points = ExpectationApproximations.getpoints(method)
+        @test all(isfinite, points)
+    end
+    
+    @testset "Handle NaN in covariance matrix" begin
+        # Create matrix with NaN values
+        d = 5
+        V = Matrix{Float64}(I, d, d)
+        V[1,3] = NaN  # NaN off-diagonal
+        V[3,1] = NaN  # Symmetric NaN
+        
+        # Create method for testing
+        method = GenUnscented{FromTo(Multivariate, Multivariate)}(d, (2,))
+        m = zeros(d)
+        S = zeros(d)  # Skewness vector
+        K = fill(3.0, d)  # Kurtosis vector
+        
+        # This should not throw with NaN input
+        ExpectationApproximations.sigma_points_weights!(method, m, V, S, K)
+        
+        # Check results are finite
+        weights = ExpectationApproximations.getweights(method)
+        @test all(isfinite, weights)
+        @test sum(weights) ≈ 1.0
+        
+        points = ExpectationApproximations.getpoints(method)
+        @test all(isfinite, points)
+    end
+    
+    @testset "Handle NaN in kurtosis vector" begin
+        d = 3
+        V = Matrix{Float64}(I, d, d)
+        m = zeros(d)
+        S = zeros(d)
+        K = [3.0, NaN, 5.0]  # NaN in kurtosis
+        
+        method = GenUnscented{FromTo(Multivariate, Multivariate)}(d, (2,))
+        
+        # This should not throw with NaN kurtosis
+        ExpectationApproximations.sigma_points_weights!(method, m, V, S, K)
+        
+        # Check results
+        weights = ExpectationApproximations.getweights(method)
+        @test all(isfinite, weights)
+        @test sum(weights) ≈ 1.0
+        
+        points = ExpectationApproximations.getpoints(method)
+        @test all(isfinite, points)
+    end
+    
+    @testset "Full integration test with problematic inputs" begin
+        d = 4
+        # Create an extremely ill-conditioned matrix (nearly singular)
+        V = Matrix{Float64}(I, d, d)
+        V[1,1] = 1e-14
+        V[2,2] = 1e-12
+        V[1,2] = 1e-13  # Off-diagonal element
+        V[2,1] = 1e-13  # Ensure symmetry
+        
+        m = zeros(d)
+        S = [0.0, 0.0, NaN, 0.0]  # NaN in skewness
+        K = [3.0, NaN, 5.0, 3.0]  # NaN in kurtosis
+        
+        method = GenUnscented{FromTo(Multivariate, Univariate)}(d, (1,))
+        
+        # Non-linear function with division that could amplify numerical issues
+        g(x) = sum(x) / (1.0 + abs(x[1]))
+        
+        # This should compute successfully without NaNs
+        result = @inferred ExpectationApproximations.approximate_expectation(method, m, V, S, K, g)
+        
+        # Result should be finite
+        @test isfinite(result)
+        # Result should be close to 0.0
+        @test result ≈ 0.0  atol = 1e-4
+    end
+end
