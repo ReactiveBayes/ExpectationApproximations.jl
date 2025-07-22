@@ -33,6 +33,9 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 TensorCore = "62fd8b95-f654-4bbd-a8a5-9c27f68ccd50"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 
+[compat]
+LogExpFunctions = "0.3"
+
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 CpuId = "adafc99b-e345-5852-983c-f28acb93d879"
