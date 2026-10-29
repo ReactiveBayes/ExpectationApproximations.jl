@@ -42,6 +42,39 @@ Repositories: EA (hub), scratch environments.
 Done when: the prototype's measurements and the spike's findings are recorded in
 [Decisions](#decisions) and the milestones below are adjusted.
 
+#### Findings of the Laplace spike (U0.3)
+
+Three notebooks in RxInferExamples.jl, `examples/Universal Inference/` on branch
+`universal-inference`, run against registered RxInfer 6.1.1 / ReactiveMP 7.0.1 /
+MessagePassingRulesBase 1.1.3. All machinery lives in the notebooks: a `laplace(logp, x0)`
+kernel (damped Newton, ForwardDiff), a `LaplaceForm` form constraint, fused stochastic nodes,
+and in the mixture a `CategoricalForm` and an `ExpectedLogPdfFallback`.
+
+| Model | Scheme | Result |
+|---|---|---|
+| Bioassay logistic regression (BDA3 §3.7) | BP, `q(θ) :: LaplaceForm()`, one pass | equals Laplace of the hand-written posterior to 0.0; vs exact grid: E[β] 7.2 vs 10.35, sd(β) 4.3 vs 4.9, 4.7% of mass on β < 0, LD50 90% interval too wide |
+| Poisson log-linear regression | same, no new code but the node | recovers the rate within 1-2 sd |
+| Stochastic volatility, T = 200 | BP, `μ(x)` and `q(x) :: LaplaceForm()` | linear-Gaussian check equals the Kalman smoother to 4e-16; RMSE of means vs slice sampler 0.18 (global Laplace 0.10), of sds 0.019 (0.011) |
+| Gaussian mixture, K = 2, N = 300 | mean field, Laplace for m and log-precisions, exact z | matches the conjugate `NormalMixture` VMP to about 0.01 in every summary |
+
+What got in the way, by milestone:
+
+- **U3.** `NodeFunctionRuleFallback` collapses inputs with `mean`, which is wrong for a
+  `Categorical` (the mean index, not the probabilities) and ignores input variances; the
+  expectation-based fallback fixed both and visibly changes the component spreads at small N.
+  The fallback does not apply to deterministic nodes (nonlinear functions had to be fused into
+  stochastic nodes) nor to nodes with groups (`NormalMixture`, `Mixture`). No free energy.
+- **U3/U5.** Under BP the form constraint must also be placed on messages (`μ(x) ::`), not
+  only on marginals; a product without a Gaussian factor (a likelihood alone, e.g. at the end
+  of a chain) needs a start point for the mode search.
+- **U2.** Needed kernels: `laplace` (scalar and vector), Gauss–Hermite product rules over
+  Gaussians, exact sums over categoricals: exactly the expectation protocol's first methods.
+- **U7.** Projecting each message on its own is not Laplace propagation: the SV means trail the
+  global Laplace solution, and iterating changes nothing. Cavity-based Laplace propagation needs
+  the incoming message inside the projection.
+- **Accuracy.** Laplace misses skew (bioassay β) and puts mass outside the data-supported
+  region; EP is the natural comparison once available.
+
 ### U1. BayesBase: the expectation protocol
 
 Repository: BayesBase.jl. Additive, minor release.
@@ -103,6 +136,9 @@ Repositories: MessagePassingRulesBase.jl, ReactiveMP.jl. Can run in parallel wit
    `EnsureSupportedFunctionalForm` is composed today, so "every variable Gaussian (in its
    unconstrained space)" can be one setting instead of one line per variable.
 5. **Damping** as a stream postprocessor, needed by EP and loopy schedules later.
+6. **Fallback coverage** found by the spike: deterministic (Delta) nodes and nodes with
+   interface groups (mixtures) get no fallback today; the default fallback should take
+   expectations over its inputs (via `ctx.expectation`) instead of collapsing them with `mean`.
 
 Done when: existing behaviour unchanged (`NodeFunctionRuleFallback` tests pass as they are),
 new hooks tested, documentation updated (fallbacks, context, form constraints).
@@ -342,13 +378,13 @@ Tests (ReTestItems or TestItemRunner), Aqua with ambiguity and piracy checks, JE
 
 | ID | Repository | State | Pull request |
 |---|---|---|---|
-| U0 | EA (hub), scratch | started: plan written | |
+| U0 | EA (hub), scratch | U0.3 spike done (findings under U0); U0.1, U0.2 open | |
 | U1 | BayesBase | not started | |
 | U2 | EA | not started | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |
 | U5 | RxInfer | not started | |
-| U6 | RxInferExamples | not started | |
+| U6 | RxInferExamples | started: three Laplace notebooks on `universal-inference` | |
 | U7 | several | not started | |
 | P | CFE, MPRA, rule packages, EFP | not started | |
 
