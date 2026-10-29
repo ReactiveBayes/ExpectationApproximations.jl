@@ -75,6 +75,39 @@ What got in the way, by milestone:
 - **Accuracy.** Laplace misses skew (bioassay β) and puts mass outside the data-supported
   region; EP is the natural comparison once available.
 
+#### Experiment: automatic domain transforms (U0.3b)
+
+Question: can constrained variables keep their natural priors (`p ~ Beta`, `λ ~ Gamma`) and be
+handled by the projection alone, without rewriting the model in unconstrained coordinates?
+Model: zero-inflated Poisson, `y[i] ~ ZeroInflatedPoisson(p, λ)` (a fused node), mean field.
+`TransformedLaplaceForm` reads the domain from the support of the prior factor in the product
+(`Distributions.support`), runs Laplace in log or logit coordinates with the log-Jacobian, and
+returns a `LogNormal` or `LogitNormal`. Script: scratch, to become a notebook if wanted.
+
+| Check | Result |
+|---|---|
+| Poisson–Gamma (conjugate, exact posterior known) | equals Laplace in log coordinates computed by hand, to rounding |
+| ZIP, N = 100, p = 0.3 | E[p] 0.372 vs grid 0.369, sd 0.052 vs 0.053; E[λ] 2.72 vs 2.71, sd 0.227 vs 0.230; converges in 3 iterations |
+| same, untransformed Laplace | also fine (0.366): far from the boundary the transform does not matter |
+| ZIP, N = 10–15, p near 0 (three datasets) | transformed: runs, E[p] 0.17–0.18 vs grid 0.14 (skew again); untransformed: **fails**, Newton steps to p < 0 (`DomainError`) |
+
+Answer: **yes, it works without rewriting the model**, and the transform is what makes Laplace
+valid near a boundary. What it needs, by milestone:
+
+- **U2/U4.** Pushforward families have incomplete APIs: Distributions defines no `mean` or `var`
+  for `LogitNormal`, BayesBase no `mean(log, ::LogNormal)` (exact: μ). Summaries and downstream
+  rules must get these through the expectation protocol: exact closed forms from
+  ClosedFormExpectations where they exist, quadrature in the unconstrained space otherwise.
+  Conjugate rules that need only `E[τ]` already accept a `LogNormal` marginal (checked with
+  `NormalMeanPrecision`); rules and energies that need `E[log τ]` would fail today.
+- **U2.** At the first iteration the marginals are the priors (Beta, Gamma), so the default
+  backend needs a rule for any univariate distribution; Gauss–Legendre in probability space
+  (`quantile` at the nodes) worked.
+- **U4.** Initialisation is required: without it the mean-field schedule never starts
+  ("posteriors were never computed"). Initialising from the priors was enough.
+- **Open.** The domain comes from a factor with a known support in the product; a variable
+  without such a factor (only deterministic or fused neighbours) has no domain yet.
+
 ### U1. BayesBase: the expectation protocol
 
 Repository: BayesBase.jl. Additive, minor release.
@@ -351,7 +384,11 @@ end
   call object, or the context inside `RuleArgs`.
 - **Where the Laplace projection lives**: a form constraint in RxInfer (as `ProjectedTo`
   is), or a ReactiveMP-level projection hook.
-- **Domains**: how a variable learns its support when several nodes connect to it.
+- **Domains**: how a variable learns its support when several nodes connect to it, or when
+  no neighbour carries a support (U0.3b found the prior factor is enough when there is one).
+- **Representation of transformed Gaussians**: Distributions' `LogNormal` and `LogitNormal`
+  (incomplete APIs, no simplex family) or an owned type holding the unconstrained Gaussian and
+  the bijection, with moments through the protocol.
 - **The user-facing switch**: a keyword of `infer`, an option, or a constraint-level wildcard.
 - **Default on or off** for the universal scheme in RxInfer (decide after U6).
 - **Threads**: per-task RNGs for stochastic backends in parallel engines.
