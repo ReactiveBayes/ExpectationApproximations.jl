@@ -87,6 +87,13 @@ Repository: BayesBase.jl. Additive, minor release.
    `register_backend!` and `which_backend`.
 5. Decide the operation axis (`expectation`, `expectation_gradient`, `mean_cov`) before
    release; adding it later is breaking.
+6. **Prepared expectations** (D13): `prepare_expectation(backend, q)` returns an object that
+   evaluates `E_q[f]` for many `f` without rebuilding nodes or weights, and through which
+   ForwardDiff numbers pass. The universal fallback evaluates `x ↦ E_q[log f(x, ·)]` inside a
+   Newton loop, so this is the hot path, not an optimisation.
+7. **Independent products** (D14): a representation for `q = q₁ × q₂ × …` with components of
+   different kinds (Categorical × MvNormal × PointMass), with `supports` and labels composed
+   from the components (exact only if every component's expectation is exact).
 
 Done when: tests including inference and allocation tests, Aqua with ambiguity and piracy
 checks, JET, and documentation of the protocol and of the label contracts.
@@ -132,9 +139,12 @@ Repositories: MessagePassingRulesBase.jl, ReactiveMP.jl. Can run in parallel wit
    energy work on the universal path.
 3. **`:expectation` in `DEFAULT_CONTEXT_SERVICES`.** Rules read `ctx.expectation`; the engine
    always supplies it.
-4. **A default form constraint for all random variables**, composed where
+4. **A default projection for all random variables** (D15), composed where
    `EnsureSupportedFunctionalForm` is composed today, so "every variable Gaussian (in its
-   unconstrained space)" can be one setting instead of one line per variable.
+   unconstrained space)" can be one setting instead of one line per variable. It dispatches
+   on the variable's domain (Gaussian, possibly in transformed coordinates, for continuous;
+   exact normalisation for finite discrete), applies to **messages as well as marginals**
+   (under BP a message leaving a variable is a product too), and returns a log-normaliser.
 5. **Damping** as a stream postprocessor, needed by EP and loopy schedules later.
 6. **Fallback coverage** found by the spike: deterministic (Delta) nodes and nodes with
    interface groups (mixtures) get no fallback today; the default fallback should take
@@ -152,18 +162,28 @@ on MessagePassingRulesBase, BayesBase and EA.
    expected log-density `log m(x) = E_q(y)[log f(x, y)]` over the other inputs, computed through
    `ctx.expectation` (a plug-in value when an input is a point mass, an exact sum when it is
    categorical).
-2. **Laplace projection of marginals** in unconstrained coordinates: mode and Hessian of the
-   sum of incoming log-densities plus the log-Jacobian; the domain from the prior's support.
-3. **Deterministic nodes**: a default Delta method when the user gives none, `Linearization()`
-   for the Laplace scheme.
-4. **Average energies** for the free energy on the universal path.
-5. **Automatic initialisation** from the priors (Gaussian in unconstrained space).
+2. **Laplace projection of marginals and messages** in unconstrained coordinates: mode and
+   Hessian of the sum of incoming log-densities plus the log-Jacobian; the domain from the
+   prior's support. Warm starts from the previous mode; a start point for products without a
+   Gaussian factor. The log-normaliser (Laplace's evidence approximation) is returned with the
+   Gaussian and becomes the message's log scale.
+3. **Exact projection of finite discrete variables**: normalise the product by evaluating it
+   at every value (the spike's `CategoricalForm`).
+4. **Deterministic nodes** (D16): a fallback that pulls the outgoing message back through the
+   function, `log m(x) = E_q(y)[log m_out(f(x, y))]`, exact under BP for a single input; towards
+   `out` a projection of the pushforward. `Linearization()` stays an option when every message
+   is Gaussian; it cannot serve `Bernoulli(logistic(x))`, whose message to `p` is a Beta.
+5. **Average energies** for the free energy on the universal path.
+6. **Automatic initialisation** from the priors (Gaussian in unconstrained space).
 
-Done when, with no rules, methods or initialisation written by the user:
-- on linear-Gaussian models the posterior means equal the Kalman smoother's (mean-field
-  Laplace gives exact means and smaller variances; exact variances come with U7);
-- the canonical models of [VISION.md](VISION.md#what-success-looks-like) run, and their
-  posterior moments agree with long NUTS runs within tolerances recorded in the tests;
+Done when, with no rules, methods or initialisation written by the user (D17):
+- **correctness**, tight: on linear-Gaussian models under BP the posterior equals the Kalman
+  smoother's, means and variances (the spike reaches 4e-16 today); on any model the result
+  equals the same approximation computed directly (a Laplace fit of the hand-written
+  posterior, a global Laplace on a chain);
+- **quality**, reported: the canonical models of [VISION.md](VISION.md#what-success-looks-like)
+  run, and their gap to long NUTS runs (or exact grids) is published per method, with
+  regression tolerances on that gap, not on agreement with NUTS;
 - conjugate models never trigger a fallback (checked through rule annotations).
 
 ### U5. RxInfer integration
@@ -186,9 +206,11 @@ existing tests unchanged.
 
 Repository: RxInferExamples.jl.
 
-1. A new "Universal inference" section, starting with a purely Laplace example: logistic
-   regression, a Poisson count time series, a pendulum state-space model, a hierarchical model
-   with a Gamma precision; each compared with NUTS.
+1. A new "Universal inference" section, starting with purely Laplace examples. Done in the
+   spike: bioassay logistic regression, Poisson regression, stochastic volatility, Gaussian
+   mixture. Next: a pendulum state-space model, a hierarchical model with a Gamma precision
+   (automatic domain transform), a Poisson count time series. Each compared with an exact or
+   sampling reference.
 2. "Simple Nonlinear Node" rewritten without its hand-written rules.
 3. Later: the same models under EP, and with exact refinements via ClosedFormExpectations.
 
@@ -201,8 +223,10 @@ Repositories: the universal rules package, EA, ReactiveMP.
 1. **Laplace propagation and EP**: belief-propagation structure with cavities (rules that read
    the message on their own edge, as Probit's EP rules already do), Gaussian division with
    positive-definite correction, damping. Same code, two projections: Laplace or moment
-   matching through EA's quadrature. Acceptance: exact Kalman smoother (means and variances)
-   on linear-Gaussian models.
+   matching through EA's quadrature. Acceptance: Laplace propagation reaches the global
+   Laplace solution on nonlinear chains (the stochastic volatility notebook is the benchmark:
+   local projection has RMSE 0.085 to it today), and EP improves on Laplace against the
+   sampler.
 2. **CVI and natural-gradient projection** through `expectation_gradient`; ExponentialFamilyProjection
    as the projection to families beyond the Gaussian.
 3. **Exact refinements**: ClosedFormExpectations as the first backend in `FirstOf`, showcased on
@@ -262,13 +286,35 @@ Decided in the design discussion of October 2026; each can be revisited with a n
   approximate ones in the default router.
 - **D11. The universal path is a fallback.** It never replaces an existing rule; it is
   consulted only when resolution finds none.
-- **D12. Laplace first.** The first universal scheme is mean-field Laplace (no message
-  division, no damping needed); Laplace propagation and EP follow in U7.
+- **D12. Laplace first.** The first universal scheme is Laplace with local projection of
+  messages and marginals, under whatever factorisation the model uses (BP or mean field): no
+  message division, no damping needed. Laplace propagation and EP follow in U7. *(Revised after
+  the spike: BP with projected messages already works and is exact on linear-Gaussian models.)*
+
+Added after the Laplace spike (U0.3):
+
+- **D13. Prepared expectations are part of the protocol.** BayesBase reserves
+  `prepare_expectation(backend, q)`; EA implements it. Integrands are closures evaluated many
+  times, with dual numbers, so the protocol must be generic in the element type of `f`'s output.
+- **D14. Independent products of mixed kinds** are a first-class `q`: exact sums over
+  categorical parts, quadrature over Gaussian parts, plug-in for point masses, labels composed.
+- **D15. The default projection is domain-aware** (Gaussian in unconstrained coordinates, or
+  exact for finite discrete), applies to messages and marginals, and returns a log-normaliser.
+  "Every belief is Gaussian" means: Gaussian or finite categorical, possibly in transformed
+  coordinates, possibly over a block of variables.
+- **D16. Deterministic nodes pull messages back through the function** by default; linearisation
+  and the unscented transform are opt-in methods for all-Gaussian neighbourhoods. Fusing a
+  function into a stochastic node is the workaround until then.
+- **D17. Correctness and quality are tested separately.** Tight tolerances against the same
+  approximation computed another way; reported gaps, not tight agreement, against NUTS. Laplace
+  is mode-seeking and will miss skew by design (bioassay: E[β] 30% low).
 
 The protocol, as decided (BayesBase):
 
 ```julia
 function expectation end                                   # expectation(backend, f, q) = E_q[f]
+function prepare_expectation end                           # prep = prepare_expectation(backend, q)
+                                                           # expectation(prep, f), any f, dual-safe (D13)
 
 supports(backend, ::Type, ::Type) = false                  # hook for backend owners
 supports(backend, f, q) = supports(backend, typeof(f), typeof(q))
@@ -299,7 +345,6 @@ end
   in ExponentialFamily, so BayesBase can only declare it with an untyped `space`.
 - **`Differentiable` as a core label**, needed by CVI and natural-gradient schemes.
 - **Exports** of BayesBase: which names are exported, which stay qualified.
-- **Prepared path**: `prepare_expectation` in EA only, or reserved in BayesBase.
 - **The universal rules package**: a new package (`UniversalMessagePassingRules.jl`?), part
   of EA as an extension on MessagePassingRulesBase, or part of DeltaMessagePassingRules.
 - **The fallback signature** in MessagePassingRulesBase: extra positional arguments, a

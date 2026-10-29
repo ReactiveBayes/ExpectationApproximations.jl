@@ -88,18 +88,25 @@ added to ClosedFormExpectations improves every scheme at once, without a single 
 
 ### What "any model" means
 
-"Every belief is Gaussian" is the core, made precise so it holds for real models:
+"Every belief is Gaussian" is the core, made precise so it holds for real models: every
+belief is **Gaussian or finite categorical, possibly in transformed coordinates, possibly over
+a block of variables**.
 
-- **Unconstrained continuous variables** are Gaussian.
+- **Unconstrained continuous variables** are Gaussian. Strongly correlated parameters belong in
+  one block (one vector variable), so the Gaussian keeps their correlation.
 - **Constrained continuous variables** (precisions, rates, scales, probabilities, simplex
   weights) are Gaussian in an unconstrained space: log for positive, logit for the unit
   interval, a softmax-type map for the simplex. The domain is known from the support of the
   variable's prior. The reported posterior is the pushforward (a log-normal for a precision).
+  The transform lives in the projection and the expectation backends, not in the model: the
+  user writes `τ ~ Gamma(...)`, not its logarithm.
 - **Finite discrete variables** stay categorical. Their expectations are exact sums, so a
   mixture model needs no approximation on its discrete part.
-- **Deterministic functions** are handled by the Gaussian methods for Delta nodes
-  (linearisation is the Laplace counterpart, the unscented transform and cubature the
-  moment-matching counterpart).
+- **Deterministic functions** pull the message they receive back through the function:
+  towards an input `x`, the message is `log m_out(f(x))`, which works whatever the downstream
+  node is (a Beta message from a Bernoulli as well as a Gaussian), and is exact under belief
+  propagation. Linearisation and the unscented transform remain available where every
+  neighbouring message is Gaussian; they cannot serve `Bernoulli(logistic(x))`.
 - **Out of scope at first:** discrete variables with unbounded support, and multimodal
   posteriors that a single Gaussian cannot represent. These keep needing dedicated methods.
 
@@ -127,8 +134,13 @@ added to ClosedFormExpectations improves every scheme at once, without a single 
   (pendulum), stochastic volatility, a hierarchical model with Gamma-distributed precisions,
   a Gaussian mixture, and the "Simple Nonlinear Node" example without its hand-written rules.
 - **Correctness.** On linear-Gaussian models the universal path reproduces the exact Kalman
-  smoother to rounding error. On non-conjugate models posterior moments agree with long NUTS
-  runs within stated tolerances. On conjugate models no fallback is ever triggered.
+  smoother to rounding error. On any model it equals the same approximation computed another
+  way (a Laplace fit of the hand-written posterior). On conjugate models no fallback is ever
+  triggered.
+- **Quality, measured honestly.** The gap of each approximation to long NUTS runs or exact
+  grids is published per model and per method, and guarded against regressions. Laplace is
+  mode-seeking and will miss skew; that is reported, not hidden, and is what EP and exact
+  refinements are for.
 - **Transparency.** Every result can list the nodes that used an approximation and which one.
 - **Speed.** Conjugate models are not slower than today. The universal path has published
   benchmarks and allocation-free kernels for the common sizes.
