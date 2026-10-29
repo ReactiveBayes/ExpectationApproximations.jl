@@ -82,7 +82,8 @@ handled by the projection alone, without rewriting the model in unconstrained co
 Model: zero-inflated Poisson, `y[i] ~ ZeroInflatedPoisson(p, λ)` (a fused node), mean field.
 `TransformedLaplaceForm` reads the domain from the support of the prior factor in the product
 (`Distributions.support`), runs Laplace in log or logit coordinates with the log-Jacobian, and
-returns a `LogNormal` or `LogitNormal`. Script: scratch, to become a notebook if wanted.
+returns a `LogNormal` or `LogitNormal`. Now the RxInferExamples notebook "Laplace Approximation:
+Constrained Variables" (McElreath's drunk monks, N = 365, p = 0.2, λ = 1).
 
 | Check | Result |
 |---|---|
@@ -90,6 +91,9 @@ returns a `LogNormal` or `LogitNormal`. Script: scratch, to become a notebook if
 | ZIP, N = 100, p = 0.3 | E[p] 0.372 vs grid 0.369, sd 0.052 vs 0.053; E[λ] 2.72 vs 2.71, sd 0.227 vs 0.230; converges in 3 iterations |
 | same, untransformed Laplace | also fine (0.366): far from the boundary the transform does not matter |
 | ZIP, N = 10–15, p near 0 (three datasets) | transformed: runs, E[p] 0.17–0.18 vs grid 0.14 (skew again); untransformed: **fails**, Newton steps to p < 0 (`DomainError`) |
+| notebook, N = 365, p = 0.2, λ = 1 (posterior corr(p, λ) = 0.74) | mean-field transformed: E[p] 0.166 vs grid 0.127, sd 0.046 vs 0.067; E[λ] 0.793 vs 0.762, sd 0.054 vs 0.076 |
+| same, joint transformed Laplace over (logit p, log λ), computed directly | E[p] 0.166, sd 0.071; E[λ] 0.787, sd 0.079: the means carry the Laplace (skew) error, the mean-field sds the factorisation error |
+| same, untransformed Laplace | **fails** even with a year of data: Newton overshoots λ < 0, and, fundamentally, quadrature over a Gaussian q(p) has nodes at p < 0 (4 of 16), still failing with a domain-safe line search |
 
 Answer: **yes, it works without rewriting the model**, and the transform is what makes Laplace
 valid near a boundary. What it needs, by milestone:
@@ -105,6 +109,9 @@ valid near a boundary. What it needs, by milestone:
   (`quantile` at the nodes) worked.
 - **U4.** Initialisation is required: without it the mean-field schedule never starts
   ("posteriors were never computed"). Initialising from the priors was enough.
+- **U4.** Transforms per component of a vector variable. Strongly correlated parameters belong
+  in one block (D15), and a block can mix domains (a probability and a rate here); the
+  projection needs a product bijection with a summed log-Jacobian and a joint pushforward.
 - **Open.** The domain comes from a factor with a known support in the product; a variable
   without such a factor (only deterministic or fused neighbours) has no domain yet.
 
@@ -197,7 +204,7 @@ on MessagePassingRulesBase, BayesBase and EA.
    categorical).
 2. **Laplace projection of marginals and messages** in unconstrained coordinates: mode and
    Hessian of the sum of incoming log-densities plus the log-Jacobian; the domain from the
-   prior's support. Warm starts from the previous mode; a start point for products without a
+   prior's support, per component for vector variables. Warm starts from the previous mode; a start point for products without a
    Gaussian factor. The log-normaliser (Laplace's evidence approximation) is returned with the
    Gaussian and becomes the message's log scale.
 3. **Exact projection of finite discrete variables**: normalise the product by evaluating it
@@ -241,8 +248,9 @@ Repository: RxInferExamples.jl.
 
 1. A new "Universal inference" section, starting with purely Laplace examples. Done in the
    spike: bioassay logistic regression, Poisson regression, stochastic volatility, Gaussian
-   mixture. Next: a pendulum state-space model, a hierarchical model with a Gamma precision
-   (automatic domain transform), a Poisson count time series. Each compared with an exact or
+   mixture, zero-inflated Poisson with Beta and Gamma priors (automatic domain transform).
+   Next: a pendulum state-space model, a hierarchical model with a Gamma precision, a Poisson
+   count time series. Each compared with an exact or
    sampling reference.
 2. "Simple Nonlinear Node" rewritten without its hand-written rules.
 3. Later: the same models under EP, and with exact refinements via ClosedFormExpectations.
@@ -466,7 +474,7 @@ Tests (ReTestItems or TestItemRunner), Aqua with ambiguity and piracy checks, JE
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |
 | U5 | RxInfer | not started | |
-| U6 | RxInferExamples | started: three Laplace notebooks on `universal-inference` | |
+| U6 | RxInferExamples | started: four Laplace notebooks on `universal-inference` | |
 | U7 | several | not started | |
 | P | CFE, MPRA, rule packages, EFP | not started | |
 
