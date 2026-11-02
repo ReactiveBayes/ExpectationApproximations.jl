@@ -67,15 +67,17 @@ end
     @test EA.domain(P.ProductOf(unspecified, Gamma(2.0, 1.0))) === EA.Positive()
 end
 
-@testitem "pushforward: named families where they exist" tags = [:transforms] setup = [EAHelpers] begin
+@testitem "pushforward: the Gaussian itself, or a TransformedGaussian" tags = [:transforms] setup = [EAHelpers] begin
     using Distributions
     g = Normal(0.3, 0.7)
     @test EA.pushforward(EA.RealLine(), g) === g
-    @test EA.pushforward(EA.Positive(), g) == LogNormal(0.3, 0.7)
-    # Distributions' LogitNormal has no mean, variance or entropy, so the unit interval has none
-    t = EA.pushforward(EA.UnitInterval(), g)
-    @test t isa EA.TransformedGaussian
-    @test t.gaussian === g && t.domain === EA.UnitInterval()
+    # Distributions' LogNormal and LogitNormal have no E[log x] in the ecosystem, LogitNormal no
+    # mean, variance or entropy either: a TransformedGaussian has them all.
+    for D in (EA.Positive(), EA.UnitInterval())
+        t = EA.pushforward(D, g)
+        @test t isa EA.TransformedGaussian
+        @test t.gaussian === g && t.domain === D
+    end
     b = EA.pushforward(EA.Bounded(2.0, 5.0), g)
     @test b isa EA.TransformedGaussian
     @test minimum(b) == 2.0

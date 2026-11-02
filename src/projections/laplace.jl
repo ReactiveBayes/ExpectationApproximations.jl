@@ -66,8 +66,7 @@ end
 
 The Laplace approximation in the unconstrained coordinates of `domain`: of
 `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
-pushed forward onto the domain (a `LogNormal` for `Positive`, a [`TransformedGaussian`](@ref)
-otherwise). `logZ` approximates the same
+pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line. `logZ` approximates the same
 integral as in the original coordinates, and `mode` is the point of the approximation in them.
 """
 function laplace(logp::L, x0, domain::Domain; kwargs...) where {L}

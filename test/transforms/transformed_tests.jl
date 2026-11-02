@@ -24,12 +24,13 @@ end
 @testitem "laplace in a domain: the Poisson–Gamma check of the domain experiment" tags = [:transforms] setup = [EAHelpers] begin
     using Distributions
     # the posterior Gamma(a, rate b) in log coordinates has the log-density a u - b eᵘ: mode
-    # log(a/b), curvature a, so the transformed Laplace approximation is LogNormal(log(a/b), 1/√a)
+    # log(a/b), curvature a, so the transformed Laplace approximation is the log-normal
+    # distribution exp(N(log(a/b), 1/a))
     a, b = 23.0, 21.0
     result = EA.laplace(x -> logpdf(Gamma(a, 1 / b), x), 1.0, EA.Positive())
-    @test result.distribution isa LogNormal
-    @test params(result.distribution)[1] ≈ log(a / b)
-    @test params(result.distribution)[2] ≈ 1 / sqrt(a)
+    @test result.distribution isa EA.TransformedGaussian
+    @test mean(result.distribution.gaussian) ≈ log(a / b)
+    @test std(result.distribution.gaussian) ≈ 1 / sqrt(a)
     @test result.converged
     # the log-normaliser is that of the density in the original coordinates: zero, up to
     # Laplace's error
@@ -58,4 +59,17 @@ end
     @test entropy(t) ≈ -P.expectation(EA.GaussHermite(32), x -> logpdf(t, x), t) rtol = 1.0e-10
     c = EA.TransformedGaussian(MvNormal([0.2, -0.5], [0.3 0.1; 0.1 0.2]), EA.Componentwise(EA.UnitInterval(), EA.Positive()))
     @test entropy(c) ≈ -P.expectation(EA.GaussHermite(32), x -> logpdf(c, x), c) rtol = 1.0e-10
+end
+
+@testitem "TransformedGaussian: expectations of functions, as conjugate rules take them" tags = [:transforms] setup = [EAHelpers] begin
+    using Distributions
+    # E[log x] under exp(N(μ, σ²)) is μ, E[x] is exp(μ + σ²/2); E[log x] and E[log(1 - x)]
+    # under a logit-normal agree with the protocol's expectation
+    positive = EA.TransformedGaussian(Normal(0.3, 0.7), EA.Positive())
+    @test mean(log, positive) ≈ 0.3
+    @test mean(identity, positive) ≈ exp(0.3 + 0.7^2 / 2)
+    @test mean(inv, positive) ≈ exp(-0.3 + 0.7^2 / 2)
+    unit = EA.TransformedGaussian(Normal(0.3, 0.7), EA.UnitInterval())
+    @test mean(log, unit) ≈ P.expectation(EA.GaussHermite(64), log, unit) rtol = 1.0e-10
+    @test mean(x -> log1p(-x), unit) ≈ P.expectation(EA.GaussHermite(64), x -> log1p(-x), unit) rtol = 1.0e-10
 end

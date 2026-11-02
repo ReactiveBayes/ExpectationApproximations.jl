@@ -162,10 +162,10 @@ end
     pushforward(domain, gaussian)
 
 The distribution of `forward(domain, u)` for `u ~ gaussian`: the `gaussian` itself on the real
-line, a `LogNormal` on the positive half-line, and a [`TransformedGaussian`](@ref) otherwise. On
-the unit interval that is a logit-normal distribution; Distributions' `LogitNormal` has no mean,
-variance or entropy, which the `TransformedGaussian` has.
+line, and a [`TransformedGaussian`](@ref) otherwise, a log-normal distribution on the positive
+half-line and a logit-normal one on the unit interval among them. Distributions' `LogNormal` and
+`LogitNormal` have no `mean(log, q)` in the ecosystem, which conjugate rules take, and
+`LogitNormal` no mean, variance or entropy either; a `TransformedGaussian` has them all.
 """
 pushforward(::RealLine, gaussian) = gaussian
-pushforward(::Positive, gaussian::UnivariateDistribution) = LogNormal(mean(gaussian), std(gaussian))
 pushforward(D::Domain, gaussian) = TransformedGaussian(gaussian, D)
