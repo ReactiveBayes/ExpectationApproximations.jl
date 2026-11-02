@@ -56,9 +56,9 @@ function Distributions._rand!(rng::AbstractRNG, t::MultivariateTransformed, x::A
     return x
 end
 
-BayesBase.supports(::GaussHermite, ::Type, ::Type{<:TransformedGaussian}) = true
+BayesBase.supports_expectation(::GaussHermite, ::Type, ::Type{<:TransformedGaussian}) = true
 
 function BayesBase.prepare_expectation(rule::GaussHermite, t::TransformedGaussian)
     set = prepare_expectation(rule, t.gaussian)
-    return PointSet([forward(t.domain, u) for u in set.points], set.weights)
+    return ExpectationPointSet([forward(t.domain, u) for u in set.points], set.weights)
 end

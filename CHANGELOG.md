@@ -48,6 +48,9 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 
 ### Changed
 
+- The backends implement BayesBase's expectation protocol under its final names, each saying it
+  is about expectations: `supports_expectation`, `ExpectationPointSet`, `ExpectationFirstOf`,
+  `with_expectation_rng`, `ExpectationExact` and the rest (PLAN.md, D36).
 - ExpectationApproximations 1.0 is a rewrite: numerical backends for the expectation protocol of
   BayesBase 1.7. The previous API (`approximate`, the kernels, CVI, CVMP, AdvancedHMC sampling,
   the constrained unscented transform) is removed.

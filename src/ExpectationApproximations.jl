@@ -12,8 +12,8 @@ Nothing is exported: the names are public and used qualified, such as
 """
 module ExpectationApproximations
 
-using BayesBase: BayesBase, PointSet, ProductPointSet, FactorizedJoint, PointMass, FirstOf, Exact, Stochastic, NoBackendError,
-    ProductOf, LinearizedProductOf, getleft, getright, expectation, prepare_expectation, which_backend
+using BayesBase: BayesBase, ExpectationPointSet, ExpectationProductPointSet, FactorizedJoint, PointMass, ExpectationFirstOf, ExpectationExact, ExpectationStochastic, UnsupportedExpectationError,
+    ProductOf, LinearizedProductOf, getleft, getright, expectation, prepare_expectation, which_expectation_backend
 using Compat: @compat
 using Distributions: Distributions, Distribution, UnivariateDistribution, VariateForm, Univariate, Multivariate,
     Continuous, Dirichlet, insupport, logpdf, ContinuousUnivariateDistribution, Normal, MvNormal, AbstractMvNormal, LogNormal,

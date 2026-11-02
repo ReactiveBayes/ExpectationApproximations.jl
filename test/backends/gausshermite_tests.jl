@@ -10,9 +10,9 @@ end
     q = Normal(μ, σ)
     @test P.expectation(EA.GaussHermite(3), x -> x^4, q) ≈ μ^4 + 6μ^2 * σ^2 + 3σ^4
     @test P.expectation(EA.GaussHermite(3), x -> x^5, q) ≈ μ^5 + 10μ^3 * σ^2 + 15μ * σ^4
-    @test P.isexact(EA.GaussHermite(3), sin, q) === false
-    @test P.supports(EA.GaussHermite(3), Any, Normal{Float64}) === true
-    @test P.supports(EA.GaussHermite(3), Any, Gamma{Float64}) === false
+    @test P.is_expectation_exact(EA.GaussHermite(3), sin, q) === false
+    @test P.supports_expectation(EA.GaussHermite(3), Any, Normal{Float64}) === true
+    @test P.supports_expectation(EA.GaussHermite(3), Any, Gamma{Float64}) === false
 end
 
 @testitem "GaussHermite: tensor grid for a multivariate Normal" tags = [:backends] setup = [EAHelpers] begin
@@ -48,5 +48,5 @@ end
     using Distributions
     @test allocations(P.expectation, P.prepare_expectation(EA.GaussHermite(16), Normal(0.5, 2.0)), sin) == 0
     @test allocations(P.expectation, P.prepare_expectation(EA.GaussHermite(5), MvNormal([1.0, 2.0], [1.0 0.0; 0.0 2.0])), sum) == 0
-    @test @inferred(P.prepare_expectation(EA.GaussHermite(4), Normal(0.0, 1.0))) isa P.PointSet
+    @test @inferred(P.prepare_expectation(EA.GaussHermite(4), Normal(0.0, 1.0))) isa P.ExpectationPointSet
 end

@@ -32,10 +32,10 @@ end
 
 Base.length(set::SigmaPointSet) = length(set.weights)
 
-BayesBase.expectation(set::SigmaPointSet, f::F) where {F} = expectation(PointSet(set.points, set.weights), f)
+BayesBase.expectation(set::SigmaPointSet, f::F) where {F} = expectation(ExpectationPointSet(set.points, set.weights), f)
 
 function mean_cov(set::SigmaPointSet, f::F) where {F}
-    m, V = mean_cov(PointSet(set.points, set.weights), f)
+    m, V = mean_cov(ExpectationPointSet(set.points, set.weights), f)
     return m, V + set.centre * outer(f(first(set.points)) - m)
 end
 
@@ -51,8 +51,8 @@ function tilted_mean_cov(::SigmaPointSet, logf)
     throw(ArgumentError("sigma points can have negative weights, so they cannot tilt a distribution; use a quadrature backend"))
 end
 
-BayesBase.supports(::Unscented, ::Type, ::Type{<:Union{Normal, AbstractMvNormal}}) = true
-BayesBase.supports(::Unscented, ::Type, ::Type{FactorizedJoint{T}}) where {T <: Tuple} = false
+BayesBase.supports_expectation(::Unscented, ::Type, ::Type{<:Union{Normal, AbstractMvNormal}}) = true
+BayesBase.supports_expectation(::Unscented, ::Type, ::Type{FactorizedJoint{T}}) where {T <: Tuple} = false
 
 BayesBase.prepare_expectation(rule::Unscented, q::Normal) = unscented_points(rule, mean(q), std(q))
 BayesBase.prepare_expectation(rule::Unscented, q::AbstractMvNormal) = unscented_points(rule, mean(q), cov(q))
@@ -89,7 +89,7 @@ the covariance.
 """
 struct GenUnscented end
 
-BayesBase.supports(::GenUnscented, ::Type, ::Type{<:Union{UnivariateDistribution, AbstractMvNormal}}) = true
+BayesBase.supports_expectation(::GenUnscented, ::Type, ::Type{<:Union{UnivariateDistribution, AbstractMvNormal}}) = true
 
 function BayesBase.prepare_expectation(::GenUnscented, q::UnivariateDistribution)
     return generalised_points(mean(q), std(q), skewness(q), kurtosis(q) + 3)
@@ -101,7 +101,7 @@ function BayesBase.prepare_expectation(::GenUnscented, q::AbstractMvNormal)
     m = mean(q)
     d = length(m)
     S = sqrt(3) * cholesky(Symmetric(cov(q))).L
-    return PointSet(axis_points(m, S), [1 - d / 3; fill(1 / 6, 2d)])
+    return ExpectationPointSet(axis_points(m, S), [1 - d / 3; fill(1 / 6, 2d)])
 end
 
 # For the standardised variable, the points -u and v with u = (-S + √(4K - 3S²)) / 2 and v = u + S
@@ -111,7 +111,7 @@ function generalised_points(μ, σ, skew, kurt)
     v = u + skew
     w2 = 1 / (v * (u + v))
     w1 = w2 * v / u
-    return PointSet((μ, μ - u * σ, μ + v * σ), (1 - w1 - w2, w1, w2))
+    return ExpectationPointSet((μ, μ - u * σ, μ + v * σ), (1 - w1 - w2, w1, w2))
 end
 
 """
@@ -123,15 +123,15 @@ to degree 3.
 """
 struct SphericalRadialCubature end
 
-BayesBase.supports(::SphericalRadialCubature, ::Type, ::Type{<:Union{Normal, AbstractMvNormal}}) = true
+BayesBase.supports_expectation(::SphericalRadialCubature, ::Type, ::Type{<:Union{Normal, AbstractMvNormal}}) = true
 
 BayesBase.prepare_expectation(::SphericalRadialCubature, q::Normal) = cubature_points(mean(q), std(q))
 BayesBase.prepare_expectation(::SphericalRadialCubature, q::AbstractMvNormal) = cubature_points(mean(q), cov(q))
 
-cubature_points(m::Real, s::Real) = PointSet((m - s, m + s), (0.5, 0.5))
+cubature_points(m::Real, s::Real) = ExpectationPointSet((m - s, m + s), (0.5, 0.5))
 
 function cubature_points(m::AbstractVector, Σ::AbstractMatrix)
     d = length(m)
     S = sqrt(d) * cholesky(Symmetric(Σ)).L
-    return PointSet(axis_points(m, S)[2:end], fill(1 / (2d), 2d))
+    return ExpectationPointSet(axis_points(m, S)[2:end], fill(1 / (2d), 2d))
 end

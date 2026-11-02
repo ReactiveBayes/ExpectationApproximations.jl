@@ -191,7 +191,7 @@ const EA = ExpectationApproximations
 
 # The notebook's own quadrature: exact sums, Gauss–Hermite for Gaussians and transformed
 # Gaussians, Gauss–Legendre in probability space for any other distribution
-notebook_router(order) = BayesBase.FirstOf(EA.ExactSum(), EA.GaussHermite(order), EA.QuantileLegendre(order))
+notebook_router(order) = BayesBase.ExpectationFirstOf(EA.ExactSum(), EA.GaussHermite(order), EA.QuantileLegendre(order))
 import BayesBase: FactorizedJoint
 
 # The fallback of the notebook, with its quadrature replaced by the expectation protocol: one

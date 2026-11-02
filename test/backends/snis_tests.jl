@@ -3,7 +3,7 @@
     # N(0, 1) × N(1, 1) is proportional to N(1/2, 1/2)
     target = P.ProductOf(Normal(0.0, 1.0), Normal(1.0, 1.0))
     backend = EA.SNIS(Normal(0.0, 2.0), 50_000, StableRNG(1))
-    @test P.supports(backend, Any, typeof(target)) === true
+    @test P.supports_expectation(backend, Any, typeof(target)) === true
     @test P.expectation(backend, identity, target) ≈ 0.5 rtol = 2.0e-2
     @test P.expectation(backend, abs2, target) ≈ 0.5 + 0.25 rtol = 2.0e-2
     @test P.expectation(EA.SNIS(Exponential(3.0), 50_000, StableRNG(2)), identity, Gamma(3.0, 1.0)) ≈ 3.0 rtol = 2.0e-2
@@ -14,8 +14,8 @@ end
     @test_throws ArgumentError EA.SNIS(Normal(0.0, 1.0), 0)
     @test_throws ArgumentError P.expectation(EA.SNIS(Normal(0.0, 2.0), 100), identity, Normal(0.0, 1.0))
     rng = StableRNG(1)
-    @test P.getrng(P.withrng(EA.SNIS(Normal(0.0, 2.0), 100), rng)) === rng
-    @test P.isstochastic(EA.SNIS(Normal(0.0, 2.0), 100), identity, Normal(0.0, 1.0)) === true
+    @test P.get_expectation_rng(P.with_expectation_rng(EA.SNIS(Normal(0.0, 2.0), 100), rng)) === rng
+    @test P.is_expectation_stochastic(EA.SNIS(Normal(0.0, 2.0), 100), identity, Normal(0.0, 1.0)) === true
     estimate(seed) = P.expectation(EA.SNIS(Normal(0.0, 2.0), 1000, StableRNG(seed)), identity, Normal(0.3, 1.0))
     @test estimate(7) == estimate(7)
 end

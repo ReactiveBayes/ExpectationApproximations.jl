@@ -45,12 +45,12 @@ The backend must prepare a point set for `q`: every quadrature, sampling and exa
 does, and a router uses the one it chooses for `q`.
 """
 function tilted_mean_cov(backend, logf::L, q) where {L}
-    chosen = which_backend(backend, Any, typeof(q))
-    isnothing(chosen) && throw(NoBackendError(backend, logf, q))
+    chosen = which_expectation_backend(backend, Any, typeof(q))
+    isnothing(chosen) && throw(UnsupportedExpectationError(backend, logf, q))
     return tilted_mean_cov(prepare_expectation(chosen, q), logf)
 end
 
-function tilted_mean_cov(prepared::Union{PointSet, ProductPointSet}, logf::L) where {L}
+function tilted_mean_cov(prepared::Union{ExpectationPointSet, ExpectationProductPointSet}, logf::L) where {L}
     points = eachpoint(prepared)
     shift = maximum(((x, _),) -> logf(x), points)
     tilt(x, w) = w * exp(logf(x) - shift)
@@ -61,9 +61,9 @@ function tilted_mean_cov(prepared::Union{PointSet, ProductPointSet}, logf::L) wh
 end
 
 # Points and weights of a point set, and of the product rule over several
-eachpoint(set::PointSet) = zip(set.points, set.weights)
+eachpoint(set::ExpectationPointSet) = zip(set.points, set.weights)
 
-function eachpoint(product::ProductPointSet)
+function eachpoint(product::ExpectationProductPointSet)
     sets = product.sets
     indices = CartesianIndices(map(set -> Base.OneTo(length(set)), sets))
     return (

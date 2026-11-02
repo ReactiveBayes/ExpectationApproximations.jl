@@ -11,8 +11,8 @@
     @test P.expectation(EA.GaussLaguerre(3), x -> x^2, Exponential(2.0)) ≈ 8.0
     # a shape so large that Γ(shape) overflows
     @test P.expectation(EA.GaussLaguerre(8), identity, Gamma(500.0, 0.01)) ≈ 5.0
-    @test P.supports(EA.GaussLaguerre(3), Any, Gamma{Float64}) === true
-    @test P.supports(EA.GaussLaguerre(3), Any, Normal{Float64}) === false
+    @test P.supports_expectation(EA.GaussLaguerre(3), Any, Gamma{Float64}) === true
+    @test P.supports_expectation(EA.GaussLaguerre(3), Any, Normal{Float64}) === false
 end
 
 @testitem "GaussLaguerre: duals in the integrand and in the scale" tags = [:backends] setup = [EAHelpers] begin

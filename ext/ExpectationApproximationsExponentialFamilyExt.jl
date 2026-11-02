@@ -6,27 +6,27 @@ module ExpectationApproximationsExponentialFamilyExt
 using ExpectationApproximations: ExpectationApproximations as EA, GaussHermite, GaussLaguerre, Unscented, GenUnscented,
     SphericalRadialCubature
 using ExponentialFamily: NormalMeanVariance, NormalMeanPrecision, NormalWeightedMeanPrecision, GammaShapeRate
-using BayesBase: BayesBase, PointSet, mean, std, shape, rate
+using BayesBase: BayesBase, ExpectationPointSet, mean, std, shape, rate
 
 const UnivariateGaussian = Union{NormalMeanVariance, NormalMeanPrecision, NormalWeightedMeanPrecision}
 
-BayesBase.supports(::GaussHermite, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.supports_expectation(::GaussHermite, ::Type, ::Type{<:UnivariateGaussian}) = true
 BayesBase.prepare_expectation(rule::GaussHermite, q::UnivariateGaussian) = EA.scalar_points(rule, mean(q), std(q))
 
-BayesBase.supports(::Unscented, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.supports_expectation(::Unscented, ::Type, ::Type{<:UnivariateGaussian}) = true
 BayesBase.prepare_expectation(rule::Unscented, q::UnivariateGaussian) = EA.unscented_points(rule, mean(q), std(q))
 
-BayesBase.supports(::GenUnscented, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.supports_expectation(::GenUnscented, ::Type, ::Type{<:UnivariateGaussian}) = true
 BayesBase.prepare_expectation(::GenUnscented, q::UnivariateGaussian) = EA.generalised_points(mean(q), std(q), 0.0, 3.0)
 
-BayesBase.supports(::SphericalRadialCubature, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.supports_expectation(::SphericalRadialCubature, ::Type, ::Type{<:UnivariateGaussian}) = true
 BayesBase.prepare_expectation(::SphericalRadialCubature, q::UnivariateGaussian) = EA.cubature_points(mean(q), std(q))
 
-BayesBase.supports(::GaussLaguerre, ::Type, ::Type{<:GammaShapeRate}) = true
+BayesBase.supports_expectation(::GaussLaguerre, ::Type, ::Type{<:GammaShapeRate}) = true
 
 function BayesBase.prepare_expectation(rule::GaussLaguerre, q::GammaShapeRate)
     nodes, weights = EA.probability_laguerre(rule.n, shape(q) - 1)
-    return PointSet(nodes ./ rate(q), weights)
+    return ExpectationPointSet(nodes ./ rate(q), weights)
 end
 
 end

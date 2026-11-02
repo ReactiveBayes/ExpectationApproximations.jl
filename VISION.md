@@ -39,7 +39,7 @@ result = infer(model = my_model(), data = (y = y,))     # any model: it runs
   which approximations; diagnostics flag the parts most likely to be inaccurate.
 - **Refinable.** An advanced user improves any part: a better method for one node, an exact
   closed form for one function (a Delta node computing `exp`, `log` or `sin` against a
-  `Logpdf`), a different universal scheme for the whole model.
+  log-density), a different universal scheme for the whole model.
 - **Extensible by others.** Researchers (Mykola's closed forms, new projection schemes) add
   methods as packages that plug in, without touching the engine or the rules.
 
@@ -119,9 +119,9 @@ a block of variables**.
 3. **Configured from above.** Rules call `expectation(ctx.expectation, f, q)` and nothing else.
    The engine decides the backend, its RNG and per-node overrides. Rules never pick defaults.
 4. **Deterministic by default.** The default universal scheme uses no random numbers; sampling
-   is opt-in and labelled `Stochastic`.
-5. **Honest results.** Labels (`Exact`, `Stochastic`) travel with the computation, so a result
-   can report how it was obtained, and tests can choose their tolerances.
+   is opt-in and labelled `ExpectationStochastic`.
+5. **Honest results.** Labels (`ExpectationExact`, `ExpectationStochastic`) travel with the
+   computation, so a result can report how it was obtained, and tests can choose their tolerances.
 6. **No piracy, no global magic.** Every method is defined on a type its package owns.
    Results never depend on which packages happen to be loaded, unless the user asked for it.
 7. **Fast where it matters.** Type-stable, allocation-free hot paths for scalars and static
@@ -151,7 +151,7 @@ a block of variables**.
 
 | Package | Role in the vision |
 |---|---|
-| BayesBase | The expectation protocol: `expectation`, `supports`, labels, `withrng`, `Logpdf`, `FirstOf` |
+| BayesBase | The expectation protocol: `expectation`, `supports_expectation`, labels, `with_expectation_rng`, `ExpectationFirstOf` |
 | ExpectationApproximations | The numerics: quadrature, cubature, sampling, Laplace, local Gaussian projections, domain transforms; the conformance suite |
 | ClosedFormExpectations | Exact closed forms as a backend; the accuracy oracle in tests |
 | MessagePassingRulesBase | Rule and fallback interfaces: fallbacks that see the context, the node and the algorithm |

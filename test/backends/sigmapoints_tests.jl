@@ -11,7 +11,7 @@
     prepared = P.prepare_expectation(EA.Unscented(), MvNormal(m, Σ))
     @test length(prepared.points) == 5
     @test P.expectation(prepared, x -> x * x') ≈ Σ + m * m'
-    @test P.isexact(EA.Unscented(), identity, q) === false
+    @test P.is_expectation_exact(EA.Unscented(), identity, q) === false
 end
 
 @testitem "Unscented: the covariance weight of the centre" tags = [:backends] setup = [EAHelpers] begin

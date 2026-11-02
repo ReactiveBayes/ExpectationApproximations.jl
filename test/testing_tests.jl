@@ -5,21 +5,21 @@
 
     # Wrong points: shifted by one
     struct Shifted end
-    P.supports(::Shifted, ::Type, ::Type{<:Normal}) = true
-    P.prepare_expectation(::Shifted, q::Normal) = P.PointSet(mean(q) .+ 1 .+ std(q) .* [-1.0, 1.0], [0.5, 0.5])
+    P.supports_expectation(::Shifted, ::Type, ::Type{<:Normal}) = true
+    P.prepare_expectation(::Shifted, q::Normal) = P.ExpectationPointSet(mean(q) .+ 1 .+ std(q) .* [-1.0, 1.0], [0.5, 0.5])
 
     # Claims to be exact, is not: two points are exact up to degree three only
     struct Overclaims end
-    P.supports(::Overclaims, ::Type, ::Type{<:Normal}) = true
-    P.haslabel(::Overclaims, ::P.Exact) = true
-    P.prepare_expectation(::Overclaims, q::Normal) = P.PointSet(mean(q) .+ std(q) .* [-1.0, 1.0], [0.5, 0.5])
+    P.supports_expectation(::Overclaims, ::Type, ::Type{<:Normal}) = true
+    P.has_expectation_label(::Overclaims, ::P.ExpectationExact) = true
+    P.prepare_expectation(::Overclaims, q::Normal) = P.ExpectationPointSet(mean(q) .+ std(q) .* [-1.0, 1.0], [0.5, 0.5])
 
     # Allocates on every evaluation
     struct Allocating{T}
         set::T
     end
-    P.supports(::Allocating, ::Type, ::Type{<:Normal}) = true
-    P.prepare_expectation(::Allocating, q::Normal) = Allocating(P.PointSet(mean(q) .+ std(q) .* [-1.0, 1.0], [0.5, 0.5]))
+    P.supports_expectation(::Allocating, ::Type, ::Type{<:Normal}) = true
+    P.prepare_expectation(::Allocating, q::Normal) = Allocating(P.ExpectationPointSet(mean(q) .+ std(q) .* [-1.0, 1.0], [0.5, 0.5]))
     P.expectation(prepared::Allocating, f) = sum(collect(map(f, prepared.set.points)) .* prepared.set.weights)
 
     failed(checks) = Set(check.name for check in checks if !check.passed)

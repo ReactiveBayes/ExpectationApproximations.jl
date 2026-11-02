@@ -28,11 +28,12 @@ Repositories: EA (hub), scratch environments.
 
 1. Check out every repository involved locally and set up
    the shared development environment ([Working across repositories](#working-across-repositories)).
-2. Prototype the BayesBase protocol in a scratch environment: `expectation`, `supports`,
-   labels, `withrng`, `FirstOf`, `DynamicRouter`, with a toy closed-form backend and a
-   Gauss-Hermite stub. Confirm with `@inferred`, JET and `@allocated` that `FirstOf`'s choice
-   and `haslabel` fold at compile time and that `withrng` does not allocate. Measure the cost of
-   `DynamicRouter` per call.
+2. Prototype the BayesBase protocol in a scratch environment: `expectation`, `supports_expectation`,
+   labels, `with_expectation_rng`, `ExpectationFirstOf`, `ExpectationDynamicRouter`, with a toy
+   closed-form backend and a Gauss-Hermite stub. Confirm with `@inferred`, JET and `@allocated` that
+   `ExpectationFirstOf`'s choice and `has_expectation_label` fold at compile time and that
+   `with_expectation_rng` does not allocate. Measure the cost of `ExpectationDynamicRouter` per
+   call.
 3. **Laplace spike in today's RxInfer**, before any refactor: `rulefallback =
    NodeFunctionRuleFallback()` plus a hand-written Laplace form constraint on every variable,
    on logistic regression and a hierarchical model with a Gamma precision. Goal: find every
@@ -124,23 +125,23 @@ ambiguity and piracy checks on. Details in `prototype/protocol/RESULTS.md`.
 
 | Measurement | Result |
 |---|---|
-| Routing (`FirstOf`) | decided by inference: `which_backend` compiles to `return <backend>`; JET clean |
-| Labels | `isexact` compiles to a constant, for backends, routers and products |
-| `withrng` | 0 bytes, nested routers included |
+| Routing (`ExpectationFirstOf`) | decided by inference: `which_expectation_backend` compiles to `return <backend>`; JET clean |
+| Labels | `is_expectation_exact` compiles to a constant, for backends, routers and products |
+| `with_expectation_rng` | 0 bytes, nested routers included |
 | Prepared path | 0 bytes for products of Categorical × MvNormal × PointMass, with the mixture notebook's integrand differentiated twice by ForwardDiff |
-| `DynamicRouter` | 1.4–1.8 µs and 1.4–2.3 KB per call, against 8.7 ns and 0 bytes for `FirstOf`; freezing recovers the static numbers |
+| `ExpectationDynamicRouter` | 1.4–1.8 µs and 1.4–2.3 KB per call, against 8.7 ns and 0 bytes for `ExpectationFirstOf`; freezing recovers the static numbers |
 | Collisions | none with `using RxInfer`, since nothing is exported (D18) |
 | Operation axis | can be added later, additively (D21) |
 | Acceptance | the mixture and zero-inflated Poisson notebooks, their fallback rewritten with the protocol: posteriors equal to ≤ 1.4e-15; compiled inference time unchanged (6.04 → 6.18 s, 1.31 → 1.17 s) |
 
 What the design had not said yet, now decided (D18–D22):
 
-- A preparation is chosen without the integrand: `supports(backend, Any, Q)` means "every
-  integrand". A prepared router prepares that backend and still sends an integrand with a
+- A preparation is chosen without the integrand: `supports_expectation(backend, Any, Q)` means
+  "every integrand". A prepared router prepares that backend and still sends an integrand with a
   closed form to its closed form, decided by inference.
 - Numerical preparations are weighted point sets, the parts of product rules; products are
-  routed component by component, and labels combine per label (`combine_label`).
-- The default `expectation` goes through the preparation, guarded by `NoBackendError`.
+  routed component by component, and labels combine per label (`combine_expectation_label`).
+- The default `expectation` goes through the preparation, guarded by `UnsupportedExpectationError`.
   Backends define methods for specific families only; routers define the product methods.
 - Quantile quadrature over Beta and Gamma priors converges algebraically (about n⁻²): fine as
   the universal fallback, but U2's Gauss–Laguerre and Gauss–Jacobi rules matter.
@@ -155,24 +156,27 @@ public and none is exported (D18). The prototype's backends, acceptance test and
 in `prototype/protocol/` run against it.
 
 1. `expectation(backend, f, q)`, falling back to the preparation and guarded by
-   `NoBackendError`; `supports` at type level (hook) and instance level (API), with
-   `supports(backend, Any, Q)` meaning "every integrand"; `which_backend` for every backend.
-2. Labels: `ExpectationLabel`, `Exact`, `Stochastic`; `haslabel` per backend and per pair;
-   `isexact`, `isstochastic`; `combine_label` for products (D20).
-3. `withrng`, `getrng`; the integrand `Logpdf`, callable for anything with a `logpdf`.
-4. Routers: `FirstOf` with `prefer` and `exclude`; opt-in `DynamicRouter` with
-   `BackendRegistry`, `register_backend!` and `which_backend`; `FirstOf(DynamicRouter())`
-   freezes the choice.
+   `UnsupportedExpectationError`; `supports_expectation` at type level (hook) and instance level
+   (API), with `supports_expectation(backend, Any, Q)` meaning "every integrand";
+   `which_expectation_backend` for every backend.
+2. Labels: `ExpectationLabel`, `ExpectationExact`, `ExpectationStochastic`; `has_expectation_label`
+   per backend and per pair; `is_expectation_exact`, `is_expectation_stochastic`;
+   `combine_expectation_label` for products (D20).
+3. `with_expectation_rng`, `get_expectation_rng`; the integrand `Logpdf`, callable for anything with
+   a `logpdf` (since replaced by `Base.Fix1(logpdf, p)`, D36).
+4. Routers: `ExpectationFirstOf` with `prefer` and `exclude`; opt-in `ExpectationDynamicRouter` with
+   `ExpectationBackendRegistry`, `register_expectation_backend!` and `which_expectation_backend`;
+   `ExpectationFirstOf(ExpectationDynamicRouter())` freezes the choice.
 5. No operation axis in this release (D21); it can be added later without breaking anything.
 6. **Prepared expectations** (D13): `prepare_expectation(backend, q)` returns an object that
    evaluates `E_q[f]` for many `f` without rebuilding nodes or weights, and through which
    ForwardDiff numbers pass. The universal fallback evaluates `x ↦ E_q[log f(x, ·)]` inside a
    Newton loop, so this is the hot path, not an optimisation.
 7. **Independent products** (D14): `FactorizedJoint` (D19), with components of different
-   kinds (Categorical × MvNormal × PointMass), `supports` and labels composed from the
+   kinds (Categorical × MvNormal × PointMass), `supports_expectation` and labels composed from the
    components, routed component by component, computed as a product rule over point sets.
-8. **Point sets** (D20): `PointSet(points, weights)` and `ProductPointSet`, the preparation of
-   every numerical backend, with a generic, dual-safe and allocation-free sum.
+8. **Point sets** (D20): `ExpectationPointSet(points, weights)` and `ExpectationProductPointSet`,
+   the preparation of every numerical backend, with a generic, dual-safe and allocation-free sum.
 
 Done when: tests including inference and allocation tests, Aqua with ambiguity and piracy
 checks, JET, and documentation of the protocol and of the label contracts.
@@ -233,10 +237,10 @@ What it found:
 - **Differentiating through a Gamma's or Beta's shape** is refused by Gauss–Laguerre and
   Gauss–Jacobi, whose nodes depend on it; a dual scale with constant shapes works.
 - **MPRA 1.1 as a shim** (a local MPRA branch re-exporting `EA.MPRACompat`): MPRA's own suite passes
-  but for its closure test, which forbids Distributions in its dependencies; DeltaMessagePassingRules,
-  GCVMessagePassingRules, StandardMessagePassingRules, FlowMessagePassingRules (once the shim also
-  binds the internal accessors `getα`, `getL`, … its tests use), PolyaMessagePassingRules and RxInfer's
-  nonlinear and HGF tests pass.
+  but for its closure test, which forbids Distributions in its dependencies;
+  DeltaMessagePassingRules, GCVMessagePassingRules, StandardMessagePassingRules,
+  FlowMessagePassingRules (once the shim also binds the internal accessors `getα`, `getL`, … its
+  tests use), PolyaMessagePassingRules and RxInfer's nonlinear and HGF tests pass.
 - **Load time**: 0.2 s on top of Distributions is met by this package's own code, not by its
   dependencies; BayesBase's StaticArrays dominates.
 
@@ -315,9 +319,9 @@ on MessagePassingRulesBase, BayesBase and EA.
    categorical).
 2. **Laplace projection of marginals and messages** in unconstrained coordinates: mode and
    Hessian of the sum of incoming log-densities plus the log-Jacobian; the domain from the
-   prior's support, per component for vector variables. Warm starts from the previous mode; a start point for products without a
-   Gaussian factor. The log-normaliser (Laplace's evidence approximation) is returned with the
-   Gaussian and becomes the message's log scale.
+   prior's support, per component for vector variables. Warm starts from the previous mode; a start
+   point for products without a Gaussian factor. The log-normaliser (Laplace's evidence
+   approximation) is returned with the Gaussian and becomes the message's log scale.
 3. **Exact projection of finite discrete variables**: normalise the product by evaluating it
    at every value (the spike's `CategoricalForm`).
 4. **Deterministic nodes** (D16): a fallback that pulls the outgoing message back through the
@@ -343,8 +347,8 @@ Repository: RxInfer.jl.
 
 1. **One user-facing switch** for the universal scheme (keyword or option, name open) that
    sets the fallback, the default form constraint, the expectation backend and initialisation.
-2. **The context**: `ctx.expectation = withrng(FirstOf(CFEBackend(), EADefault()), rng)` by
-   default, overridable from the inference options and per node.
+2. **The context**: `ctx.expectation = with_expectation_rng(ExpectationFirstOf(CFEBackend(),
+   EADefault()), rng)` by default, overridable from the inference options and per node.
 3. **An approximation report** on the inference result: which nodes ran exact rules, which ran
    fallbacks, with which projection and which backend labels (via annotations or callbacks).
 4. **Error hints**: `RuleNotFoundError` and the Delta-node hint point to the universal switch.
@@ -379,17 +383,17 @@ Repositories: the universal rules package, EA, ReactiveMP.
    Laplace solution on nonlinear chains (the stochastic volatility notebook is the benchmark:
    local projection has RMSE 0.085 to it today), and EP improves on Laplace against the
    sampler.
-2. **CVI and natural-gradient projection** through `expectation_gradient`; ExponentialFamilyProjection
-   as the projection to families beyond the Gaussian.
-3. **Exact refinements**: ClosedFormExpectations as the first backend in `FirstOf`, showcased on
-   Delta nodes computing `exp` or `log` against a `Logpdf`.
+2. **CVI and natural-gradient projection** through `expectation_gradient`;
+   ExponentialFamilyProjection as the projection to families beyond the Gaussian.
+3. **Exact refinements**: ClosedFormExpectations as the first backend in `ExpectationFirstOf`,
+   showcased on Delta nodes computing `exp` or `log` against a log-density, `Base.Fix1(logpdf, p)`.
 
 ### P. Ecosystem migration (parallel track)
 
-- **ClosedFormExpectations 1.0** (BIASlab, Mykola): `CFEBackend`, `supports`, the `Exact`
-  label; `mean(ClosedFormExpectation(), f, q)` deprecated for one cycle; Williams-product
-  gradients once the gradient operation is settled. Depends on BayesBase only. Its own
-  `Logpdf` (callable only for a `Distribution`) is replaced by `BayesBase.Logpdf`, and its
+- **ClosedFormExpectations 1.0** (BIASlab, Mykola): `CFEBackend`, `supports_expectation`, the
+  `ExpectationExact` label; `mean(ClosedFormExpectation(), f, q)` deprecated for one cycle;
+  Williams-product gradients once the gradient operation is settled. Depends on BayesBase only. Its
+  own `Logpdf` (callable only for a `Distribution`) is replaced by `Base.Fix1(logpdf, p)`, and its
   recursive calls pass `backend` on instead of constructing `ClosedFormExpectation()`.
 - **MessagePassingRulesApproximations**: PR #2 exports its own `expectation(method, f,
   params...)`; it should extend `BayesBase.expectation` instead of owning a second function
@@ -420,29 +424,31 @@ U0 ─► U1 ─► U2 ─────────► U4 ─► U5 ─► U6 ─
 Decided in the design discussion of October 2026; each can be revisited with a new entry.
 
 - **D1. No type piracy.** Every method is defined on a type its package owns. Backend-less
-  routing calls such as `expectation(::Logpdf{<:Laplace}, ::Normal)` therefore cannot live in a
-  backend package.
-- **D2. Thin protocol in BayesBase.** BayesBase owns `expectation`, `supports`, labels,
-  `withrng`, `Logpdf` and the routers. No new dependencies. EA and ClosedFormExpectations
+  routing calls such as `expectation(::Base.Fix1{typeof(logpdf), <:Laplace}, ::Normal)` therefore
+  cannot live in a backend package.
+- **D2. Thin protocol in BayesBase.** BayesBase owns `expectation`, `supports_expectation`, labels,
+  `with_expectation_rng` and the routers. No new dependencies. EA and ClosedFormExpectations
   implement it on their own backend types; there is no dependency between EA and CFE.
-- **D3. Routing is a value.** `FirstOf(backends...; prefer, exclude)` is itself a backend;
-  candidates and preferences live in its type, so the choice is made at compile time. Several
-  policies coexist (RxInfer's, ExponentialFamilyProjection's, a user's). Routers nest.
-- **D4. Automatic choice is opt-in.** `DynamicRouter` picks among loaded backends, ranked by
-  labels, then priority, then name, never load order. Type unstable by design; never a
-  default; never used inside library code; `FirstOf(DynamicRouter())` freezes it.
-- **D5. Labels are traits, not a type hierarchy.** `Exact` (equals the expectation up to
-  rounding) and `Stochastic` (depends on an RNG) in BayesBase, declared per backend or per
-  pair, conservative (true only when guaranteed), forwarded by composite backends, tested by
+- **D3. Routing is a value.** `ExpectationFirstOf(backends...; prefer, exclude)` is itself a
+  backend; candidates and preferences live in its type, so the choice is made at compile time.
+  Several policies coexist (RxInfer's, ExponentialFamilyProjection's, a user's). Routers nest.
+- **D4. Automatic choice is opt-in.** `ExpectationDynamicRouter` picks among loaded backends, ranked
+  by labels, then priority, then name, never load order. Type unstable by design; never a
+  default; never used inside library code; `ExpectationFirstOf(ExpectationDynamicRouter())` freezes
+  it.
+- **D5. Labels are traits, not a type hierarchy.** `ExpectationExact` (equals the expectation up to
+  rounding) and `ExpectationStochastic` (depends on an RNG) in BayesBase, declared per backend or
+  per pair, conservative (true only when guaranteed), forwarded by composite backends, tested by
   the conformance suite. Packages may define further labels.
-- **D6. The RNG is a property of the backend.** Stochastic backends hold it; `withrng`
+- **D6. The RNG is a property of the backend.** Stochastic backends hold it; `with_expectation_rng`
   fills it from above, recursively, only where unset. Calls never pass an RNG.
 - **D7. Rules read `ctx.expectation` and nothing else.** The engine resolves backend, RNG
   and per-node overrides before rules run. A method that *is* a node's algorithm (the
   Delta node's `Unscented()`) stays in the algorithm.
 - **D8. `Logpdf` is a struct**, not an alias of `Base.Fix1{typeof(logpdf)}`, whose
-  constructor would itself be piracy.
-- **D9. Names follow Base style** (`haslabel`, `isexact`, `withrng`), tentatively.
+  constructor would itself be piracy. Superseded by D36.
+- **D9. Names follow Base style** (`haslabel`, `isexact`, `withrng`), tentatively. Superseded by
+  D36.
 - **D10. Exact first, at every level.** Exact rules before fallbacks; exact backends before
   approximate ones in the default router.
 - **D11. The universal path is a fallback.** It never replaces an existing rule; it is
@@ -479,10 +485,10 @@ Added after the protocol prototype (U0.2):
 - **D19. `FactorizedJoint` is the independent product of D14.** BayesBase already defines it
   as "a joint distribution of independent random variables"; the integrand receives a tuple.
 - **D20. Point sets are the common preparation of numerical backends.** Products are product
-  rules over them, routed component by component; labels combine with `combine_label`
-  (`Exact`: all parts, `Stochastic`: any part, other labels conservatively).
-- **D21. No operation axis now.** A four-argument `supports(backend, op, F, Q)` added later
-  forwards to the three-argument form for `expectation`, so it breaks nothing.
+  rules over them, routed component by component; labels combine with `combine_expectation_label`
+  (`ExpectationExact`: all parts, `ExpectationStochastic`: any part, other labels conservatively).
+- **D21. No operation axis now.** A four-argument `supports_expectation(backend, op, F, Q)` added
+  later forwards to the three-argument form for `expectation`, so it breaks nothing.
 - **D22. Strict test-driven development.** Every function has tests written before it, and
   type stability, allocations and folding are tests, not observations. A function that is hard
   to test is a design signal.
@@ -528,6 +534,17 @@ Added in U2:
 - **D35. Damping is a stream postprocessor on node messages**, in natural parameters for one
   exponential family, anything else passing; the equality chain's triggers, marginals and
   scores are left alone, and RxInfer's `stream_postprocessors` carries it.
+- **D36. Every protocol name says it is about expectations** (review of BayesBase#69):
+  `supports_expectation`, `which_expectation_backend`, `with_expectation_rng`,
+  `get_expectation_rng`, `ExpectationExact`, `ExpectationStochastic`, `has_expectation_label`,
+  `combine_expectation_label`, `is_expectation_exact`, `is_expectation_stochastic`,
+  `PreparedExpectation`, `UnsupportedExpectationError`, `ExpectationPointSet`,
+  `ExpectationProductPointSet`, `ExpectationFirstOf`, `ExpectationDynamicRouter`,
+  `ExpectationBackendRegistry`, `register_expectation_backend!`; `expectation`,
+  `prepare_expectation` and `ExpectationLabel` were specific already. `Logpdf` is gone: nothing in
+  it was about expectations, and the integrand of `E_q[log p]` is Julia's `Base.Fix1(logpdf, p)`,
+  on which a closed form dispatches with no alias and no constructor of ours. Point sets stay apart
+  from `SampleList`: a rule, with unnormalised and possibly negative weights, not a distribution.
 
 The protocol, as decided (BayesBase):
 
@@ -536,28 +553,29 @@ function expectation end                                   # expectation(backend
 function prepare_expectation end                           # prep = prepare_expectation(backend, q)
                                                            # expectation(prep, f), any f, dual-safe (D13)
 
-supports(backend, ::Type, ::Type) = false                  # hook for backend owners
-supports(backend, f, q) = supports(backend, typeof(f), typeof(q))
+supports_expectation(backend, ::Type, ::Type) = false      # hook for backend owners
+supports_expectation(backend, f, q) = supports_expectation(backend, typeof(f), typeof(q))
 
 abstract type ExpectationLabel end
-struct Exact <: ExpectationLabel end
-struct Stochastic <: ExpectationLabel end
-haslabel(backend, label) = false
-haslabel(backend, ::Type{F}, ::Type{Q}, label) where {F, Q} = haslabel(backend, label)
-haslabel(backend, f, q, label) = supports(backend, f, q) && haslabel(backend, typeof(f), typeof(q), label)
-isexact(backend, f, q) = haslabel(backend, f, q, Exact())
+struct ExpectationExact <: ExpectationLabel end
+struct ExpectationStochastic <: ExpectationLabel end
+has_expectation_label(backend, label) = false
+has_expectation_label(backend, ::Type{F}, ::Type{Q}, label) where {F, Q} = has_expectation_label(backend, label)
+has_expectation_label(backend, f, q, label) =
+    supports_expectation(backend, f, q) && has_expectation_label(backend, typeof(f), typeof(q), label)
+is_expectation_exact(backend, f, q) = has_expectation_label(backend, f, q, ExpectationExact())
 
-withrng(backend, rng) = backend                            # filled from above, once
-getrng(backend) = nothing
+with_expectation_rng(backend, rng) = backend               # filled from above, once
+get_expectation_rng(backend) = nothing
 
-struct Logpdf{D}; dist::D; end
+# E_q[log p] dispatches on Julia's `Base.Fix1(logpdf, p)`, no type of its own (D36)
 
-struct FirstOf{B <: Tuple, P <: Tuple, X <: Tuple}         # a router is a backend
+struct ExpectationFirstOf{B <: Tuple, P <: Tuple, X <: Tuple}  # a router is a backend
     backends::B; prefer::P; exclude::X
 end
 ```
 
-The full, tested version, with point sets, products and `DynamicRouter`, is
+The full, tested version, with point sets, products and `ExpectationDynamicRouter`, is
 `src/expectations/` in BayesBase (U1), documented on its "Expectations" page.
 
 ## Open questions

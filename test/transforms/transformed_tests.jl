@@ -6,7 +6,7 @@
     @test all(x -> 2 < x < 5, rand(StableRNG(1), t, 1000))
     # moments through the protocol, against sampling
     @test mean(t) ≈ P.expectation(EA.MonteCarlo(200_000, StableRNG(2)), identity, t) rtol = 1.0e-2
-    @test P.supports(EA.GaussHermite(8), Any, typeof(t)) === true
+    @test P.supports_expectation(EA.GaussHermite(8), Any, typeof(t)) === true
 end
 
 @testitem "TransformedGaussian: a simplex from a multivariate Gaussian" tags = [:transforms] setup = [EAHelpers] begin
@@ -23,8 +23,8 @@ end
 
 @testitem "laplace in a domain: the Poisson–Gamma check of the domain experiment" tags = [:transforms] setup = [EAHelpers] begin
     using Distributions
-    # the posterior Gamma(a, rate b) in log coordinates has the log-density a u - b eᵘ: mode log(a/b),
-    # curvature a, so the transformed Laplace approximation is LogNormal(log(a/b), 1/√a)
+    # the posterior Gamma(a, rate b) in log coordinates has the log-density a u - b eᵘ: mode
+    # log(a/b), curvature a, so the transformed Laplace approximation is LogNormal(log(a/b), 1/√a)
     a, b = 23.0, 21.0
     result = EA.laplace(x -> logpdf(Gamma(a, 1 / b), x), 1.0, EA.Positive())
     @test result.distribution isa LogNormal

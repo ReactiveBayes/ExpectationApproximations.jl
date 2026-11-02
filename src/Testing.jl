@@ -11,7 +11,7 @@ test_backend(MyBackend(), [Case(Normal(0.0, 1.0), abs2, 1.0), Case(Gamma(2.0, 1.
 """
 module Testing
 
-using BayesBase: BayesBase, FactorizedJoint, expectation, prepare_expectation, supports, isexact, isstochastic, withrng
+using BayesBase: BayesBase, FactorizedJoint, expectation, prepare_expectation, supports_expectation, is_expectation_exact, is_expectation_stochastic, with_expectation_rng
 using Compat: @compat
 using ForwardDiff: ForwardDiff
 using Random: AbstractRNG, Xoshiro
@@ -52,19 +52,20 @@ end
 
 Checks `backend` on every [`Case`](@ref), without recording tests:
 
-- `supports`: the backend supports the case;
+- `supports_expectation`: the backend supports the case;
 - `correct`: the expectation equals the expected value, to the case's `rtol`;
-- `exact label holds`: where the backend is labelled `Exact`, to rounding;
+- `exact label holds`: where the backend is labelled `ExpectationExact`, to rounding;
 - `prepared equals direct`: a prepared expectation gives what a direct one gives, for a
   deterministic backend;
 - `reproducible`: the same random number generator gives the same result, for a stochastic one;
 - `inferred`: evaluating a prepared expectation is type-stable;
 - `allocation-free`: and allocates nothing;
 - `duals pass`: ForwardDiff differentiates through the integrand of a prepared expectation;
-- `product`: the expectation of `f₁(x) f₂(y)` under the product of the first two cases' distributions
-  is the product of their expectations, for a deterministic backend that supports products.
+- `product`: the expectation of `f₁(x) f₂(y)` under the product of the first two cases'
+  distributions is the product of their expectations, for a deterministic backend that supports
+  products.
 
-Stochastic backends get `rng` from above with `withrng`.
+Stochastic backends get `rng` from above with `with_expectation_rng`.
 """
 function conformance(backend, cases; rng::AbstractRNG = Xoshiro(1234))
     checks = Check[]
@@ -98,24 +99,24 @@ function check_case(backend, case::Case, i, rng)
     checks = Check[]
     record(name, passed, detail = "") = push!(checks, Check(name, i, passed, detail))
 
-    if !supports(backend, f, q)
+    if !supports_expectation(backend, f, q)
         record("supports", false, "the backend does not support $(typeof(q))")
         return checks
     end
     record("supports", true)
 
-    stochastic = isstochastic(backend, f, q)
-    configured = stochastic ? withrng(backend, copy(rng)) : backend
+    stochastic = is_expectation_stochastic(backend, f, q)
+    configured = stochastic ? with_expectation_rng(backend, copy(rng)) : backend
     prepared = prepare_expectation(configured, q)
     value = expectation(prepared, f)
     record("correct", agrees(value, expected, rtol), "got $value, expected $expected, rtol $rtol")
 
-    if isexact(backend, f, q)
+    if is_expectation_exact(backend, f, q)
         record("exact label holds", agrees(value, expected, 1.0e-12), "got $value, expected $expected exactly")
     end
 
     if stochastic
-        again = expectation(prepare_expectation(withrng(backend, copy(rng)), q), f)
+        again = expectation(prepare_expectation(with_expectation_rng(backend, copy(rng)), q), f)
         record("reproducible", again == value, "got $value, then $again")
     else
         direct = expectation(backend, f, q)
@@ -138,9 +139,9 @@ function check_product(backend, a::Case, b::Case)
     joint = FactorizedJoint((a.q, b.q))
     f = ((x, y),) -> a.f(x) * b.f(y)
     # a backend need not support products
-    supports(backend, f, joint) || return Check("product", 0, true, "skipped: the backend does not support the product")
+    supports_expectation(backend, f, joint) || return Check("product", 0, true, "skipped: the backend does not support the product")
     # a product of sampled components would multiply their sample sizes
-    isstochastic(backend, f, joint) && return Check("product", 0, true, "skipped for a stochastic backend")
+    is_expectation_stochastic(backend, f, joint) && return Check("product", 0, true, "skipped for a stochastic backend")
     value = expectation(backend, f, joint)
     expected = a.expected * b.expected
     rtol = 2 * max(a.rtol, b.rtol)

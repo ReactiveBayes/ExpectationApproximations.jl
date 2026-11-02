@@ -18,17 +18,17 @@ struct GaussLaguerre
     end
 end
 
-BayesBase.supports(::GaussLaguerre, ::Type, ::Type{<:Union{Gamma, Exponential}}) = true
+BayesBase.supports_expectation(::GaussLaguerre, ::Type, ::Type{<:Union{Gamma, Exponential}}) = true
 
 function BayesBase.prepare_expectation(rule::GaussLaguerre, q::Gamma)
     a, θ = params(q)
     nodes, weights = probability_laguerre(rule.n, a - 1)
-    return PointSet(θ .* nodes, weights)
+    return ExpectationPointSet(θ .* nodes, weights)
 end
 
 function BayesBase.prepare_expectation(rule::GaussLaguerre, q::Exponential)
     nodes, weights = probability_laguerre(rule.n, 0.0)
-    return PointSet(scale(q) .* nodes, weights)
+    return ExpectationPointSet(scale(q) .* nodes, weights)
 end
 
 """
@@ -50,12 +50,12 @@ struct GaussJacobi
     end
 end
 
-BayesBase.supports(::GaussJacobi, ::Type, ::Type{<:Beta}) = true
+BayesBase.supports_expectation(::GaussJacobi, ::Type, ::Type{<:Beta}) = true
 
 function BayesBase.prepare_expectation(rule::GaussJacobi, q::Beta)
     a, b = params(q)
     nodes, weights = probability_jacobi(rule.n, b - 1, a - 1)
-    return PointSet((1 .+ nodes) ./ 2, weights)
+    return ExpectationPointSet((1 .+ nodes) ./ 2, weights)
 end
 
 """
@@ -76,10 +76,10 @@ struct QuantileLegendre
     end
 end
 
-BayesBase.supports(::QuantileLegendre, ::Type, ::Type{<:ContinuousUnivariateDistribution}) = true
+BayesBase.supports_expectation(::QuantileLegendre, ::Type, ::Type{<:ContinuousUnivariateDistribution}) = true
 
 function BayesBase.prepare_expectation(rule::QuantileLegendre, q::ContinuousUnivariateDistribution)
-    return PointSet(quantile.(q, rule.nodes), rule.weights)
+    return ExpectationPointSet(quantile.(q, rule.nodes), rule.weights)
 end
 
 # Rules with weights normalised to one, whose total mass would overflow for large parameters

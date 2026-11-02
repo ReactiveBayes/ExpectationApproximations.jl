@@ -5,7 +5,7 @@ Gauss–Hermite quadrature with `n` points per dimension, for Gaussian distribut
 a tensor grid of `nᵈ` points for a `d`-dimensional `MvNormal`, and a `LogNormal` or
 `LogitNormal` through its Gaussian in unconstrained coordinates. The result is exact for
 polynomials up to degree `2n - 1` of the Gaussian variable; since integrands are not
-polynomials in general, the backend is not labelled `Exact`.
+polynomials in general, the backend is not labelled `ExpectationExact`.
 
 The points are typed from the distribution's parameters, so dual numbers pass through the
 parameters as well as the integrand. The points of a Gaussian whose mean is a static vector are
@@ -23,31 +23,31 @@ end
 
 Base.length(rule::GaussHermite) = length(rule.nodes)
 
-BayesBase.supports(::GaussHermite, ::Type, ::Type{<:Union{Normal, AbstractMvNormal, LogNormal, LogitNormal}}) = true
+BayesBase.supports_expectation(::GaussHermite, ::Type, ::Type{<:Union{Normal, AbstractMvNormal, LogNormal, LogitNormal}}) = true
 
 BayesBase.prepare_expectation(rule::GaussHermite, q::Normal) = scalar_points(rule, mean(q), std(q))
 BayesBase.prepare_expectation(rule::GaussHermite, q::AbstractMvNormal) = tensor_points(rule, mean(q), cov(q))
 
 function BayesBase.prepare_expectation(rule::GaussHermite, q::LogNormal)
     μ, σ = params(q)
-    return PointSet(exp.(μ .+ σ .* rule.nodes), rule.weights)
+    return ExpectationPointSet(exp.(μ .+ σ .* rule.nodes), rule.weights)
 end
 
 function BayesBase.prepare_expectation(rule::GaussHermite, q::LogitNormal)
     μ, σ = params(q)
-    return PointSet(logistic.(μ .+ σ .* rule.nodes), rule.weights)
+    return ExpectationPointSet(logistic.(μ .+ σ .* rule.nodes), rule.weights)
 end
 
 # The rule for a Gaussian with mean `m` and standard deviation `s`, or covariance `Σ`; the
 # ExponentialFamily extension uses them for its Gaussian types too
-scalar_points(rule::GaussHermite, m, s) = PointSet(m .+ s .* rule.nodes, rule.weights)
+scalar_points(rule::GaussHermite, m, s) = ExpectationPointSet(m .+ s .* rule.nodes, rule.weights)
 
 function tensor_points(rule::GaussHermite, m::AbstractVector, Σ::AbstractMatrix)
     L = cholesky(Symmetric(Σ)).L
     grid = vec(CartesianIndices(ntuple(_ -> length(rule.nodes), dimension(m))))
     points = [m + L * unit(m, rule.nodes, index) for index in grid]
     weights = [prod(i -> rule.weights[i], Tuple(index)) for index in grid]
-    return PointSet(points, weights)
+    return ExpectationPointSet(points, weights)
 end
 
 # A static mean has its dimension in its type, so the grid's indices and points are static too
