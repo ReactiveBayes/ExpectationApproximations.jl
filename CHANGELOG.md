@@ -10,6 +10,11 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 
 - Gaussian quadrature rules by the Golub–Welsch algorithm, without FastGaussQuadrature:
   `gausshermite`, `gausslaguerre` (generalised), `gaussjacobi` and `gausslegendre`.
+- Backends for the expectation protocol of BayesBase, each preparing a point set: `GaussHermite`
+  (Gaussians, and log-normal and logit-normal distributions through their Gaussian),
+  `GaussLaguerre` (Gamma and Exponential, any shape), `GaussJacobi` (Beta), `QuantileLegendre`
+  (any continuous univariate distribution), `ExactSum` (finite discrete distributions, exact) and
+  `MonteCarlo`.
 
 ### Changed
 

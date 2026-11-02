@@ -28,10 +28,10 @@ function gausslaguerre(n::Integer, α::Real = 0.0)
     checkpoints(n)
     α > -1 || throw(ArgumentError("Gauss–Laguerre needs α > -1, got $α"))
     α = Float64(α)
-    a = [2k + α + 1 for k in 0:(n - 1)]
-    b = [sqrt(k * (k + α)) for k in 1:(n - 1)]
-    return golubwelsch(a, b, gamma(α + 1))
+    return golubwelsch(laguerre_recurrence(n, α)..., gamma(α + 1))
 end
+
+laguerre_recurrence(n, α) = ([2k + α + 1 for k in 0:(n - 1)], [sqrt(k * (k + α)) for k in 1:(n - 1)])
 
 """
     gaussjacobi(n, α, β) -> (nodes, weights)
@@ -44,6 +44,12 @@ function gaussjacobi(n::Integer, α::Real, β::Real)
     (α > -1 && β > -1) || throw(ArgumentError("Gauss–Jacobi needs α, β > -1, got α = $α, β = $β"))
     α, β = Float64(α), Float64(β)
     s = α + β
+    μ0 = 2^(s + 1) * exp(loggamma(α + 1) + loggamma(β + 1) - loggamma(s + 2))
+    return golubwelsch(jacobi_recurrence(n, α, β)..., μ0)
+end
+
+function jacobi_recurrence(n, α, β)
+    s = α + β
     # the k = 0 diagonal entry and the k = 1 off-diagonal entry are the general formulas with a
     # common factor cancelled, which would otherwise be 0 / 0 when α + β is 0 or -1
     a = [k == 0 ? (β - α) / (s + 2) : (β^2 - α^2) / ((2k + s) * (2k + s + 2)) for k in 0:(n - 1)]
@@ -51,8 +57,7 @@ function gaussjacobi(n::Integer, α::Real, β::Real)
         k == 1 && return sqrt(4 * (1 + α) * (1 + β) / ((2 + s)^2 * (3 + s)))
         return sqrt(4k * (k + α) * (k + β) * (k + s) / ((2k + s)^2 * (2k + s + 1) * (2k + s - 1)))
     end
-    μ0 = 2^(s + 1) * exp(loggamma(α + 1) + loggamma(β + 1) - loggamma(s + 2))
-    return golubwelsch(a, b, μ0)
+    return a, b
 end
 
 """

@@ -6,8 +6,12 @@ version = "1.0.0"
 [deps]
 BayesBase = "b4ee3484-f114-42fe-b91c-797d54a0c67e"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [sources]
 # The expectation protocol of BayesBase 1.7, in review as ReactiveBayes/BayesBase.jl#69; removed
@@ -17,23 +21,31 @@ BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "unive
 [compat]
 Aqua = "0.8"
 BayesBase = "1.7"
+BenchmarkTools = "1"
 Compat = "4.10"
+Distributions = "0.25"
 Documenter = "1"
 FastGaussQuadrature = "1"
+ForwardDiff = "0.10, 1"
 JET = "0.9, 0.10, 0.11, 0.12, 0.13"
 LinearAlgebra = "1.10"
 SpecialFunctions = "2"
+StableRNGs = "1"
+StaticArrays = "1.6"
+StatsFuns = "1, 2"
 Test = "1.10"
 TestItemRunner = "1"
 julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Aqua", "Documenter", "FastGaussQuadrature", "JET", "Test", "TestItemRunner"]
+test = ["Aqua", "BenchmarkTools", "StableRNGs", "Documenter", "FastGaussQuadrature", "JET", "Test", "TestItemRunner"]
