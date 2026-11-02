@@ -15,6 +15,9 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   `GaussLaguerre` (Gamma and Exponential, any shape), `GaussJacobi` (Beta), `QuantileLegendre`
   (any continuous univariate distribution), `ExactSum` (finite discrete distributions, exact) and
   `MonteCarlo`.
+- An extension for ExponentialFamily: its univariate Gaussians through `GaussHermite` and
+  `GammaShapeRate` through `GaussLaguerre`; its multivariate Gaussians, with static points for a
+  static mean, are covered by the core.
 
 ### Changed
 
