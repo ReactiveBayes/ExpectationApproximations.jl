@@ -20,6 +20,9 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 - `mean_cov` and `mean_cov_cross`, the moments of a function of a random variable and its
   cross-covariance with the input, and `tilted_mean_cov`, the log-normaliser and moments of a
   tilted distribution, computed in log space.
+- `laplace`, the Laplace approximation of a density with its log-normaliser: Newton's method with
+  a backtracking line search that stays in the domain, and an eigenvalue correction where the
+  log-density is not concave; for numbers, vectors and static vectors.
 - `ExpectationApproximations.Testing`, the conformance suite every backend passes: correctness,
   exact labels, prepared against direct, reproducibility, type stability, no allocations, dual
   numbers and products.
