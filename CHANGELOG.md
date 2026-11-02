@@ -15,6 +15,8 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   `GaussLaguerre` (Gamma and Exponential, any shape), `GaussJacobi` (Beta), `QuantileLegendre`
   (any continuous univariate distribution), `ExactSum` (finite discrete distributions, exact) and
   `MonteCarlo`.
+- `SNIS`, self-normalised importance sampling for targets that can be evaluated but not sampled,
+  and `effective_sample_size`.
 - Sigma points: `Unscented` (with the centre's covariance weight applied by `mean_cov`),
   `GenUnscented` (moment-matched, exact up to degree 4 for any univariate distribution) and
   `SphericalRadialCubature`.

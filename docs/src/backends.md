@@ -14,6 +14,8 @@ ExpectationApproximations.GaussJacobi
 ExpectationApproximations.QuantileLegendre
 ExpectationApproximations.ExactSum
 ExpectationApproximations.MonteCarlo
+ExpectationApproximations.SNIS
+ExpectationApproximations.effective_sample_size
 ```
 
 ## Sigma points
