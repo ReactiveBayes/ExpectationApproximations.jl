@@ -6,6 +6,11 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 
 ## [Unreleased]
 
+### Added
+
+- Gaussian quadrature rules by the Golub–Welsch algorithm, without FastGaussQuadrature:
+  `gausshermite`, `gausslaguerre` (generalised), `gaussjacobi` and `gausslegendre`.
+
 ### Changed
 
 - ExpectationApproximations 1.0 is a rewrite: numerical backends for the expectation protocol of

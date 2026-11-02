@@ -6,6 +6,8 @@ version = "1.0.0"
 [deps]
 BayesBase = "b4ee3484-f114-42fe-b91c-797d54a0c67e"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [sources]
 # The expectation protocol of BayesBase 1.7, in review as ReactiveBayes/BayesBase.jl#69; removed
@@ -17,7 +19,10 @@ Aqua = "0.8"
 BayesBase = "1.7"
 Compat = "4.10"
 Documenter = "1"
+FastGaussQuadrature = "1"
 JET = "0.9, 0.10, 0.11, 0.12, 0.13"
+LinearAlgebra = "1.10"
+SpecialFunctions = "2"
 Test = "1.10"
 TestItemRunner = "1"
 julia = "1.10"
@@ -25,9 +30,10 @@ julia = "1.10"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Aqua", "Documenter", "JET", "Test", "TestItemRunner"]
+test = ["Aqua", "Documenter", "FastGaussQuadrature", "JET", "Test", "TestItemRunner"]

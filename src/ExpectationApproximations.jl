@@ -14,5 +14,11 @@ module ExpectationApproximations
 
 using BayesBase: BayesBase
 using Compat: @compat
+using LinearAlgebra: SymTridiagonal, eigvals
+using SpecialFunctions: gamma, loggamma
+
+@compat public gausshermite, gausslaguerre, gaussjacobi, gausslegendre
+
+include("rules/golubwelsch.jl")
 
 end
