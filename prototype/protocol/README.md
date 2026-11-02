@@ -13,4 +13,11 @@ compares the posteriors with the originals:
 julia --project=~/Projects/Julia/universal-dev acceptance/compare.jl
 ```
 
-It moves into the universal rules package with U4.
+`acceptance/free_energy.jl` checks U3 end to end: the mixture notebook's model gets a free
+energy through the rule fallback's average energy and an expectation backend, `EADefault()`:
+
+```sh
+julia --project=~/Projects/Julia/universal-dev acceptance/free_energy.jl
+```
+
+They move into the universal rules package with U4.

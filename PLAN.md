@@ -266,6 +266,44 @@ Repositories: MessagePassingRulesBase.jl, ReactiveMP.jl. Can run in parallel wit
 Done when: existing behaviour unchanged (`NodeFunctionRuleFallback` tests pass as they are),
 new hooks tested, documentation updated (fallbacks, context, form constraints).
 
+#### What U3 delivered and found
+
+A branch `universal-inference` in MessagePassingRulesBase (1.2.0), ReactiveMP (7.1.0) and RxInfer
+(6.2.0), one tested commit per step, their `[sources]` pointing at each other by path until they
+are pushed. MessagePassingRulesBase: 946 tests on Julia 1.13, 943 on 1.10. ReactiveMP: 15650 and
+15646. RxInfer: 15064 on both. DeltaMessagePassingRules, StandardMessagePassingRules and
+GCVMessagePassingRules pass against the branches, and so does the acceptance test.
+
+| Item | Result |
+|---|---|
+| 1. Fallbacks see what rules see | `call_fallback(fallback, fform, target, algorithm, ctx, args)` and `call_energy_fallback(fallback, fform, algorithm, ctx, args)`, public in MessagePassingRulesBase; the default asks a three-argument fallback about messages only (D31) |
+| 2. Marginals and average energies | `MarginalMapping` and the node's activation keep the fallback; a joint or an average energy without a rule asks it, and events name it as the rule that ran |
+| 3. `:expectation` | in `DEFAULT_CONTEXT_SERVICES`; ReactiveMP supplies `nothing` unless the context sets one (D32) |
+| 4. Default projection | the hook, not the projection (D33): ReactiveMP's `constrain_form_logscale` lets a constraint report the log-normaliser of its input; RxInfer's option `default_form_constraint` gives every variable without a constraint of its own one, for messages and marginals or apart, `(q = …, μ = …)`. The Laplace projection that dispatches on the domain is U4's |
+| 5. Damping | `ReactiveMP.DampingPostprocessor(β)`: node messages mixed in natural parameters through `ReactiveMP.damp`, an extension on ExponentialFamily (D35) |
+| 6. Fallback coverage | `NodeFunctionRuleFallback` serves Delta nodes (the message on `out` pulled back through the function towards an input; the function at the plugged-in inputs towards `out`), members of groups when the node defines its node function, and the average energy `-E_q[log f]` of a mean-field node through `ctx.expectation`. Its messages stay plug-in (D34) |
+| End to end | the mixture notebook's model has a free energy, `EADefault()` agreeing with the notebook's quadrature to 3e-11, non-increasing after five iterations, the posteriors unchanged (`prototype/protocol/acceptance/free_energy.jl`); in RxInfer's tests a toy node's free energy equals its closed form, a model with `z := tanh(x)` and no Delta method runs through the fallback and a projection, and damped coordinate ascent reaches the undamped posterior |
+
+What it found:
+
+- **A fallback's own method was ambiguous** with defaults typed on the target, so
+  `call_fallback(::MyFallback, node, target, …)`, the natural way to write one, failed. The default
+  is one untyped method that dispatches on the target inside.
+- **A product with no closed form had no log scale** before any constraint saw it, so a constraint
+  that only reports its normaliser could never define one. A `ProductOf` now records its sides'
+  log scales, the cause `:unnormalised_product`, and a reported normaliser completes them; an
+  exact projection of non-closed normal densities reproduces the closed-form product's log scale.
+- **BayesBase has no product of a point mass with a density.** The plug-in towards a Delta node's
+  `out` gives a point mass, which a variable then cannot multiply with the next node's message;
+  the RxInfer test asks for `x` only. U4's projection towards `out` removes the point mass; the
+  product belongs in BayesBase (P).
+- **`ProjectedTo` minimises KL(q ‖ p)**, mode-seeking: its posterior is compared with the same
+  projection of the exact log-density, not with the exact moments.
+- **On Julia 1.10**, `[sources]` is not read, so the branches resolve only in an environment that
+  develops them; RxInfer's ignored manifest from 1.13 cannot be used by 1.10 either.
+- **ReactiveMP's docs link** `call_fallback` and `call_energy_fallback` through
+  MessagePassingRulesBase's published inventory, which has them only once 1.2 is released.
+
 ### U4. Universal Laplace rules
 
 Repository: a new rules package (name open, see [Open questions](#open-questions)), depending
@@ -476,6 +514,20 @@ Added in U2:
   relaxed to forbid only the rule system and ExponentialFamily, and the whole suite passes against
   the shim. Load time is not a blocker unless it is really bad (0.21 s on top of Distributions is
   fine), and quadrature's slow `E[log x]` under a Gamma is accepted, closed forms being first.
+- **D31. Fallbacks are asked through `call_fallback`**, positional, with the algorithm and the
+  rule context, its default forwarding to the three-argument call for messages only; a
+  fallback is never asked a question it was not written for.
+- **D32. ReactiveMP stays backend-agnostic**: `ctx.expectation` is `nothing` unless the context
+  sets one; RxInfer supplies `EADefault()` in U5.
+- **D33. The projection is a hook plus an option**: a form constraint may report the
+  log-normaliser of its input (`constrain_form_logscale`), and RxInfer composes a default form
+  constraint where `EnsureSupportedFunctionalForm` is composed. A variable's own constraint
+  replaces the default; ReactiveMP needs no option of its own, since constraints compose with `+`.
+- **D34. `NodeFunctionRuleFallback`'s messages stay plug-in**; expectations over its inputs are
+  U4's universal rules. Its average energy takes the expectation, through the context's backend.
+- **D35. Damping is a stream postprocessor on node messages**, in natural parameters for one
+  exponential family, anything else passing; the equality chain's triggers, marginals and
+  scores are left alone, and RxInfer's `stream_postprocessors` carries it.
 
 The protocol, as decided (BayesBase):
 
@@ -515,13 +567,13 @@ The full, tested version, with point sets, products and `DynamicRouter`, is
 - **`Differentiable` as a core label**, needed by CVI and natural-gradient schemes.
 - **The universal rules package**: a new package (`UniversalMessagePassingRules.jl`?), part
   of EA as an extension on MessagePassingRulesBase, or part of DeltaMessagePassingRules.
-- **The fallback signature** in MessagePassingRulesBase: extra positional arguments, a
-  call object, or the context inside `RuleArgs`.
-- **Where the Laplace projection lives**: a form constraint in RxInfer (as `ProjectedTo`
-  is), or a ReactiveMP-level projection hook.
+- ~~**The fallback signature**~~: positional, through `call_fallback` (D31).
+- ~~**Where the Laplace projection lives**~~: a form constraint reporting its normaliser through
+  ReactiveMP's hook, composed by RxInfer's option (D33); the constraint itself is U4's.
 - **Domains**: how a variable learns its support when several nodes connect to it, or when
   no neighbour carries a support (U0.3b found the prior factor is enough when there is one).
 - **The user-facing switch**: a keyword of `infer`, an option, or a constraint-level wildcard.
+  U3 adds the option `default_form_constraint`, which U5 can build on.
 - **Default on or off** for the universal scheme in RxInfer (decide after U6).
 - **Threads**: per-task RNGs for stochastic backends in parallel engines.
 - **ClosedFormExpectations 1.0**: Mykola's agreement to adopt the protocol.
@@ -620,7 +672,7 @@ Every repository follows the ReactiveBayes
 | U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
 | U1 | BayesBase | draft until everything is tested together (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
 | U2 | EA | done on this branch (977 tests); MPRA 1.1 shim verified on a local MPRA branch | |
-| U3 | MessagePassingRulesBase, ReactiveMP | not started | |
+| U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | done on local `universal-inference` branches, not pushed (see "What U3 delivered and found") | |
 | U4 | universal rules (new) | not started | |
 | U5 | RxInfer | not started | |
 | U6 | RxInferExamples | started: four Laplace notebooks on `universal-inference` | |
