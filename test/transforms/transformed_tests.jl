@@ -41,6 +41,21 @@ end
     # the density of Beta(0.8, 3) is unbounded at zero; in logit coordinates it has a mode
     result = EA.laplace(x -> logpdf(Beta(0.8, 3.0), x), 0.5, EA.UnitInterval())
     @test result.converged
-    @test result.distribution isa LogitNormal
+    @test result.distribution isa EA.TransformedGaussian
     @test 0 < mean(EA.mean_cov(EA.GaussHermite(32), identity, result.distribution)[1]) < 0.5
+end
+
+@testitem "TransformedGaussian: its entropy" tags = [:transforms] setup = [EAHelpers] begin
+    using Distributions
+    # H[t] = H[g] + E_g[log |J|], against -E_t[log t] and, on the half-line, the LogNormal's
+    g = Normal(0.3, 0.7)
+    @test entropy(EA.TransformedGaussian(g, EA.Positive())) ≈ entropy(LogNormal(0.3, 0.7))
+    for D in (EA.UnitInterval(), EA.Bounded(2.0, 5.0), EA.UpperBounded(-1.0))
+        t = EA.TransformedGaussian(g, D)
+        @test entropy(t) ≈ -P.expectation(EA.GaussHermite(64), x -> logpdf(t, x), t) rtol = 1.0e-10
+    end
+    t = EA.pushforward(EA.Simplex(3), MvNormal([0.2, -0.5], [0.3 0.1; 0.1 0.2]))
+    @test entropy(t) ≈ -P.expectation(EA.GaussHermite(32), x -> logpdf(t, x), t) rtol = 1.0e-10
+    c = EA.TransformedGaussian(MvNormal([0.2, -0.5], [0.3 0.1; 0.1 0.2]), EA.Componentwise(EA.UnitInterval(), EA.Positive()))
+    @test entropy(c) ≈ -P.expectation(EA.GaussHermite(32), x -> logpdf(c, x), c) rtol = 1.0e-10
 end

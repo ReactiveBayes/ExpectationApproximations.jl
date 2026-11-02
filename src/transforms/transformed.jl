@@ -19,6 +19,8 @@ function TransformedGaussian(gaussian::Distribution{Multivariate}, domain::Domai
     return TransformedGaussian{Multivariate, typeof(gaussian), typeof(domain)}(gaussian, domain)
 end
 
+domain(t::TransformedGaussian) = t.domain
+
 const UnivariateTransformed = TransformedGaussian{Univariate}
 const MultivariateTransformed = TransformedGaussian{Multivariate}
 
@@ -37,6 +39,9 @@ Base.rand(rng::AbstractRNG, t::UnivariateTransformed) = forward(t.domain, rand(r
 
 Distributions.mean(t::UnivariateTransformed) = first(mean_cov(GaussHermite(32), identity, t))
 Distributions.var(t::UnivariateTransformed) = last(mean_cov(GaussHermite(32), identity, t))
+
+# H[t] = H[g] + E_g[log |J|]: the Gaussian's entropy and the expected log-Jacobian of `forward`
+Distributions.entropy(t::TransformedGaussian) = entropy(t.gaussian) + expectation(GaussHermite(32), u -> logjacobian(t.domain, u), t.gaussian)
 
 Base.length(t::MultivariateTransformed{<:Distribution, Simplex}) = t.domain.K
 Base.length(t::MultivariateTransformed) = length(t.gaussian)

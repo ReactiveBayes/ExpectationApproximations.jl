@@ -31,9 +31,9 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 - `linearize`, the first-order expansion of a function of one or several inputs.
 - Domain transforms: `RealLine`, `Positive`, `UnitInterval`, `LowerBounded`, `UpperBounded`,
   `Bounded`, `Simplex` and `Componentwise` for blocks of components, with `forward`, `inverse`,
-  `logjacobian`, `domain` (read from a distribution's support, or a product's first factor that
-  has one) and `pushforward` (a `LogNormal`, a `LogitNormal` or a `TransformedGaussian`); and
-  `laplace` in a domain.
+  `logjacobian`, `domain` (read from a distribution's support, the domain of BayesBase's
+  log-densities, or a product's first factor that has one) and `pushforward` (a `LogNormal` or a
+  `TransformedGaussian`, which has an `entropy`); and `laplace` in a domain.
 - `ExpectationApproximations.Testing`, the conformance suite every backend passes: correctness,
   exact labels, prepared against direct, reproducibility, type stability, no allocations, dual
   numbers and products.

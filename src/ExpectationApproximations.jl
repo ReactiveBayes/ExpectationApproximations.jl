@@ -13,12 +13,14 @@ Nothing is exported: the names are public and used qualified, such as
 module ExpectationApproximations
 
 using BayesBase: BayesBase, ExpectationPointSet, ExpectationProductPointSet, FactorizedJoint, PointMass, ExpectationFirstOf, ExpectationExact, ExpectationStochastic, UnsupportedExpectationError,
-    ProductOf, LinearizedProductOf, getleft, getright, expectation, prepare_expectation, which_expectation_backend
+    ProductOf, LinearizedProductOf, getleft, getright, expectation, prepare_expectation, which_expectation_backend,
+    ContinuousUnivariateLogPdf, ContinuousMultivariateLogPdf
 using Compat: @compat
 using Distributions: Distributions, Distribution, UnivariateDistribution, VariateForm, Univariate, Multivariate,
     Continuous, Dirichlet, insupport, logpdf, ContinuousUnivariateDistribution, Normal, MvNormal, AbstractMvNormal, LogNormal,
     LogitNormal, Gamma, Exponential, Beta, DiscreteNonParametric, Bernoulli, Binomial, DiscreteUniform, Dirac,
-    mean, std, cov, params, scale, support, probs, pdf, quantile, failprob, succprob, skewness, kurtosis
+    mean, std, cov, params, scale, support, probs, pdf, quantile, failprob, succprob, skewness, kurtosis, entropy
+using DomainSets: DomainSets
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, SymTridiagonal, Symmetric, cholesky, dot, eigen, eigvals, isposdef, logdet, norm
 using SpecialFunctions: gamma, loggamma

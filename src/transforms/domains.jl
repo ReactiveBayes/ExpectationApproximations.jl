@@ -121,15 +121,25 @@ logjacobian(D::Componentwise, u::AbstractVector) = sum(logjacobian(d, ui) for (d
     domain(q)
 
 The [`Domain`](@ref) of the distribution `q`, read from its support, or `nothing` when it has
-none that a transform covers (a discrete distribution, for one). For a product of densities, as
-the product of a prior and messages, the domain of the first factor that has one.
+none that a transform covers (a discrete distribution, for one). For BayesBase's log-densities,
+`ContinuousUnivariateLogPdf` and `ContinuousMultivariateLogPdf`, it is read from their domain;
+an unspecified one says nothing. For a product of densities, as the product of a prior and
+messages, the domain of the first factor that has one.
 """
 domain(::AbstractMvNormal) = RealLine()
 domain(q::ContinuousUnivariateDistribution) = interval(minimum(q), maximum(q))
 domain(q::Dirichlet) = Simplex(length(q))
+domain(q::ContinuousUnivariateLogPdf) = setdomain(support(q))
+domain(q::ContinuousMultivariateLogPdf) = setdomain(support(q))
 domain(q::ProductOf) = firstdomain((getleft(q), getright(q)))
-domain(q::LinearizedProductOf) = firstdomain(q.vector)
+domain(q::LinearizedProductOf) = firstdomain(view(q.vector, 1:min(q.length, length(q.vector))))
 domain(q) = nothing
+
+# the domain of a DomainSets set: an interval, or the whole space in any dimension
+setdomain(::DomainSets.FullSpace) = RealLine()
+setdomain(set::DomainSets.AbstractInterval) = interval(DomainSets.leftendpoint(set), DomainSets.rightendpoint(set))
+setdomain(set::DomainSets.VcatDomain) = all(d -> d isa DomainSets.FullSpace, DomainSets.components(set)) ? RealLine() : nothing
+setdomain(set) = nothing
 
 function interval(lower::Real, upper::Real)
     isinf(lower) && isinf(upper) && return RealLine()
@@ -152,10 +162,10 @@ end
     pushforward(domain, gaussian)
 
 The distribution of `forward(domain, u)` for `u ~ gaussian`: the `gaussian` itself on the real
-line, a `LogNormal` on the positive half-line, a `LogitNormal` on the unit interval, and a
-[`TransformedGaussian`](@ref) otherwise.
+line, a `LogNormal` on the positive half-line, and a [`TransformedGaussian`](@ref) otherwise. On
+the unit interval that is a logit-normal distribution; Distributions' `LogitNormal` has no mean,
+variance or entropy, which the `TransformedGaussian` has.
 """
 pushforward(::RealLine, gaussian) = gaussian
 pushforward(::Positive, gaussian::UnivariateDistribution) = LogNormal(mean(gaussian), std(gaussian))
-pushforward(::UnitInterval, gaussian::UnivariateDistribution) = LogitNormal(mean(gaussian), std(gaussian))
 pushforward(D::Domain, gaussian) = TransformedGaussian(gaussian, D)

@@ -45,6 +45,26 @@ end
     # a product: the first factor that has a support, as a prior times messages
     @test EA.domain(P.ProductOf(Gamma(2.0, 1.0), Normal(0.0, 1.0))) === EA.Positive()
     @test EA.domain(P.LinearizedProductOf([Beta(1.0, 1.0), Beta(2.0, 2.0)], 2)) === EA.UnitInterval()
+    # a linearised product holds its factors in the first `length` entries of its vector only
+    @test EA.domain(P.LinearizedProductOf([Normal(0.0, 1.0), Gamma(2.0, 1.0)], 1)) === EA.RealLine()
+    @test EA.domain(P.LinearizedProductOf([Poisson(1.0), Gamma(2.0, 1.0)], 1)) === nothing
+    # a transformed Gaussian is on its domain, a vector one as well
+    @test EA.domain(EA.TransformedGaussian(MvNormal(zeros(2), [1.0 0.0; 0.0 1.0]), EA.Simplex(3))) == EA.Simplex(3)
+    @test EA.domain(EA.TransformedGaussian(Normal(0.0, 1.0), EA.Bounded(2.0, 5.0))) == EA.Bounded(2.0, 5.0)
+end
+
+@testitem "domain: read from the domain of BayesBase's log-densities" tags = [:transforms] setup = [EAHelpers] begin
+    using Distributions
+    DomainSets = P.DomainSets
+    @test EA.domain(P.ContinuousUnivariateLogPdf(DomainSets.FullSpace(), x -> -x^2)) === EA.RealLine()
+    @test EA.domain(P.ContinuousUnivariateLogPdf(DomainSets.HalfLine(), x -> -x)) === EA.Positive()
+    @test EA.domain(P.ContinuousUnivariateLogPdf(DomainSets.Interval(0.0, 1.0), x -> 0.0)) === EA.UnitInterval()
+    @test EA.domain(P.ContinuousUnivariateLogPdf(DomainSets.Interval(2.0, 5.0), x -> 0.0)) == EA.Bounded(2.0, 5.0)
+    @test EA.domain(P.ContinuousMultivariateLogPdf(DomainSets.FullSpace()^2, x -> -sum(abs2, x))) === EA.RealLine()
+    # an unspecified domain says nothing, so a product takes the domain of its next factor
+    unspecified = P.ContinuousUnivariateLogPdf(P.UnspecifiedDomain(), x -> -x)
+    @test EA.domain(unspecified) === nothing
+    @test EA.domain(P.ProductOf(unspecified, Gamma(2.0, 1.0))) === EA.Positive()
 end
 
 @testitem "pushforward: named families where they exist" tags = [:transforms] setup = [EAHelpers] begin
@@ -52,11 +72,14 @@ end
     g = Normal(0.3, 0.7)
     @test EA.pushforward(EA.RealLine(), g) === g
     @test EA.pushforward(EA.Positive(), g) == LogNormal(0.3, 0.7)
-    @test EA.pushforward(EA.UnitInterval(), g) == LogitNormal(0.3, 0.7)
-    t = EA.pushforward(EA.Bounded(2.0, 5.0), g)
+    # Distributions' LogitNormal has no mean, variance or entropy, so the unit interval has none
+    t = EA.pushforward(EA.UnitInterval(), g)
     @test t isa EA.TransformedGaussian
-    @test minimum(t) == 2.0
-    @test maximum(t) == 5.0
+    @test t.gaussian === g && t.domain === EA.UnitInterval()
+    b = EA.pushforward(EA.Bounded(2.0, 5.0), g)
+    @test b isa EA.TransformedGaussian
+    @test minimum(b) == 2.0
+    @test maximum(b) == 5.0
 end
 
 @testitem "Componentwise: a block of variables with different domains" tags = [:transforms] setup = [EAHelpers] begin
