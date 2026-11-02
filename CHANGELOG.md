@@ -15,6 +15,9 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   `GaussLaguerre` (Gamma and Exponential, any shape), `GaussJacobi` (Beta), `QuantileLegendre`
   (any continuous univariate distribution), `ExactSum` (finite discrete distributions, exact) and
   `MonteCarlo`.
+- Sigma points: `Unscented` (with the centre's covariance weight applied by `mean_cov`),
+  `GenUnscented` (moment-matched, exact up to degree 4 for any univariate distribution) and
+  `SphericalRadialCubature`.
 - `EADefault`, the default backend: a router that sends each family to its rule, and any other
   continuous univariate distribution to `QuantileLegendre`.
 - `mean_cov` and `mean_cov_cross`, the moments of a function of a random variable and its

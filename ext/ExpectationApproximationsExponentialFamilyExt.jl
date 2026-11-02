@@ -1,9 +1,10 @@
 # The distributions of ExponentialFamily that are not Distributions' own types: its univariate
-# Gaussians, through Gauss–Hermite, and `GammaShapeRate`, through Gauss–Laguerre. Its multivariate
-# Gaussians are `AbstractMvNormal`s, which the core already covers.
+# Gaussians, through Gauss–Hermite and the sigma points, and `GammaShapeRate`, through
+# Gauss–Laguerre. Its multivariate Gaussians are `AbstractMvNormal`s, which the core covers.
 module ExpectationApproximationsExponentialFamilyExt
 
-using ExpectationApproximations: ExpectationApproximations as EA, GaussHermite, GaussLaguerre
+using ExpectationApproximations: ExpectationApproximations as EA, GaussHermite, GaussLaguerre, Unscented, GenUnscented,
+    SphericalRadialCubature
 using ExponentialFamily: NormalMeanVariance, NormalMeanPrecision, NormalWeightedMeanPrecision, GammaShapeRate
 using BayesBase: BayesBase, PointSet, mean, std, shape, rate
 
@@ -11,6 +12,15 @@ const UnivariateGaussian = Union{NormalMeanVariance, NormalMeanPrecision, Normal
 
 BayesBase.supports(::GaussHermite, ::Type, ::Type{<:UnivariateGaussian}) = true
 BayesBase.prepare_expectation(rule::GaussHermite, q::UnivariateGaussian) = EA.scalar_points(rule, mean(q), std(q))
+
+BayesBase.supports(::Unscented, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.prepare_expectation(rule::Unscented, q::UnivariateGaussian) = EA.unscented_points(rule, mean(q), std(q))
+
+BayesBase.supports(::GenUnscented, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.prepare_expectation(::GenUnscented, q::UnivariateGaussian) = EA.generalised_points(mean(q), std(q), 0.0, 3.0)
+
+BayesBase.supports(::SphericalRadialCubature, ::Type, ::Type{<:UnivariateGaussian}) = true
+BayesBase.prepare_expectation(::SphericalRadialCubature, q::UnivariateGaussian) = EA.cubature_points(mean(q), std(q))
 
 BayesBase.supports(::GaussLaguerre, ::Type, ::Type{<:GammaShapeRate}) = true
 

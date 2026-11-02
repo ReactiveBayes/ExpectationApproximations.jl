@@ -15,3 +15,15 @@ ExpectationApproximations.QuantileLegendre
 ExpectationApproximations.ExactSum
 ExpectationApproximations.MonteCarlo
 ```
+
+## Sigma points
+
+Sigma points are few, deterministic and cheap: they match the first moments of a distribution
+rather than integrate it, so they suit smooth functions of Gaussians, as in nonlinear filtering.
+
+```@docs
+ExpectationApproximations.Unscented
+ExpectationApproximations.SigmaPointSet
+ExpectationApproximations.GenUnscented
+ExpectationApproximations.SphericalRadialCubature
+```

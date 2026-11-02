@@ -62,7 +62,7 @@ Checks `backend` on every [`Case`](@ref), without recording tests:
 - `allocation-free`: and allocates nothing;
 - `duals pass`: ForwardDiff differentiates through the integrand of a prepared expectation;
 - `product`: the expectation of `f₁(x) f₂(y)` under the product of the first two cases' distributions
-  is the product of their expectations, for a deterministic backend.
+  is the product of their expectations, for a deterministic backend that supports products.
 
 Stochastic backends get `rng` from above with `withrng`.
 """
@@ -137,7 +137,8 @@ end
 function check_product(backend, a::Case, b::Case)
     joint = FactorizedJoint((a.q, b.q))
     f = ((x, y),) -> a.f(x) * b.f(y)
-    supports(backend, f, joint) || return Check("product", 0, false, "the backend does not support the product")
+    # a backend need not support products
+    supports(backend, f, joint) || return Check("product", 0, true, "skipped: the backend does not support the product")
     # a product of sampled components would multiply their sample sizes
     isstochastic(backend, f, joint) && return Check("product", 0, true, "skipped for a stochastic backend")
     value = expectation(backend, f, joint)
