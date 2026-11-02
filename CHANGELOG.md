@@ -17,6 +17,9 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   `MonteCarlo`.
 - `EADefault`, the default backend: a router that sends each family to its rule, and any other
   continuous univariate distribution to `QuantileLegendre`.
+- `mean_cov` and `mean_cov_cross`, the moments of a function of a random variable and its
+  cross-covariance with the input, and `tilted_mean_cov`, the log-normaliser and moments of a
+  tilted distribution, computed in log space.
 - `ExpectationApproximations.Testing`, the conformance suite every backend passes: correctness,
   exact labels, prepared against direct, reproducibility, type stability, no allocations, dual
   numbers and products.

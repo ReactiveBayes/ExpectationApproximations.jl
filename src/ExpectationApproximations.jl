@@ -12,7 +12,8 @@ Nothing is exported: the names are public and used qualified, such as
 """
 module ExpectationApproximations
 
-using BayesBase: BayesBase, PointSet, PointMass, FirstOf, Exact, Stochastic
+using BayesBase: BayesBase, PointSet, ProductPointSet, PointMass, FirstOf, Exact, Stochastic, NoBackendError,
+    expectation, prepare_expectation, which_backend
 using Compat: @compat
 using Distributions: Distribution, ContinuousUnivariateDistribution, Normal, AbstractMvNormal, LogNormal,
     LogitNormal, Gamma, Exponential, Beta, DiscreteNonParametric, Bernoulli, Binomial, DiscreteUniform, Dirac,
@@ -25,6 +26,7 @@ using StatsFuns: logistic
 
 @compat public gausshermite, gausslaguerre, gaussjacobi, gausslegendre
 @compat public GaussHermite, GaussLaguerre, GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo, EADefault
+@compat public mean_cov, mean_cov_cross, tilted_mean_cov
 @compat public Testing
 
 include("rules/golubwelsch.jl")
@@ -33,6 +35,8 @@ include("backends/orthogonal.jl")
 include("backends/exactsum.jl")
 include("backends/montecarlo.jl")
 include("backends/default.jl")
+
+include("projections/moments.jl")
 
 include("Testing.jl")
 
