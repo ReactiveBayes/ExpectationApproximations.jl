@@ -23,6 +23,11 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 - `laplace`, the Laplace approximation of a density with its log-normaliser: Newton's method with
   a backtracking line search that stays in the domain, and an eigenvalue correction where the
   log-density is not concave; for numbers, vectors and static vectors.
+- Domain transforms: `RealLine`, `Positive`, `UnitInterval`, `LowerBounded`, `UpperBounded`,
+  `Bounded`, `Simplex` and `Componentwise` for blocks of components, with `forward`, `inverse`,
+  `logjacobian`, `domain` (read from a distribution's support, or a product's first factor that
+  has one) and `pushforward` (a `LogNormal`, a `LogitNormal` or a `TransformedGaussian`); and
+  `laplace` in a domain.
 - `ExpectationApproximations.Testing`, the conformance suite every backend passes: correctness,
   exact labels, prepared against direct, reproducibility, type stability, no allocations, dual
   numbers and products.

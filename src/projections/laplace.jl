@@ -61,6 +61,26 @@ function laplace(logp::L, x0::AbstractVector; tol::Real = 1.0e-10, maxiters::Int
     return (; distribution = MvNormal(collect(x), covariance), logZ, mode = x, iterations, converged)
 end
 
+"""
+    laplace(logp, x0, domain::Domain; tol = 1e-10, maxiters = 100)
+
+The Laplace approximation in the unconstrained coordinates of `domain`: of
+`u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
+pushed forward onto the domain (a `LogNormal` for `Positive`, a `LogitNormal` for
+`UnitInterval`, a [`TransformedGaussian`](@ref) otherwise). `logZ` approximates the same
+integral as in the original coordinates, and `mode` is the point of the approximation in them.
+"""
+function laplace(logp::L, x0, domain::Domain; kwargs...) where {L}
+    result = laplace(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)
+    return (;
+        distribution = pushforward(domain, result.distribution),
+        result.logZ,
+        mode = forward(domain, result.mode),
+        result.iterations,
+        result.converged,
+    )
+end
+
 function start(logp, x)
     fx = logp(x)
     isfinite(fx) || throw(ArgumentError("the log-density is not finite at the starting point $x"))
