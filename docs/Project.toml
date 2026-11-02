@@ -1,7 +1,10 @@
 [deps]
+BayesBase = "b4ee3484-f114-42fe-b91c-797d54a0c67e"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ExpectationApproximations = "9cdca625-6a81-42ba-9f59-d0fb182fc17f"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 
 [sources]
+# BayesBase 1.7 is in review as ReactiveBayes/BayesBase.jl#69; removed once it is registered
+BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"}
 ExpectationApproximations = {path = ".."}

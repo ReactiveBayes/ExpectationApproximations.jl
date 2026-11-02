@@ -7,32 +7,15 @@
 <!-- [![PkgEval](https://JuliaCI.github.io/NanosoldierReports/pkgeval_badges/E/ExpectationApproximations.svg)](https://JuliaCI.github.io/NanosoldierReports/pkgeval_badges/report.html) -->
 [![Code style: Runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-black)](https://github.com/fredrikekre/Runic.jl)
 
-# ExpectationsApproximations.jl
-``ExpectationsApproximations`` is a Julia package that offers efficient and flexible methods for approximating function moments. The package provides three categories of methods: deterministic, stochastic, and hybrid, each with its own strengths, allowing users to select the most appropriate method for their needs.
+Numerical backends for the expectation protocol of
+[BayesBase](https://github.com/ReactiveBayes/BayesBase.jl): quadrature, cubature, sigma points
+and sampling compute `E_q[f]` through `BayesBase.expectation`, alongside the local Gaussian
+projections that approximate inference builds on (Laplace, moment matching, linearisation) and
+transforms to unconstrained coordinates. It is being rewritten as version 1.0; see
+[PLAN.md](PLAN.md), milestone U2.
 
-While ExpectationsApproximations is primarily utilized by the [ReactiveMP.jl](https://github.com/reactivebayes/ReactiveMP.jl) and [RxInfer.jl](https://github.com/reactivebayes/RxInfer.jl) packages, it can also be used as a standalone package for anyone who needs to approximate function moments.
-
-## Installation
-To install `ExpectationsApproximations.jl`, run the following command in the Julia REPL:
-```julia
-julia> using Pkg; Pkg.add("ExpectationsApproximations")
-```
-
-## Usage
-To use ``ExpectationsApproximations.jl``, first import it in your Julia code:
-
-```julia
-using ExpectationsApproximations
-```
-## Examples:
-### Deterministic Methods:
-### Stochastic Methods:
-### Hybrid Methods:
-
-
-# Contributing
-Contributions to ``ExpectationsApproximations`` are welcome!
-
-# License
+- Tests: `make test` runs the suite as CI does; `make test test_args="tag:quality"` selects
+  items by tag, by name or by file. `make help` lists the other targets.
+- Julia 1.10 or later. MIT licence.
 
 [MIT License](LICENSE) Copyright (c) 2022-2024 BIASlab, 2024-present ReactiveBayes

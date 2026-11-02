@@ -8,6 +8,10 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 
 ### Changed
 
+- ExpectationApproximations 1.0 is a rewrite: numerical backends for the expectation protocol of
+  BayesBase 1.7. The previous API (`approximate`, the kernels, CVI, CVMP, AdvancedHMC sampling,
+  the constrained unscented transform) is removed.
+
 - The code is formatted with [Runic](https://github.com/fredrikekre/Runic.jl) instead of
   JuliaFormatter: `make format` and `make check-format`, and the `Format` workflow in CI.
 - The tooling follows the ReactiveBayes PackageTemplate: the Makefile, the CI, CompatHelper,

@@ -1,7 +1,7 @@
 using TestItemRunner, Test, ExpectationApproximations
 
 # `make test test_args="..."` selects test items: `tag:<tag>` by tag, `name:<text>` by name, and
-# anything else by file path (`kernels` for `test/kernels/*_tests.jl`). Kinds combine with
+# anything else by file path (`rules` for `test/rules/*_tests.jl`). Kinds combine with
 # "and", entries of one kind with "or". Items tagged `:slow` run only with `TEST_ALL=true`.
 
 const TEST_ALL = get(ENV, "TEST_ALL", "false") == "true"

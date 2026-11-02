@@ -9,12 +9,15 @@ DocMeta.setdocmeta!(
 
 makedocs(
     modules = [ExpectationApproximations],
+    # Every docstring appears on a page.
+    checkdocs = :all,
     authors = "Bagaev Dmitry <bvdmitri@gmail.com> and contributors",
     sitename = "ExpectationApproximations.jl",
-    pages = ["Home" => "index.md", "API" => ["Common" => "common.md"]],
+    pages = ["Home" => "index.md"],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
         canonical = "https://reactivebayes.github.io/ExpectationApproximations.jl",
+        edit_link = "main",
     ),
 )
 
