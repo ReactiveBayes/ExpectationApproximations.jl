@@ -12,7 +12,7 @@ Nothing is exported: the names are public and used qualified, such as
 """
 module ExpectationApproximations
 
-using BayesBase: BayesBase, PointSet, PointMass, Exact, Stochastic
+using BayesBase: BayesBase, PointSet, PointMass, FirstOf, Exact, Stochastic
 using Compat: @compat
 using Distributions: Distribution, ContinuousUnivariateDistribution, Normal, AbstractMvNormal, LogNormal,
     LogitNormal, Gamma, Exponential, Beta, DiscreteNonParametric, Bernoulli, Binomial, DiscreteUniform, Dirac,
@@ -24,12 +24,13 @@ using StaticArrays: StaticVector, SVector
 using StatsFuns: logistic
 
 @compat public gausshermite, gausslaguerre, gaussjacobi, gausslegendre
-@compat public GaussHermite, GaussLaguerre, GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo
+@compat public GaussHermite, GaussLaguerre, GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo, EADefault
 
 include("rules/golubwelsch.jl")
 include("backends/gausshermite.jl")
 include("backends/orthogonal.jl")
 include("backends/exactsum.jl")
 include("backends/montecarlo.jl")
+include("backends/default.jl")
 
 end

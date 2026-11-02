@@ -7,6 +7,7 @@ Each backend computes expectations through the protocol of BayesBase:
 numbers through, and products of distributions combine them component by component.
 
 ```@docs
+ExpectationApproximations.EADefault
 ExpectationApproximations.GaussHermite
 ExpectationApproximations.GaussLaguerre
 ExpectationApproximations.GaussJacobi
