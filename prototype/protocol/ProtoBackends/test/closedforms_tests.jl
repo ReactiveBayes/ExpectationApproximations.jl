@@ -1,4 +1,4 @@
-@testitem "ClosedForms: the mean and second moment of Gaussians" setup = [Helpers] begin
+@testitem "ClosedForms: the mean and second moment of Gaussians" tags = [:closedforms] setup = [Helpers] begin
     using Distributions, ExponentialFamily
 
     for q in (Normal(1.0, 2.0), NormalMeanVariance(1.0, 4.0), NormalMeanPrecision(1.0, 0.25))
@@ -8,7 +8,7 @@
     end
 end
 
-@testitem "ClosedForms: E[log x] under Gamma and LogNormal" setup = [Helpers] begin
+@testitem "ClosedForms: E[log x] under Gamma and LogNormal" tags = [:closedforms] setup = [Helpers] begin
     using Distributions, SpecialFunctions
 
     @test P.expectation(B.ClosedForms(), log, Gamma(2.0, 3.0)) ≈ digamma(2.0) + log(3.0)
@@ -19,7 +19,7 @@ end
     @test P.expectation(B.ClosedForms(), log, Gamma(2.0, 3.0)) ≈ P.expectation(B.QuantileLegendre(200), log, Gamma(2.0, 3.0)) rtol = 1.0e-3
 end
 
-@testitem "ClosedForms: E_q[log p(x)] of a Gaussian under a Gaussian, through Logpdf" setup = [Helpers] begin
+@testitem "ClosedForms: E_q[log p(x)] of a Gaussian under a Gaussian, through Logpdf" tags = [:closedforms] setup = [Helpers] begin
     using Distributions
 
     q, p = Normal(1.0, 2.0), Normal(-1.0, 0.5)
@@ -29,7 +29,7 @@ end
     @test P.expectation(B.GaussHermite(3), P.Logpdf(p), q) ≈ expected
 end
 
-@testitem "ClosedForms: nothing else is supported" setup = [Helpers] begin
+@testitem "ClosedForms: nothing else is supported" tags = [:closedforms] setup = [Helpers] begin
     using Distributions
 
     @test P.supports(B.ClosedForms(), sin, Normal(0.0, 1.0)) === false

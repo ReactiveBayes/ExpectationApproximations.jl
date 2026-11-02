@@ -1,4 +1,4 @@
-@testitem "a default router: closed forms first, then quadrature" setup = [Helpers] begin
+@testitem "a default router: closed forms first, then quadrature" tags = [:routing] setup = [Helpers] begin
     using Distributions, ExponentialFamily, JET
 
     router = B.default_router(16)
@@ -13,7 +13,7 @@
     @test_opt P.expectation(router, log, Gamma(2.0, 1.0))
 end
 
-@testitem "a default router: products route each component" setup = [Helpers] begin
+@testitem "a default router: products route each component" tags = [:routing] setup = [Helpers] begin
     using Distributions, ExponentialFamily
     import BayesBase: FactorizedJoint, PointMass
 
@@ -26,7 +26,7 @@ end
     @test P.expectation(router, ((y, λ),) -> y * λ, joint) ≈ 3.0 * P.expectation(B.QuantileLegendre(16), identity, Gamma(2.0, 1.0))
 end
 
-@testitem "the mixture notebook's integrand: no allocations, duals pass" setup = [Helpers] begin
+@testitem "the mixture notebook's integrand: no allocations, duals pass" tags = [:routing, :alloc] setup = [Helpers] begin
     using Distributions, ExponentialFamily, ForwardDiff, JET
     import BayesBase: FactorizedJoint, PointMass
 
@@ -50,7 +50,7 @@ end
     @test allocations(curvature, prep, 1.0) == 0
 end
 
-@testitem "withrng reaches a sampler inside the default router, without allocating" setup = [Helpers] begin
+@testitem "withrng reaches a sampler inside the default router, without allocating" tags = [:routing, :alloc] setup = [Helpers] begin
     using StableRNGs
 
     rng = StableRNG(1)

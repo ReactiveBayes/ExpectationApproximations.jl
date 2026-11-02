@@ -1,4 +1,4 @@
-@testitem "loading registers the backends with the global registry" setup = [Helpers] begin
+@testitem "loading registers the backends with the global registry" tags = [:dynamic] setup = [Helpers] begin
     using Distributions, ExponentialFamily
 
     router = P.DynamicRouter()

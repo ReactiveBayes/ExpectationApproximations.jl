@@ -410,6 +410,12 @@ Added after the protocol prototype (U0.2):
 - **D22. Strict test-driven development.** Every function has tests written before it, and
   type stability, allocations and folding are tests, not observations. A function that is hard
   to test is a design signal.
+- **D23. The PackageTemplate tooling everywhere.** Runic and TestItemRunner as in the
+  template (see "Definition of done"), applied to BayesBase in the U1 pull request and to this
+  repository. In BayesBase the new JET item found six possible errors in existing code, fixed
+  test first in their own commit. Here the legacy suite (to be rewritten in U2) keeps its
+  outcome: thousands of errors from API drift and no compat entries, now visible because the
+  items run after Aqua instead of not at all.
 
 The protocol, as decided (BayesBase):
 
@@ -532,16 +538,30 @@ another one, `BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl"
 
 ### Definition of done for any piece
 
-Tests written before the code (D22), with ReTestItems or TestItemRunner; Aqua with ambiguity
-and piracy checks; JET on Julia 1.12+; allocation tests on hot paths; documentation; and a
-status entry here.
+Tests written before the code (D22); Aqua with ambiguity and piracy checks; JET on Julia
+1.12+; allocation tests on hot paths; documentation; a CHANGELOG entry; and a status entry here.
+
+Every repository follows the ReactiveBayes
+[PackageTemplate](https://github.com/ReactiveBayes/PackageTemplate) (D23):
+
+- **Formatting:** Runic. `make format` and `make check-format` run the latest Runic, and the
+  `Format` workflow uses `fredrikekre/runic-action@v1`. A reformat is a commit of its own,
+  listed in `.git-blame-ignore-revs`.
+- **Tests:** TestItemRunner. Every `@testitem` carries tags by area, shared code is a
+  `@testsnippet` or `@testmodule`, and `test/runtests.jl` selects with
+  `make test test_args="tag:<t> name:<n> <path>"`. Items tagged `:slow` run in `make test`
+  and CI but not in `make test-fast`; allocation tests are tagged `:alloc`.
+- **Quality:** `test/quality_tests.jl`, tagged `:quality`, holds Aqua (with compat entries for
+  test dependencies), JET (Julia 1.12+) and the doctests.
+- **CI:** the template's `CI.yml` (Julia 1.10, 1.11, 1.12, 1 and pre, codecov with OIDC),
+  `Format.yml`, `CompatHelper.yml`, `TagBot.yml`, `DocPreviewCleanup.yml` and Dependabot.
 
 ## Status
 
 | ID | Repository | State | Pull request |
 |---|---|---|---|
 | U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
-| U1 | BayesBase | implemented on `universal-inference` (1.7.0): 6591 tests on Julia 1.13, 6569 on 1.10; docs build | pending |
+| U1 | BayesBase | implemented on `universal-inference` (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | pending |
 | U2 | EA | not started | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |

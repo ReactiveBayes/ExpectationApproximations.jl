@@ -1,4 +1,4 @@
-@testitem "QuantileLegendre: any continuous univariate distribution" setup = [Helpers] begin
+@testitem "QuantileLegendre: any continuous univariate distribution" tags = [:quantilelegendre] setup = [Helpers] begin
     using Distributions
 
     @test_throws ArgumentError B.QuantileLegendre(0)
@@ -16,7 +16,7 @@
     @test P.isexact(B.QuantileLegendre(16), identity, Beta(2.0, 5.0)) === false
 end
 
-@testitem "QuantileLegendre: prepared expectations do not allocate" setup = [Helpers] begin
+@testitem "QuantileLegendre: prepared expectations do not allocate" tags = [:quantilelegendre, :alloc] setup = [Helpers] begin
     using Distributions
 
     prep = P.prepare_expectation(B.QuantileLegendre(16), Gamma(2.0, 2.0))

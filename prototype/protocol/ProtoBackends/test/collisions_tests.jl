@@ -1,4 +1,4 @@
-@testitem "loading next to RxInfer: nothing clashes" begin
+@testitem "loading next to RxInfer: nothing clashes" tags = [:collisions] begin
     module WithRxInfer
     using RxInfer, BayesBase, ProtoBackends
     end

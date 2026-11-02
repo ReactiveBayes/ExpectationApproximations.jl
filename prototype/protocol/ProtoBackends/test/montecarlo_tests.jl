@@ -1,4 +1,4 @@
-@testitem "MonteCarlo: needs an RNG, which withrng provides" setup = [Helpers] begin
+@testitem "MonteCarlo: needs an RNG, which withrng provides" tags = [:montecarlo] setup = [Helpers] begin
     using Distributions, StableRNGs
 
     @test_throws ArgumentError B.MonteCarlo(0)
@@ -10,7 +10,7 @@
     @test P.getrng(P.withrng(B.MonteCarlo(10, other), rng)) === other
 end
 
-@testitem "MonteCarlo: stochastic, reproducible with the same RNG" setup = [Helpers] begin
+@testitem "MonteCarlo: stochastic, reproducible with the same RNG" tags = [:montecarlo] setup = [Helpers] begin
     using Distributions, StableRNGs
 
     q = Gamma(2.0, 2.0)

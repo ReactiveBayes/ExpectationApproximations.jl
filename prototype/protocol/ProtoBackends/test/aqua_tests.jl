@@ -1,10 +1,10 @@
-@testitem "Aqua, with ambiguity and piracy checks" begin
+@testitem "Aqua, with ambiguity and piracy checks" tags = [:quality] begin
     using Aqua, ProtoBackends
 
     Aqua.test_all(ProtoBackends; ambiguities = true, piracies = true)
 end
 
-@testitem "every backend name is public and none is exported" begin
+@testitem "every backend name is public and none is exported" tags = [:quality] begin
     using ProtoBackends
 
     for name in (:ClosedForms, :GaussHermite, :QuantileLegendre, :MonteCarlo, :default_router)
