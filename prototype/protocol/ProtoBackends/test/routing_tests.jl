@@ -32,11 +32,13 @@ end
 
     # E over z, m, s of the log-density of y under component z, as a function of y
     loglik(y, (z, m, s)) = (s[z] - log(2π) - exp(s[z]) * (y - m[z])^2) / 2
-    joint = FactorizedJoint((
-        Categorical([0.4, 0.6]),
-        MvNormalMeanCovariance([-2.0, 2.0], [0.1 0.0; 0.0 0.1]),
-        MvNormalMeanCovariance([0.5, -0.5], [0.05 0.0; 0.0 0.05]),
-    ))
+    joint = FactorizedJoint(
+        (
+            Categorical([0.4, 0.6]),
+            MvNormalMeanCovariance([-2.0, 2.0], [0.1 0.0; 0.0 0.1]),
+            MvNormalMeanCovariance([0.5, -0.5], [0.05 0.0; 0.0 0.05]),
+        )
+    )
     prep = P.prepare_expectation(B.default_router(5), joint)
     message(p, y) = P.expectation(p, inputs -> loglik(y, inputs))
     @test allocations(message, prep, 1.0) == 0

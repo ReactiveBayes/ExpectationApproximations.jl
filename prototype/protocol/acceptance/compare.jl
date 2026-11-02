@@ -26,17 +26,21 @@ end
 
 # the main inference call of each notebook, rerun to time it once compiled
 const RERUN = Dict(
-    "mixture" => :(infer(
-        model = laplace_mixture(K = K), data = (y = y,), constraints = laplace_constraints,
-        initialization = laplace_initialization, iterations = n_iterations,
-        returnvars = (m = KeepEach(), s = KeepEach(), π = KeepLast()),
-        options = (rulefallback = ExpectedLogPdfFallback(),),
-    )),
-    "zip" => :(infer(
-        model = monastery(prior_p = prior_p, prior_λ = prior_λ), data = (y = y,),
-        constraints = transformed_constraints, initialization = initialization, iterations = n_iterations,
-        returnvars = KeepEach(), options = (rulefallback = ExpectedLogPdfFallback(),),
-    )),
+    "mixture" => :(
+        infer(
+            model = laplace_mixture(K = K), data = (y = y,), constraints = laplace_constraints,
+            initialization = laplace_initialization, iterations = n_iterations,
+            returnvars = (m = KeepEach(), s = KeepEach(), π = KeepLast()),
+            options = (rulefallback = ExpectedLogPdfFallback(),),
+        )
+    ),
+    "zip" => :(
+        infer(
+            model = monastery(prior_p = prior_p, prior_λ = prior_λ), data = (y = y,),
+            constraints = transformed_constraints, initialization = initialization, iterations = n_iterations,
+            returnvars = KeepEach(), options = (rulefallback = ExpectedLogPdfFallback(),),
+        )
+    ),
 )
 
 # posteriors to compare, by notebook
@@ -58,7 +62,7 @@ for name in ("mixture", "zip")
     for expression in COMPARED[name]
         # the notebooks load packages after this file was compiled, hence `invokelatest`
         δ = Base.invokelatest(difference, Core.eval(original, expression), Core.eval(protocol, expression))
-        ok = δ <= 1e-10
+        ok = δ <= 1.0e-10
         global passed &= ok
         @printf("  %-40s max relative difference %.1e  %s\n", string(expression), δ, ok ? "ok" : "FAILED")
     end

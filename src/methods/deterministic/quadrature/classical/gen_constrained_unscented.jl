@@ -46,27 +46,27 @@ const GenConstrainedUnscentedTransform = GenConstrainedUnscented
 
 getlowerbound(approximation::GenConstrainedUnscented) = approximation.lb
 getupperbound(approximation::GenConstrainedUnscented) = approximation.ub
-getresampling_parameter(approximation::GenConstrainedUnscented)          = approximation.resampling_parameter
+getresampling_parameter(approximation::GenConstrainedUnscented) = approximation.resampling_parameter
 
 getpoints(method::GenConstrainedUnscented) = getcache(method.cache, (:points, (method.inputdim, 2method.inputdim + 1)))
 getweights(method::GenConstrainedUnscented) = getcache(method.cache, (:weights, 2method.inputdim + 1))
 
 ## Univariate sigma points and weights
 function sigma_points_weights!(approximation::GenConstrainedUnscented, m::Real, V::Real, S::Real, K::Real)
-    L     = sqrt(V)
+    L = sqrt(V)
     invL3 = inv(L^3)
-    minK  = L^4 * (S * invL3)^2
-    K     = (K <= minK) ? 1.001minK : K
-    u     = (1 / 2) * (-S * invL3 + (1 / V) * sqrt(4 * K - 3 * (S^2) / V))
-    v     = u + S * invL3
+    minK = L^4 * (S * invL3)^2
+    K = (K <= minK) ? 1.001minK : K
+    u = (1 / 2) * (-S * invL3 + (1 / V) * sqrt(4 * K - 3 * (S^2) / V))
+    v = u + S * invL3
 
     lb = first(getlowerbound(approximation))
     ub = first(getupperbound(approximation))
-    resampling_parameter  = getresampling_parameter(approximation)
+    resampling_parameter = getresampling_parameter(approximation)
 
-    cache   = approximation.cache
+    cache = approximation.cache
     weights = getcache(cache, (:weights, 3))
-    points  = getcache(cache, (:points, (1, 3)))
+    points = getcache(cache, (:points, (1, 3)))
     @views begin
         points[1, 1] = m
         points[1, 2] = m - u * L
@@ -181,7 +181,7 @@ end
 
 function approximate_expectation(method::GenConstrainedUnscented, q, f::F) where {F}
     T = first(typeof(method).parameters)
-    approximate_expectation(T, method, q, f, Val(false))
+    return approximate_expectation(T, method, q, f, Val(false))
 end
 
 function approximate_expectation(method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {F, C}
@@ -236,7 +236,7 @@ end
 
 function unscented_statistics(method::GenConstrainedUnscented, q, f::F) where {F}
     T = first(typeof(method).parameters)
-    unscented_statistics(T, method, q, f, Val(false))
+    return unscented_statistics(T, method, q, f, Val(false))
 end
 
 function unscented_statistics(method::GenConstrainedUnscented, q, f::F, ::Val{C}) where {F, C}
@@ -267,30 +267,30 @@ function unscented_statistics(method::GenConstrainedUnscented, m, V, S, K, f::F,
 end
 
 function unscented_statistics(
-    FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
-) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
+        FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
+    ) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
     T = FromTo(Tin, Matrixvariate)
     method2 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim, (first(method.outputdim), first(method.outputdim)))
 
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(MomentGenerator(Tout, Val(2), mresult), f, Val(Tu)), Val(false))
-   
+
     if C
         Sresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(3), mresult), f, Val(Tu)), Val(true))
         Kresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(DiagonalMomentGenerator(Val(4), mresult), f, Val(Tu)), Val(true))
-    
+
         method3 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim, (first(method.inputdim), first(method.outputdim)))
         Cresult = approximate_expectation(T, method3, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
         return mresult, Vresult, Sresult, Kresult, Cresult
     else
         return mresult, Vresult
     end
-    
+
 end
 
 function unscented_statistics(
-    FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
-) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
+        FT::Type{FromTo{Tin, Tout}}, method::GenConstrainedUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
+    ) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true))
     if C
@@ -301,7 +301,7 @@ function unscented_statistics(
         Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
         return mresult, Vresult, Sresult, Kresult, Cresult
     else
-        return mresult, Vresult 
+        return mresult, Vresult
     end
 end
 

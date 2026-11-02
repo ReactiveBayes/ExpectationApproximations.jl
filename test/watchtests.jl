@@ -6,7 +6,7 @@ trigger = function (path)
     printstyled("changed ", color = :cyan)
     println(path)
     revise()
-    runtests(@__DIR__, skip = ["watchtests.jl"])
+    return runtests(@__DIR__, skip = ["watchtests.jl"])
 end
 
 watch(trigger, @__DIR__, sources = [pathof(ExpectationApproximations)])

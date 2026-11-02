@@ -5,7 +5,7 @@
     # the quantile functions are not smooth at the ends (like √u for this Beta near zero, like
     # -log(1 - u) for a Gamma near one), so convergence is algebraic, not spectral
     beta_error(n) = abs(P.expectation(B.QuantileLegendre(n), identity, Beta(2.0, 5.0)) - 2 / 7)
-    @test beta_error(16) < 1e-3
+    @test beta_error(16) < 1.0e-3
     @test beta_error(64) < beta_error(16) / 10
     gamma_error(n) = abs(P.expectation(B.QuantileLegendre(n), identity, Gamma(2.0, 2.0)) - 4.0)
     @test gamma_error(16) < 0.05

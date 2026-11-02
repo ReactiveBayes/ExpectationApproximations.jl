@@ -1,4 +1,3 @@
-
 function weighted_sum(::Type{FromTo{T, T}}, method, points, weights, transformedpoints, f::F, ds) where {F, T <: Univariate}
     isnothing(ds) ? map!((x, y) -> y * f(x), transformedpoints, points, weights) : map!((x, y) -> y * f(__splitjoin(x, ds)...), transformedpoints, points, weights)
     return sum(transformedpoints)

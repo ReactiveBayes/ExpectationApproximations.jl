@@ -33,9 +33,9 @@ end
 Base.log(f::LogIntegrand) = f.callable
 
 Base.convert(::Type{LogIntegrand}, input::LogIntegrand) = input
-Base.convert(::Type{LogIntegrand}, input::F) where {F}  = LogIntegrand((x) -> _convert_logintegrand_number(input(x)))
+Base.convert(::Type{LogIntegrand}, input::F) where {F} = LogIntegrand((x) -> _convert_logintegrand_number(input(x)))
 
-_convert_logintegrand_number(r::Number)      = log(Complex(r))
+_convert_logintegrand_number(r::Number) = log(Complex(r))
 _convert_logintegrand_number(r::Logarithmic) = log(r)
 
 """
@@ -55,7 +55,7 @@ Base.log(logresult::LogResult) = logresult.log
 
 function Base.convert(::Type{Logarithmic}, result::LogResult)
     logresult = log(result)
-    expimag   = real(exp(complex(0, imag(logresult)))) # Exponentiate imaginary part only 
+    expimag = real(exp(complex(0, imag(logresult)))) # Exponentiate imaginary part only
 
     # Check sign of the result, slight deviations are acceptable
     if !(isapprox(abs(expimag), 1, rtol = 0.01, atol = 0.01))

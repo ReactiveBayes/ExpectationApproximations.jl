@@ -21,8 +21,8 @@ end
     cvi_method = CVI(StableRNG(42), 500, Optimisers.Descent(0.01), ForwardDiffGrad(), 1000, Val(true), false)
 
     for i in -1:1, j in -1:1
-        positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i + 1e-12])
-        ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j + 1e-12])
+        positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i + 1.0e-12])
+        ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j + 1.0e-12])
         product = ExpectationApproximations.approximate_distribution(cvi_method, CVIFactor(ef, positive_measure))
         dist = convert(Distribution, product)
         analytical_product = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i + j])

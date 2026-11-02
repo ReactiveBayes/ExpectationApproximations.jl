@@ -37,8 +37,8 @@
         @testset "Bernoulli x Bernoulli prod" begin
             cvmp_method = CVMP(StableRNG(42), 500, Optimisers.Adam(0.01), ForwardDiffGrad(), 300, Val(true), true, SimpleInitStrategy())
             for i in -1:1, j in -1:1
-                positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i + 1e-12])
-                ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j + 1e-12])
+                positive_measure = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i + 1.0e-12])
+                ef = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [j + 1.0e-12])
                 marginal = ExponentialFamily.ExponentialFamilyDistribution(Bernoulli, [i + j])
                 cvmp_factor = CVMPFactor(ef, positive_measure, marginal)
                 product = ExpectationApproximations.approximate_distribution(cvmp_method, cvmp_factor, identity)

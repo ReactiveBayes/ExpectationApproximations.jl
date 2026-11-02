@@ -24,25 +24,25 @@ struct AHMC{V, T, M, G, I, TS, TC} <: AbstractApproximationMethod
     termination_criterion::TC
 
     function AHMC(
-        varform::V,
-        dim::T,
-        n_samples::T = N_SAMPLES,
-        n_adapts::T = N_ADAPTS,
-        metric::M = DiagEuclideanMetric(dim),
-        autograd::G = ForwardDiff,
-        automatic_ϵ = true,
-        integrator::I = Leapfrog(ϵLEAP),
-        trajectory_sampler::TS = MultinomialTS,
-        termination_criterion::TC = GeneralisedNoUTurn()
-    ) where {V, T <: Integer, M <: AbstractMetric, G, I <: AbstractIntegrator, TS, TC <: AbstractTerminationCriterion}
+            varform::V,
+            dim::T,
+            n_samples::T = N_SAMPLES,
+            n_adapts::T = N_ADAPTS,
+            metric::M = DiagEuclideanMetric(dim),
+            autograd::G = ForwardDiff,
+            automatic_ϵ = true,
+            integrator::I = Leapfrog(ϵLEAP),
+            trajectory_sampler::TS = MultinomialTS,
+            termination_criterion::TC = GeneralisedNoUTurn()
+        ) where {V, T <: Integer, M <: AbstractMetric, G, I <: AbstractIntegrator, TS, TC <: AbstractTerminationCriterion}
         return new{V, T, M, G, I, TS, TC}(varform, dim, n_samples, n_adapts, metric, autograd, automatic_ϵ, integrator, trajectory_sampler, termination_criterion)
     end
 end
 
 struct LogTargetDensity{V, I, T, F}
-    dim :: I
-    q   :: T
-    μ   :: F
+    dim::I
+    q::T
+    μ::F
 
     function LogTargetDensity(dim::I, q::T, μ::F) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution, <:Distribution}, F}
         V = variate_form(T)
@@ -55,8 +55,8 @@ struct LogTargetDensity{V, I, T, F}
     end
 
     function LogTargetDensity(
-        dim::I, q::T, μ::F
-    ) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution, <:Distribution}, F <: Union{<:ExponentialFamilyDistribution, <:Distribution}}
+            dim::I, q::T, μ::F
+        ) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution, <:Distribution}, F <: Union{<:ExponentialFamilyDistribution, <:Distribution}}
         @assert variate_form(T) == variate_form(F) " $(q) and $(μ) must have the same variate type"
         V = variate_form(T)
         return new{V, I, T, F}(dim, q, μ)
@@ -99,8 +99,8 @@ logdensity(
     p::LogTargetDensity{Multivariate, I, T, F}, θ
 ) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution, <:Distribution}, F <: Union{<:ExponentialFamilyDistribution, <:Distribution}} = logpdf(p.q, θ) + logpdf(p.μ, θ)
 function logdensity(
-    p::LogTargetDensity{Matrixvariate, I, T, F}, θ
-) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution, <:Distribution}, F <: Union{<:ExponentialFamilyDistribution, <:Distribution}}
+        p::LogTargetDensity{Matrixvariate, I, T, F}, θ
+    ) where {I <: Integer, T <: Union{<:ExponentialFamilyDistribution, <:Distribution}, F <: Union{<:ExponentialFamilyDistribution, <:Distribution}}
     n = Int(sqrt(length(θ)))
     θnew = reshape(θ, n, n)
     return logpdf(p.q, θnew) + logpdf(p.μ, θnew)
@@ -119,7 +119,7 @@ function Base.prod(method::AHMC, q::T, f::F) where {T <: Union{<:ExponentialFami
         initial_θ = Random.rand(ltd.q)
     end
     if method.automatic_ϵ == true
-        initial_ϵ  = find_good_stepsize(hamiltonian, initial_θ)
+        initial_ϵ = find_good_stepsize(hamiltonian, initial_θ)
         integrator = Leapfrog(initial_ϵ)
     else
         integrator = method.integrator
@@ -180,7 +180,7 @@ function Base.prod(method::AHMC, ::SampleLeft, q::Union{<:ExponentialFamilyDistr
         initial_θ = Random.rand(q)
     end
     if method.automatic_ϵ == true
-        initial_ϵ  = find_good_stepsize(hamiltonian, initial_θ)
+        initial_ϵ = find_good_stepsize(hamiltonian, initial_θ)
         integrator = Leapfrog(initial_ϵ)
     else
         integrator = method.integrator

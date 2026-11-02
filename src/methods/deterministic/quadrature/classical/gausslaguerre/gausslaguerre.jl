@@ -5,10 +5,10 @@ using FastGaussQuadrature
 import Base: show
 
 struct GaussLaguerre{P, W, L} <: ClassicalQuadratureRule
-    length     :: Int
-    points     :: P
-    weights    :: W
-    logweights :: L
+    length::Int
+    points::P
+    weights::W
+    logweights::L
 end
 
 name(::GaussLaguerre) = "GaussLaguerre"
@@ -29,13 +29,13 @@ function GaussLaguerre(length::Int)
     return GaussLaguerre(length, points, weights, logweights)
 end
 
-Base.length(method::GaussLaguerre)       = method.length
+Base.length(method::GaussLaguerre) = method.length
 Base.show(io::IO, method::GaussLaguerre) = print(io, "GaussLaguerre(", length(method), ")")
 
 evaluate(rule::GaussLaguerre, q) = rule # TODO revise, maybe `getpoints(rule, q)`?
 
-getpoints(method::GaussLaguerre)     = method.points
-getweights(method::GaussLaguerre)    = method.weights
+getpoints(method::GaussLaguerre) = method.points
+getweights(method::GaussLaguerre) = method.weights
 getlogweights(method::GaussLaguerre) = method.logweights
 
 ## Gauss Laguerre without any distribution (::Nothing)

@@ -16,26 +16,26 @@ const B = ProtoBackends
 "The operation axis as a later, additive extension of the protocol."
 module WithOperations
 
-using BayesBase: BayesBase, FirstOf
-const P = BayesBase
+    using BayesBase: BayesBase, FirstOf
+    const P = BayesBase
 
-"A second operation: mean and covariance of a pushforward, `(E[f], Cov[f])`."
-function mean_cov end
+    "A second operation: mean and covariance of a pushforward, `(E[f], Cov[f])`."
+    function mean_cov end
 
-# The four-argument form. For `expectation` it forwards to the three-argument form, so every
-# backend written against the released protocol keeps working, unchanged; every other operation
-# is opt-in
-supports(backend, ::typeof(P.expectation), ::Type{F}, ::Type{Q}) where {F, Q} = P.supports(backend, F, Q)
-supports(backend, op, ::Type, ::Type) = false
+    # The four-argument form. For `expectation` it forwards to the three-argument form, so every
+    # backend written against the released protocol keeps working, unchanged; every other operation
+    # is opt-in
+    supports(backend, ::typeof(P.expectation), ::Type{F}, ::Type{Q}) where {F, Q} = P.supports(backend, F, Q)
+    supports(backend, op, ::Type, ::Type) = false
 
-# Routing per operation, decided by inference as in `FirstOf`
-choice(router::FirstOf, op, ::Type{F}, ::Type{Q}) where {F, Q} = find(router.backends, op, F, Q)
-find(::Tuple{}, op, ::Type, ::Type) = 0
-function find(backends::Tuple, op, ::Type{F}, ::Type{Q}) where {F, Q}
-    supports(first(backends), op, F, Q) && return 1
-    rest = find(Base.tail(backends), op, F, Q)
-    return rest == 0 ? 0 : rest + 1
-end
+    # Routing per operation, decided by inference as in `FirstOf`
+    choice(router::FirstOf, op, ::Type{F}, ::Type{Q}) where {F, Q} = find(router.backends, op, F, Q)
+    find(::Tuple{}, op, ::Type, ::Type) = 0
+    function find(backends::Tuple, op, ::Type{F}, ::Type{Q}) where {F, Q}
+        supports(first(backends), op, F, Q) && return 1
+        rest = find(Base.tail(backends), op, F, Q)
+        return rest == 0 ? 0 : rest + 1
+    end
 
 end
 

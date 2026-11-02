@@ -1,4 +1,3 @@
-
 @testitem "Cross-covariance method" begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import ExpectationApproximations: CrossCovariance, adjust_integrand

@@ -13,13 +13,13 @@ convenient functions to generate samples and weights to approximate expectations
 - `distribution`: importance distribution to sample from
 """
 struct ImportanceSampling{T, R, D} <: AbstractApproximationMethod
-    rng          :: R
-    nsamples     :: Int
-    distribution :: D
-    bsamples     :: AbstractArray
-    bweights     :: Vector{T}
-    resampling   :: Bool
-    rsamples     :: AbstractArray
+    rng::R
+    nsamples::Int
+    distribution::D
+    bsamples::AbstractArray
+    bweights::Vector{T}
+    resampling::Bool
+    rsamples::AbstractArray
 end
 
 function ImportanceSampling(rng::R, nsamples::Int, distribution::D; resampling::Bool = true) where {R, D}
@@ -41,7 +41,7 @@ function ImportanceSampling(::Type{T}, rng::R, nsamples::Int, distribution::D; r
     end
 end
 
-getsamples(approximation::ImportanceSampling)           = getsamples(approximation, approximation.nsamples)
+getsamples(approximation::ImportanceSampling) = getsamples(approximation, approximation.nsamples)
 getsamples(approximation::ImportanceSampling, nsamples) = rand(approximation.rng, approximation.distribution, nsamples)
 
 function approximate_expectation(approximation::ImportanceSampling, q::Union{<:ExponentialFamilyDistribution, <:Distribution}, f::F) where {F}

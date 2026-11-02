@@ -4,7 +4,7 @@
     autograd = ReverseDiff
     automatic_ϵ = false
     ϵ_step = 0.01
-    ϵ_jitter = 0.01 + 1e-8randn()
+    ϵ_jitter = 0.01 + 1.0e-8randn()
     integrator = JitteredLeapfrog(ϵ_step, ϵ_jitter)
     trajectory_sampler = SliceTS
     termination_criterion = ClassicNoUTurn()
@@ -24,7 +24,7 @@
         n_samples = dim * 10
         n_adapts = dim * 5
         L = rand(dim)
-        M = L * L' + 1e-8 * diageye(dim)
+        M = L * L' + 1.0e-8 * diageye(dim)
         metric = DenseEuclideanMetric(M)
         ahmc_method = AHMC(Multivariate, dim, n_samples, n_adapts, metric, autograd, automatic_ϵ, integrator, trajectory_sampler, termination_criterion)
 
@@ -99,7 +99,7 @@ end
     method = AHMC(Multivariate, D, nsamples, 0)
     m = rand(D)
     L = rand(D)
-    P = L * L' + 1e-6diageye(D)
+    P = L * L' + 1.0e-6diageye(D)
     dist = MvNormalMeanCovariance(m, P)
     expecatation_ahmc = approximate(method, dist, f)
 

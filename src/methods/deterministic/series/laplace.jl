@@ -12,14 +12,14 @@ it approximates integrals of the following form ∫f(x)exp(Mq(x))dx where q(x) i
 """
 
 struct Laplace{T, R} <: AbstractApproximationMethod
-    dimension :: Int64
-    M         :: T
-    point     :: R
+    dimension::Int64
+    M::T
+    point::R
 end
 
 laplace(d, M, point) = Laplace(d, M, point)
 
-approximation_name(::Laplace)       = "Laplace"
+approximation_name(::Laplace) = "Laplace"
 approximation_short_name(::Laplace) = "LP"
 
 using ForwardDiff
@@ -27,9 +27,9 @@ using Optim
 import LinearAlgebra: det
 
 function approximate_expectation(method::Laplace, q, f::F) where {F}
-    M     = method.M
+    M = method.M
     point = method.point
-    d     = method.dimension
+    d = method.dimension
     if point === nothing
         if d == 1
             dq = (x) -> ForwardDiff.derivative(q, x)

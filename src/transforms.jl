@@ -179,7 +179,7 @@ Decay(f::F) where {F <: Function} = Decay(f, nothing)
 (decayed::Decay)(x::Real) = decay(decayed, decayed.degree, decayed.callable, x)
 
 decay(::Decay, decay::Nothing, callable, x::Real) = callable(x) / x
-decay(::Decay, decay::Real, callable, x::Real)    = callable(x) / (x^decay)
+decay(::Decay, decay::Real, callable, x::Real) = callable(x) / (x^decay)
 
 """
     Displace(f, a = nothing)
@@ -219,8 +219,8 @@ Displace(f::F) where {F <: Function} = Displace(f, nothing)
 
 (displaced::Displace)(x::Real) = displace(displaced, displaced.scale, displaced.callable, x)
 
-displace(::Displace, scale::Nothing, callable, x::Real)     = callable(x) + x
-displace(::Displace, scale::Real, callable, x::Real)        = callable(x) + scale * x
+displace(::Displace, scale::Nothing, callable, x::Real) = callable(x) + x
+displace(::Displace, scale::Real, callable, x::Real) = callable(x) + scale * x
 displace(::Displace, ::Val{S}, callable, x::Real) where {S} = callable(x) + S * x
-displace(::Displace, ::Val{1}, callable, x::Real)           = callable(x) + x
-displace(::Displace, ::Val{-1}, callable, x::Real)          = callable(x) - x
+displace(::Displace, ::Val{1}, callable, x::Real) = callable(x) + x
+displace(::Displace, ::Val{-1}, callable, x::Real) = callable(x) - x

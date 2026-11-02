@@ -20,8 +20,8 @@ struct UseWeights end
 struct UseLogWeights end
 
 struct ClassicalQuadrature{R <: ClassicalQuadratureRule, S} <: AbstractApproximationMethod
-    rule     :: R
-    strategy :: S
+    rule::R
+    strategy::S
 end
 
 ClassicalQuadrature(npoints::Int) = ClassicalQuadrature(ClassicalQuadratureRuleAutomatic(npoints), ClassicalQuadratureStrategyAutomatic())
@@ -46,16 +46,16 @@ function approximate_expectation(method::ClassicalQuadrature, q, f::F) where {F}
     return ClassicalQuadrature_approximate_expectation(strategy, rule, q, f)
 end
 
-getpoints(method::ClassicalQuadrature)     = getpoints(method.rule)
-getweights(method::ClassicalQuadrature)    = getweights(method.rule)
+getpoints(method::ClassicalQuadrature) = getpoints(method.rule)
+getweights(method::ClassicalQuadrature) = getweights(method.rule)
 getlogweights(method::ClassicalQuadrature) = getlogweights(method.rule)
 
 ## Generic implementation
 
 function ClassicalQuadrature_approximate_expectation(::UseWeights, rule, q, f::F) where {F}
-    points  = getpoints(rule)
+    points = getpoints(rule)
     weights = getweights(rule)
-    g       = adjust_integrand(rule, q, f)
+    g = adjust_integrand(rule, q, f)
 
     result = mapreduce(+, zip(points, weights)) do (x, w)
         return w * g(x)
@@ -65,12 +65,12 @@ function ClassicalQuadrature_approximate_expectation(::UseWeights, rule, q, f::F
 end
 
 function ClassicalQuadrature_approximate_expectation(::UseLogWeights, rule, q, f::F) where {F}
-    points     = getpoints(rule)
+    points = getpoints(rule)
     logweights = getlogweights(rule)
-    g          = adjust_integrand(rule, q, convert(LogIntegrand, f))
-    logg       = log(g)
+    g = adjust_integrand(rule, q, convert(LogIntegrand, f))
+    logg = log(g)
 
-    # ln ( ∑ wi * g(xi) ) 
+    # ln ( ∑ wi * g(xi) )
     # = ln ( ∑ exp( ln(wi) + logg(xi) ) )
     # = ln ( ∑ exp( yi ) )
     # = max(yi) + ln ( ∑ exp( yi - max(yi) ) )  <-- `logsumexp`

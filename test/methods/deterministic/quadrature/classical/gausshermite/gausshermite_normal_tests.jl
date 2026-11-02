@@ -4,9 +4,9 @@
 
     irng = StableRNG(123)
 
-    btol(::UseLogWeights, n) = 1e-2 / log(n) # LogWeights should have better accuracy overall
-    btol(::UseWeights, n) = 1e-2
-    btol(::ClassicalQuadratureStrategyAutomatic, n) = 1e-2
+    btol(::UseLogWeights, n) = 1.0e-2 / log(n) # LogWeights should have better accuracy overall
+    btol(::UseWeights, n) = 1.0e-2
+    btol(::ClassicalQuadratureStrategyAutomatic, n) = 1.0e-2
 
     strategies = (UseLogWeights(), UseWeights(), ClassicalQuadratureStrategyAutomatic())
     npoints = (10, 20, 100, 200)
@@ -15,7 +15,7 @@
     for strategy in strategies, n in npoints, q in qs
         method = ClassicalQuadrature(GaussHermite(n), strategy)
 
-        # base rel tolerance 
+        # base rel tolerance
         brtol = btol(strategy, n)
 
         @test isapprox(approximate(method, q, (x) -> 1), 1.0, rtol = brtol)
@@ -36,9 +36,9 @@ end
     using ExpectationApproximations, Distributions, StableRNGs
     import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
-    btol(::UseLogWeights, n) = 5e-1 / log(n) # LogWeights should have better accuracy overall
-    btol(::UseWeights, n) = 5e-1
-    btol(::ClassicalQuadratureStrategyAutomatic, n) = 5e-1
+    btol(::UseLogWeights, n) = 5.0e-1 / log(n) # LogWeights should have better accuracy overall
+    btol(::UseWeights, n) = 5.0e-1
+    btol(::ClassicalQuadratureStrategyAutomatic, n) = 5.0e-1
 
     m1s = (1.3, -2.1, 10.1)
     m2s = (1.3, -2.1, 10.1)
@@ -57,11 +57,11 @@ end
 
         for f in ((x) -> pdf(d2, x), LogIntegrand((x) -> logpdf(d2, x)), d2)
             method = ClassicalQuadrature(GaussHermite(n), strategy)
-            C      = approximate(Expectation(), method, d1, f)
-            m      = approximate(MeasureAdjustedRawMomentGenerator(Val(1), C), method, d1, f)
-            v      = approximate(MeasureAdjustedMomentGenerator(Val(2), C, m), method, d1, f)
+            C = approximate(Expectation(), method, d1, f)
+            m = approximate(MeasureAdjustedRawMomentGenerator(Val(1), C), method, d1, f)
+            v = approximate(MeasureAdjustedMomentGenerator(Val(2), C, m), method, d1, f)
 
-            # base rel tolerance 
+            # base rel tolerance
             brtol = btol(strategy, n)
 
             @test isapprox(m, mean(p), rtol = brtol)

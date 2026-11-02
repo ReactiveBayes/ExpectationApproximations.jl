@@ -30,11 +30,11 @@ for (name, router) in routers
     t = @belapsed P.expectation($router, log, $q)
     a = @ballocated P.expectation($router, log, $q)
     choice = @belapsed P.which_backend($router, typeof(log), typeof($q))
-    @printf("  %-36s %8.1f ns per call, %5d bytes; choice alone %8.1f ns\n", name, 1e9 * t, a, 1e9 * choice)
+    @printf("  %-36s %8.1f ns per call, %5d bytes; choice alone %8.1f ns\n", name, 1.0e9 * t, a, 1.0e9 * choice)
 end
 
 println("E[sin λ] under a Gamma, unprepared quadrature with 16 points: routing next to real work")
 for (name, router) in routers
     t = @belapsed P.expectation($router, sin, $q)
-    @printf("  %-36s %8.1f ns per call\n", name, 1e9 * t)
+    @printf("  %-36s %8.1f ns per call\n", name, 1.0e9 * t)
 end

@@ -34,9 +34,9 @@ end
     @test P.expectation(B.GaussHermite(32), identity, LogNormal(0.3, 0.5)) ≈ exp(0.3 + 0.5^2 / 2)
     # the mean of a logit-normal has no closed form: compare with a fine Riemann sum
     q = LogitNormal(0.4, 0.8)
-    grid = range(1e-6, 1 - 1e-6; length = 400_000)
+    grid = range(1.0e-6, 1 - 1.0e-6; length = 400_000)
     reference = sum(x * pdf(q, x) for x in grid) * step(grid)
-    @test P.expectation(B.GaussHermite(32), identity, q) ≈ reference rtol = 1e-6
+    @test P.expectation(B.GaussHermite(32), identity, q) ≈ reference rtol = 1.0e-6
 end
 
 @testitem "GaussHermite: exact sums for point masses and categoricals" setup = [Helpers] begin

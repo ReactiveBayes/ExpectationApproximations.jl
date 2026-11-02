@@ -29,7 +29,7 @@ function getweightscacewithzeros(cache::ApproximationCache, label::Tuple{Symbol,
 end
 
 function getunscentedtransformedpoints(::Type{FromTo{Tin, Tout}}, method::AbstractApproximationMethod) where {Tin, Tout}
-    getunscentedtransformedpoints(Tout, method.cache, method.inputdim, method.outputdim)
+    return getunscentedtransformedpoints(Tout, method.cache, method.inputdim, method.outputdim)
 end
 
 getunscentedtransformedpoints(::Type{T}, cache::ApproximationCache, id, _) where {T <: Univariate} = getcache(cache, (:transformedpoints, 2 * id + 1))

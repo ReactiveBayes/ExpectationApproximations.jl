@@ -1,13 +1,13 @@
 export Unscented, UT, UnscentedTransform
 
-const default_alpha = 1e-3 # Default value for the spread parameter
+const default_alpha = 1.0e-3 # Default value for the spread parameter
 const default_beta = 2.0
 const default_kappa = 0.0
 
 struct UnscentedExtra{R, M, C}
-    λ  :: R
-    Wm :: M
-    Wc :: C
+    λ::R
+    Wm::M
+    Wc::C
 end
 
 function UnscentedExtra(dim::Int64; alpha::Real = default_alpha, beta::Real = default_beta, kappa::Real = default_kappa)
@@ -62,11 +62,11 @@ getκ(approximation::Unscented) = approximation.κ
 
 getextra(approximation::Unscented) = approximation.extra
 
-getλ(approximation::Unscented)  = getλ(getextra(approximation))
+getλ(approximation::Unscented) = getλ(getextra(approximation))
 getWm(approximation::Unscented) = getWm(getextra(approximation))
 getWc(approximation::Unscented) = getWc(getextra(approximation))
 
-getλ(extra::UnscentedExtra)  = extra.λ
+getλ(extra::UnscentedExtra) = extra.λ
 getWm(extra::UnscentedExtra) = extra.Wm
 getWc(extra::UnscentedExtra) = extra.Wc
 
@@ -150,8 +150,8 @@ unscented_statistics(method::Unscented, m, V, f::F, ::Val{Tu}) where {F, Tu} = u
 unscented_statistics(method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}) where {F, C, Tu} = unscented_statistics(first(typeof(method).parameters), method, m, V, f, Val(C), Val(Tu))
 
 function unscented_statistics(
-    FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
-) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
+        FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
+    ) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
     T = FromTo(Tin, Matrixvariate)
     method2 = Unscented{T}(method.inputdim, (first(method.outputdim), first(method.outputdim)), method.parameters)
 
@@ -170,8 +170,8 @@ function unscented_statistics(
 end
 
 function unscented_statistics(
-    FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
-) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
+        FT::Type{FromTo{Tin, Tout}}, method::Unscented, m, V, f::F, ::Val{C}, ::Val{Tu}
+    ) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, f, Val(false))
     Vresult = approximate_expectation(FT, method, m, V, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true); covariance_weights = true)
     if C

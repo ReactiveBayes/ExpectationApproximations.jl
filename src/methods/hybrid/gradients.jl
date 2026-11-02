@@ -2,9 +2,9 @@ export ForwardDiffGrad
 
 struct ForwardDiffGrad end
 
-compute_derivative(::ForwardDiffGrad, f::F, value::Real) where {F}       = ForwardDiff.derivative(f, value)
+compute_derivative(::ForwardDiffGrad, f::F, value::Real) where {F} = ForwardDiff.derivative(f, value)
 compute_gradient(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F} = ForwardDiff.gradient(f, vec)
-compute_hessian(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F}  = ForwardDiff.hessian(f, vec)
+compute_hessian(::ForwardDiffGrad, f::F, vec::AbstractVector) where {F} = ForwardDiff.hessian(f, vec)
 
 function compute_second_derivative(grad::G, logp::F, z_s::Real) where {G, F}
     first_derivative = (x) -> compute_derivative(grad, logp, x)

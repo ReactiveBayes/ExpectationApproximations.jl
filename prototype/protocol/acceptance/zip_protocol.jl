@@ -34,7 +34,7 @@ import MessagePassingRulesBase: NodeFunctionLogPdf, RuleArgs, Target, nodefuncti
 # The function `laplace` finds the mode $\hat{x}$ with a damped Newton method and returns the Gaussian. Gradients and Hessians come from automatic differentiation (ForwardDiff.jl), so $\ell$ can be any Julia function.
 
 # %%
-function laplace(logp, x0::Real; tol = 1e-10, maxiters = 100)
+function laplace(logp, x0::Real; tol = 1.0e-10, maxiters = 100)
     x = float(x0)
     d2(z) = ForwardDiff.derivative(w -> ForwardDiff.derivative(logp, w), z)
     for _ in 1:maxiters
@@ -42,7 +42,7 @@ function laplace(logp, x0::Real; tol = 1e-10, maxiters = 100)
         h < 0 || error("Laplace: the log-density is not concave at x = $x")
         step = -g / h
         t, fx = 1.0, logp(x)
-        while logp(x + t * step) < fx - 1e-12 && t > 1e-8 # backtracking line search
+        while logp(x + t * step) < fx - 1.0e-12 && t > 1.0e-8 # backtracking line search
             t /= 2
         end
         x += t * step
@@ -51,7 +51,7 @@ function laplace(logp, x0::Real; tol = 1e-10, maxiters = 100)
     return NormalMeanVariance(x, -inv(d2(x)))
 end
 
-function laplace(logp, x0::AbstractVector; tol = 1e-10, maxiters = 100)
+function laplace(logp, x0::AbstractVector; tol = 1.0e-10, maxiters = 100)
     x = float.(collect(x0))
     for _ in 1:maxiters
         g, H = ForwardDiff.gradient(logp, x), ForwardDiff.hessian(logp, x)
@@ -59,7 +59,7 @@ function laplace(logp, x0::AbstractVector; tol = 1e-10, maxiters = 100)
         issuccess(F) || error("Laplace: the log-density is not concave at x = $x")
         step = F \ g
         t, fx = 1.0, logp(x)
-        while logp(x + t * step) < fx - 1e-12 && t > 1e-8 # backtracking line search
+        while logp(x + t * step) < fx - 1.0e-12 && t > 1.0e-8 # backtracking line search
             t /= 2
         end
         x += t * step
@@ -338,10 +338,10 @@ show_moments(label, (m, s)) = string(rpad(label, 22), rpad(round(m; digits = 3),
 
 println(rpad("", 22), "p: mean  sd      λ: mean  sd")
 for (label, a, b) in [
-    ("exact (grid)", grid.p, grid.λ),
-    ("joint Laplace", moments(joint_p), moments(joint_λ)),
-    ("mean-field Laplace", moments(q_p), moments(q_λ)),
-]
+        ("exact (grid)", grid.p, grid.λ),
+        ("joint Laplace", moments(joint_p), moments(joint_λ)),
+        ("mean-field Laplace", moments(q_p), moments(q_λ)),
+    ]
     println(show_moments(label, a), "    ", show_moments("", b)[23:end])
 end
 println("posterior correlation of p and λ (grid): ", round(grid.correlation; digits = 3))
@@ -390,9 +390,11 @@ counts = rand(StableRNG(11), Poisson(λ_true), 20)
 conjugate_result = infer(
     model = poisson_counts(prior_λ = prior_λ),
     data = (y = counts,),
-    constraints = @constraints(begin
-        q(λ)::TransformedLaplaceForm()
-    end),
+    constraints = @constraints(
+        begin
+            q(λ)::TransformedLaplaceForm()
+        end
+    ),
     options = (rulefallback = NodeFunctionRuleFallback(),),
 )
 

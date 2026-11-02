@@ -52,12 +52,12 @@ end
 function compute_grad_logq(approximation::CVI, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, positivemeasure, samples) where {T}
     logq =
         (η) ->
-            mean((sample) -> logpdf(positivemeasure, sample) * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), sample), samples)
+    mean((sample) -> logpdf(positivemeasure, sample) * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), sample), samples)
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
 ## If logpdf method is not defined this function can be utilized by passing the positive measure
-## and working with the log of the positive measure 
+## and working with the log of the positive measure
 function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.ExponentialFamilyDistribution{T}) where {T}
     ##requires naturalparams function to be defined on the exponentialfamily
     rng = something(approximation.rng, Random.default_rng())
@@ -81,7 +81,7 @@ function Base.prod(approximation::CVI, positivemeasure, ef::ExponentialFamily.Ex
 
         ∇logq = compute_grad_logq(approximation, ef_current, positivemeasure, samples)
 
-        # compute Fisher matrix 
+        # compute Fisher matrix
         Fisher = ExponentialFamily.fisherinformation(ef_current)
 
         # compute natural gradient

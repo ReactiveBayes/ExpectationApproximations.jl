@@ -36,7 +36,7 @@ import MessagePassingRulesBase: NodeFunctionLogPdf, RuleArgs, Target, nodefuncti
 # The function `laplace` finds the mode $\hat{x}$ with a damped Newton method and returns the Gaussian. Gradients and Hessians come from automatic differentiation (ForwardDiff.jl), so $\ell$ can be any Julia function.
 
 # %%
-function laplace(logp, x0::Real; tol = 1e-10, maxiters = 100)
+function laplace(logp, x0::Real; tol = 1.0e-10, maxiters = 100)
     x = float(x0)
     d2(z) = ForwardDiff.derivative(w -> ForwardDiff.derivative(logp, w), z)
     for _ in 1:maxiters
@@ -44,7 +44,7 @@ function laplace(logp, x0::Real; tol = 1e-10, maxiters = 100)
         h < 0 || error("Laplace: the log-density is not concave at x = $x")
         step = -g / h
         t, fx = 1.0, logp(x)
-        while logp(x + t * step) < fx - 1e-12 && t > 1e-8 # backtracking line search
+        while logp(x + t * step) < fx - 1.0e-12 && t > 1.0e-8 # backtracking line search
             t /= 2
         end
         x += t * step
@@ -53,7 +53,7 @@ function laplace(logp, x0::Real; tol = 1e-10, maxiters = 100)
     return NormalMeanVariance(x, -inv(d2(x)))
 end
 
-function laplace(logp, x0::AbstractVector; tol = 1e-10, maxiters = 100)
+function laplace(logp, x0::AbstractVector; tol = 1.0e-10, maxiters = 100)
     x = float.(collect(x0))
     for _ in 1:maxiters
         g, H = ForwardDiff.gradient(logp, x), ForwardDiff.hessian(logp, x)
@@ -61,7 +61,7 @@ function laplace(logp, x0::AbstractVector; tol = 1e-10, maxiters = 100)
         issuccess(F) || error("Laplace: the log-density is not concave at x = $x")
         step = F \ g
         t, fx = 1.0, logp(x)
-        while logp(x + t * step) < fx - 1e-12 && t > 1e-8 # backtracking line search
+        while logp(x + t * step) < fx - 1.0e-12 && t > 1.0e-8 # backtracking line search
             t /= 2
         end
         x += t * step
@@ -283,9 +283,11 @@ result_conjugate = infer(
 # We report the component standard deviation at the posterior mean of the log-precision, $e^{-\mathbb{E}[s_k]/2}$, and for the conjugate model at the posterior mean of the precision, $\mathbb{E}[w_k]^{-1/2}$.
 
 # %%
-row(name, means, sds, component_sds, weights) = println(rpad(name, 22),
+row(name, means, sds, component_sds, weights) = println(
+    rpad(name, 22),
     "m = ", round.(means; digits = 3), "  sd(m) = ", round.(sds; digits = 3),
-    "  component sd = ", round.(component_sds; digits = 3), "  π = ", round.(weights; digits = 3))
+    "  component sd = ", round.(component_sds; digits = 3), "  π = ", round.(weights; digits = 3)
+)
 
 row("truth", true_means, [0.0, 0.0], true_sds, true_weights)
 row("empirical (true z)", [sum(y[z_true .== k]) / count(z_true .== k) for k in 1:K], [0.0, 0.0], [std(y[z_true .== k]) for k in 1:K], [count(z_true .== k) / N for k in 1:K])

@@ -17,7 +17,7 @@ struct GenUnscented{T <: FromTo, I, O} <: AbstractApproximationMethod
 end
 
 function GenUnscented{T}(id::I, od::O) where {T <: FromTo, I, O}
-    GenUnscented{T, I, O}(id, od, ApproximationCache())
+    return GenUnscented{T, I, O}(id, od, ApproximationCache())
 end
 
 GenUnscented() = GenUnscented{FromTo(Univariate, Univariate), Int, Int}(1, 1)
@@ -42,7 +42,7 @@ end
 
 function copy_and_svd!(A, AC, f)
     AC .= A
-    f(AC)
+    return f(AC)
 end
 
 function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::AbstractVector, K::AbstractVector)
@@ -52,7 +52,7 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     f = svd_functor_divconquer(size(V, 1), size(V, 1), T)
     svd_object = copy_and_svd!(V, Vsvd, f)
 
-    map!(x -> sqrt(abs(x + 1e-8)), Ssvd, svd_object.S)
+    map!(x -> sqrt(abs(x + 1.0e-8)), Ssvd, svd_object.S)
     mul_A_B_At!(cache, svd_object.U, Diagonal(Ssvd))
 
     L3 = getcache(cache, (:L3, size(V)))
@@ -63,15 +63,15 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
     hadamard!(L4, L3, getcache(cache, (:mul_A_B_At!_ABAt, size(V))))
 
     L3S = getcache(cache, (:L3S, size(S, 1)))
-    ldiv!(L3S, cholesky!(Hermitian(Symmetric((L3 + L3')/2)); check=true), S)
+    ldiv!(L3S, cholesky!(Hermitian(Symmetric((L3 + L3') / 2)); check = true), S)
     minK = getcache(cache, (:minK, size(K, 1)))
     L3S2 = getcache(cache, (:L3S2, size(S, 1)))
     mul!(minK, L4, hadamard!(L3S2, L3S, L3S))
 
-    any(K .< minK) ? K[K .<= minK] .= 1.001 * (minK[K .< minK] .+ 1e-8) : K
+    any(K .< minK) ? K[K .<= minK] .= 1.001 * (minK[K .< minK] .+ 1.0e-8) : K
 
     L4K = getcache(cache, (:L4K, size(K, 1)))
-    ldiv!(L4K, cholesky!(Hermitian(L4); check=true), K)
+    ldiv!(L4K, cholesky!(Hermitian(L4); check = true), K)
 
     u = getcache(cache, (:u, size(K, 1)))
     v = getcache(cache, (:v, size(K, 1)))
@@ -84,12 +84,12 @@ function prepare_cache!(cache::ApproximationCache, V::AbstractMatrix, S::Abstrac
 end
 
 function form_generalized_sigma_points!(cache::ApproximationCache, m::AbstractVector)
-    d       = length(m)
+    d = length(m)
     weights = getcache(cache, (:weights, 2d + 1))
-    points  = getcache(cache, (:points, (d, 2d + 1)))
-    L       = getcache(cache, (:mul_A_B_At!_ABAt, (d, d)))
-    u       = getcache(cache, (:u, d))
-    v       = getcache(cache, (:v, d))
+    points = getcache(cache, (:points, (d, 2d + 1)))
+    L = getcache(cache, (:mul_A_B_At!_ABAt, (d, d)))
+    u = getcache(cache, (:u, d))
+    v = getcache(cache, (:v, d))
 
     points[:, 1] = m
     @inbounds for (u_scal, v_scal, L_vec, i) in zip(u, v, eachcol(L), 1:d)
@@ -115,15 +115,15 @@ end
 
 #Univariate sigma points and weights
 function sigma_points_weights!(method::GenUnscented, m::Real, V::Real, S::Real, K::Real)
-    L     = sqrt(V)
+    L = sqrt(V)
     invL3 = inv(L^3)
-    minK  = L^4 * (S * invL3)^2
-    K     = (K <= minK) ? 1.001minK : K
-    u     = (1 / 2) * (-S * invL3 + (1 / V) * sqrt(4 * K - 3 * (S^2) / V))
-    v     = u + S * invL3
+    minK = L^4 * (S * invL3)^2
+    K = (K <= minK) ? 1.001minK : K
+    u = (1 / 2) * (-S * invL3 + (1 / V) * sqrt(4 * K - 3 * (S^2) / V))
+    v = u + S * invL3
 
     weights = getweights(method)
-    points  = getpoints(method)
+    points = getpoints(method)
     @views begin
         points[1, 1] = m
         points[1, 2] = m - u * L
@@ -138,7 +138,7 @@ end
 
 function approximate_expectation(method::GenUnscented, q, f::F) where {F}
     T = first(typeof(method).parameters)
-    approximate_expectation(T, method, q, f, Val(false))
+    return approximate_expectation(T, method, q, f, Val(false))
 end
 
 function approximate_expectation(method::GenUnscented, q, f::F, ::Val{C}) where {F, C}
@@ -192,7 +192,7 @@ end
 
 function unscented_statistics(method::GenUnscented, q, f::F) where {F}
     T = first(typeof(method).parameters)
-    unscented_statistics(T, method, q, f, Val(false))
+    return unscented_statistics(T, method, q, f, Val(false))
 end
 
 function unscented_statistics(method::GenUnscented, q, f::F, ::Val{C}) where {F, C}
@@ -223,8 +223,8 @@ function unscented_statistics(method::GenUnscented, m, V, S, K, f::F, ::Val{C}, 
 end
 
 function unscented_statistics(
-    FT::Type{FromTo{Tin, Tout}}, method::GenUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
-) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
+        FT::Type{FromTo{Tin, Tout}}, method::GenUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
+    ) where {F, C, Tin <: Union{Univariate, Multivariate}, Tout <: Multivariate, Tu}
     T = FromTo(Tin, Matrixvariate)
     method2 = GenUnscented{FromTo(Tin, Matrixvariate)}(method.inputdim, (first(method.outputdim), first(method.outputdim)))
 
@@ -241,12 +241,12 @@ function unscented_statistics(
     else
         return mresult, Vresult
     end
-    
+
 end
 
 function unscented_statistics(
-    FT::Type{FromTo{Tin, Tout}}, method::GenUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
-) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
+        FT::Type{FromTo{Tin, Tout}}, method::GenUnscented, m, V, S, K, f::F, ::Val{C}, ::Val{Tu}
+    ) where {F, C, Tin <: Union{Multivariate, Univariate}, Tout <: Univariate, Tu}
     mresult = approximate_expectation(FT, method, m, V, S, K, f, Val(false))
     Vresult = approximate_expectation(FT, method, m, V, S, K, adjust_integrand(MomentGenerator(Val(2), mresult), f, Val(Tu)), Val(true))
 
@@ -256,7 +256,7 @@ function unscented_statistics(
         T = FromTo(Tin, Tin)
         method2 = GenUnscented{T}(method.inputdim, method.inputdim)
         Cresult = approximate_expectation(T, method2, m, V, S, K, adjust_integrand(CrossCovariance(Tout, Tin, mresult, reduce(vcat, m)), f, Val(Tu)), Val(false))
-    
+
         return mresult, Vresult, Sresult, Kresult, Cresult
     else
         return mresult, Vresult

@@ -9,10 +9,10 @@ const invsqrtπ = inv(sqrtπ)
 const logsqrtπ = log(sqrtπ)
 
 struct GaussHermite{P, W, L} <: ClassicalQuadratureRule
-    length     :: Int
-    points     :: P
-    weights    :: W
-    logweights :: L
+    length::Int
+    points::P
+    weights::W
+    logweights::L
 end
 
 name(::GaussHermite) = "GaussHermite"
@@ -31,13 +31,13 @@ function GaussHermite(length::Int)
     return GaussHermite(length, points, weights, logweights)
 end
 
-Base.length(method::GaussHermite)       = method.length
+Base.length(method::GaussHermite) = method.length
 Base.show(io::IO, method::GaussHermite) = print(io, "GaussHermite(", length(method), ")")
 
 evaluate(rule::GaussHermite, q) = rule # TODO revise, maybe `getpoints(rule, q)`?
 
-getpoints(method::GaussHermite)     = method.points
-getweights(method::GaussHermite)    = method.weights
+getpoints(method::GaussHermite) = method.points
+getweights(method::GaussHermite) = method.weights
 getlogweights(method::GaussHermite) = method.logweights
 
 ## Gauss Hermite without any distribution (::Nothing)

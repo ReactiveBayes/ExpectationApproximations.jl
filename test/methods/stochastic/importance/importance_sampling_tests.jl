@@ -1,12 +1,12 @@
 @testitem "ImportanceSampling: Basic integrations/approximations with Gaussian p" begin
     include("./importance_setuptests.jl")
 
-    irng       = StableRNG(123)
-    true_dist  = Normal(5.0, 6.0)
-    n          = 10000
-    sigmas     = [5, 6, 7, 8, 9, 10, 11, 16]
-    means      = [3, 4, 7, 8]
-    brtol      = 0.1
+    irng = StableRNG(123)
+    true_dist = Normal(5.0, 6.0)
+    n = 10000
+    sigmas = [5, 6, 7, 8, 9, 10, 11, 16]
+    means = [3, 4, 7, 8]
+    brtol = 0.1
     resampling = [true, false]
 
     for sigma in sigmas, m in means, resample in resampling
@@ -22,12 +22,12 @@ end
 @testitem "ImportanceSampling: Basic integration with unnormalized distribution: exp(-x^2)" begin
     include("./importance_setuptests.jl")
 
-    irng       = StableRNG(123)
-    true_dist  = x -> exp(-0.5(x - 5)^2 / 36)
-    n          = 10000
-    sigmas     = [5, 6, 7, 8, 9, 10, 11, 16]
-    means      = [3, 4, 7, 8]
-    brtol      = 0.1
+    irng = StableRNG(123)
+    true_dist = x -> exp(-0.5(x - 5)^2 / 36)
+    n = 10000
+    sigmas = [5, 6, 7, 8, 9, 10, 11, 16]
+    means = [3, 4, 7, 8]
+    brtol = 0.1
     resampling = [true, false]
     for sigma in sigmas, m in means, resample in resampling
         importance_dist = Normal(m, sigma)
@@ -42,14 +42,14 @@ end
 @testitem "ImportanceSampling: Basic integration with normalized distribution: Gamma" begin
     include("./importance_setuptests.jl")
 
-    irng       = StableRNG(123)
-    alpha      = 5
-    beta       = 4
-    true_dist  = Gamma(alpha, 1 / beta)
-    n          = 10000
-    alphas     = [3, 4, 5, 6, 7]
-    betas      = [3, 4, 5, 6, 7]
-    brtol      = 1.0
+    irng = StableRNG(123)
+    alpha = 5
+    beta = 4
+    true_dist = Gamma(alpha, 1 / beta)
+    n = 10000
+    alphas = [3, 4, 5, 6, 7]
+    betas = [3, 4, 5, 6, 7]
+    brtol = 1.0
     resampling = [true, false]
     for a in alphas, b in betas, resample in resampling
         importance_dist = Gamma(a, 1 / b)
@@ -64,14 +64,14 @@ end
 @testitem "ImportanceSampling: Basic integration with unnormalized distribution: Beta" begin
     include("./importance_setuptests.jl")
 
-    irng       = StableRNG(123)
-    alpha      = 5
-    beta       = 4
-    true_dist  = x -> x^(alpha - 1) * (1 - x)^(beta - 1)
-    n          = 10000
-    alphas     = [3, 4, 5, 6, 7]
-    betas      = [3, 4, 5, 6, 7]
-    brtol      = 0.1
+    irng = StableRNG(123)
+    alpha = 5
+    beta = 4
+    true_dist = x -> x^(alpha - 1) * (1 - x)^(beta - 1)
+    n = 10000
+    alphas = [3, 4, 5, 6, 7]
+    betas = [3, 4, 5, 6, 7]
+    brtol = 0.1
     resampling = [true, false]
     for a in alphas, b in betas, resample in resampling
         importance_dist = Beta(a, b)

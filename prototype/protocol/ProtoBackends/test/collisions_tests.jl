@@ -1,6 +1,6 @@
 @testitem "loading next to RxInfer: nothing clashes" begin
     module WithRxInfer
-        using RxInfer, BayesBase, ProtoBackends
+    using RxInfer, BayesBase, ProtoBackends
     end
     using RxInfer, BayesBase
 

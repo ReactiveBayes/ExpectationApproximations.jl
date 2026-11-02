@@ -48,12 +48,12 @@ end
 function compute_grad_logq(approximation::CVMP, ef::ExponentialFamily.ExponentialFamilyDistribution{T}, samples, weights, nonlinearity) where {T}
     logq =
         (η) -> mean(
-            map(
-                (sample, weight) -> weight * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), nonlinearity(sample...)),
-                samples,
-                weights
-            )
+        map(
+            (sample, weight) -> weight * logpdf(ExponentialFamily.ExponentialFamilyDistribution(T, η, ExponentialFamily.getconditioner(ef)), nonlinearity(sample...)),
+            samples,
+            weights
         )
+    )
     return compute_gradient(approximation.grad, logq, ExponentialFamily.getnaturalparameters(ef))
 end
 
@@ -79,7 +79,7 @@ function Base.prod(approximation::CVMP, positivemeasure, ef::ExponentialFamily.E
     for _ in 1:(approximation.n_iterations)
         ∇logq = compute_grad_logq(approximation, exponentialfamily_current, samples, weights, nonlinearity)
 
-        # compute Fisher matrix 
+        # compute Fisher matrix
         Fisher = ExponentialFamily.fisherinformation(exponentialfamily_current)
 
         ∇f = Fisher \ ∇logq

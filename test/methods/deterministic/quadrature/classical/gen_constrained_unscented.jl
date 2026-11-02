@@ -54,7 +54,7 @@
         result = [[1.5, 1], [0.15, 1], [1.5, 0.1], [3.85, 1], [1.5, 2.9]]
         weights_results = [-0.0576, 0.3003, 0.3968, 0.1725, 0.188]
         @test all(map((x, y) -> all(x ≈ y), eachcol(points), result))
-        @test weights ≈ weights_results atol = 1e-4
+        @test weights ≈ weights_results atol = 1.0e-4
     end
 
     @testset "GenConstrainedUnscented: Check kurtosis and skewness of Normal with constrained sigma points" begin
@@ -65,7 +65,7 @@
         vdist = _cov(dist)
         sdist = _skewness(dist)
         kdist = _kurtosis(dist)
-        brtol = 1e-4
+        brtol = 1.0e-4
         method = @inferred GenConstrainedUnscented{FromTo(Univariate, Univariate)}(lb, ub, 1, (1,), 0.99)
         @inferred sigma_points_weights!(method, mdist, vdist, sdist, kdist)
         points = getcache(method.cache, (:points, (1, 3)))

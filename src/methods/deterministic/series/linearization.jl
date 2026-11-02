@@ -69,14 +69,14 @@ function approximate(method::Linearization, f::F, distributions::NTuple{N, Norma
 
     # Collect statistics for the inputs of the function `f`
     statistics = mean_cov.(distributions)
-    means      = first.(statistics)
-    covs       = last.(statistics)
+    means = first.(statistics)
+    covs = last.(statistics)
 
     # Compute the local approximation for the function `f`
     (A, b) = approximate(method, f, means)
 
     # Execute the 'joint' message in the linearized version of `f`
-    joint       = convert(JointNormal, means, covs)
+    joint = convert(JointNormal, means, covs)
     jmean, jcov = mean_cov(joint)
 
     m = A * jmean + b

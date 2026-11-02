@@ -16,7 +16,7 @@ end
     @test P.expectation(B.ClosedForms(), log, LogNormal(0.4, 0.7)) == 0.4
     @test P.isexact(B.ClosedForms(), log, LogNormal(0.4, 0.7)) === true
     # against an independent numerical computation
-    @test P.expectation(B.ClosedForms(), log, Gamma(2.0, 3.0)) ≈ P.expectation(B.QuantileLegendre(200), log, Gamma(2.0, 3.0)) rtol = 1e-3
+    @test P.expectation(B.ClosedForms(), log, Gamma(2.0, 3.0)) ≈ P.expectation(B.QuantileLegendre(200), log, Gamma(2.0, 3.0)) rtol = 1.0e-3
 end
 
 @testitem "ClosedForms: E_q[log p(x)] of a Gaussian under a Gaussian, through Logpdf" setup = [Helpers] begin
