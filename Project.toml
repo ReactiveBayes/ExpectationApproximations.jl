@@ -24,9 +24,7 @@ ExpectationApproximationsExponentialFamilyExt = "ExponentialFamily"
 [sources]
 # The expectation protocol of BayesBase 1.7, in review as ReactiveBayes/BayesBase.jl#69; removed
 # once 1.7 is registered
-# TEMPORARY: the local checkout, until the fix in BayesBase 34ede71 is pushed to #69; switch back
-# to {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"} before pushing
-BayesBase = {path = "../BayesBase.jl"}
+BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"}
 
 [compat]
 Aqua = "0.8"

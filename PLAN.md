@@ -226,7 +226,7 @@ What it found:
 
 - **A BayesBase bug.** Prepared routers allocated on every evaluation: methods that only pass the
   integrand on were not specialised on it. Fixed in BayesBase (34ede71, for #69) with a test that
-  checks every method; until pushed, this branch takes BayesBase from the local checkout.
+  checks every method, pushed to #69.
 - **`E[log x]` under a Gamma converges slowly by quadrature** (1e-3 relative at 16 points, `log`
   being singular at zero): an expectation for closed forms (ClosedFormExpectations), which the
   router puts first.
@@ -472,6 +472,10 @@ Added in U2:
 - **D29. MPRA's 1.0 API is ported into EA**, not reimplemented on the backends: its shapes,
   warnings, errors and fields are what the rule packages rely on, and the port is checked
   against 1.0 itself.
+- **D30. MPRA 1.1 may depend on BayesBase and Distributions**, through EA: its closure test is
+  relaxed to forbid only the rule system and ExponentialFamily, and the whole suite passes against
+  the shim. Load time is not a blocker unless it is really bad (0.21 s on top of Distributions is
+  fine), and quadrature's slow `E[log x]` under a Gamma is accepted, closed forms being first.
 
 The protocol, as decided (BayesBase):
 
@@ -517,9 +521,6 @@ The full, tested version, with point sets, products and `DynamicRouter`, is
   is), or a ReactiveMP-level projection hook.
 - **Domains**: how a variable learns its support when several nodes connect to it, or when
   no neighbour carries a support (U0.3b found the prior factor is enough when there is one).
-- **MPRA 1.1's dependencies**: as a shim over EA it depends on Distributions and BayesBase, which
-  its 1.0 closure test forbids by design. Accept (RxInfer loads both anyway), or keep MPRA free of
-  distributions by moving MPRACompat into a lighter package.
 - **The user-facing switch**: a keyword of `infer`, an option, or a constraint-level wildcard.
 - **Default on or off** for the universal scheme in RxInfer (decide after U6).
 - **Threads**: per-task RNGs for stochastic backends in parallel engines.
@@ -617,8 +618,8 @@ Every repository follows the ReactiveBayes
 | ID | Repository | State | Pull request |
 |---|---|---|---|
 | U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
-| U1 | BayesBase | in review (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
-| U2 | EA | implemented on this branch (977 tests); pending: BayesBase fix 34ede71 on #69, then `[sources]` back to its branch; MPRA shim decision | |
+| U1 | BayesBase | draft until everything is tested together (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
+| U2 | EA | done on this branch (977 tests); MPRA 1.1 shim verified on a local MPRA branch | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |
 | U5 | RxInfer | not started | |
