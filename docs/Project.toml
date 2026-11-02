@@ -6,5 +6,7 @@ LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 
 [sources]
 # BayesBase 1.7 is in review as ReactiveBayes/BayesBase.jl#69; removed once it is registered
-BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"}
+# TEMPORARY: the local checkout, until the fix in BayesBase 34ede71 is pushed to #69; switch back
+# to {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"} before pushing
+BayesBase = {path = "../../BayesBase.jl"}
 ExpectationApproximations = {path = ".."}
