@@ -156,7 +156,7 @@ a block of variables**.
 | ClosedFormExpectations | Exact closed forms as a backend; the accuracy oracle in tests |
 | MessagePassingRulesBase | Rule and fallback interfaces: fallbacks that see the context, the node and the algorithm |
 | ReactiveMP | The engine: consults fallbacks for messages, marginals and energies; projections; damping |
-| Universal rules (new package, name open) | The universal fallbacks: Laplace, then EP and CVI, for any stochastic or deterministic node |
+| DeltaMessagePassingRules | The universal fallback and projection (`ExpectationRuleFallback`, `LaplaceForm`): Laplace, then EP and CVI, for any stochastic or deterministic node |
 | RxInfer | The user-facing switch, defaults, automatic initialisation, the approximation report |
 | RxInferExamples | The showcase and the acceptance tests in the wild |
 | ExponentialFamilyProjection | Projection beyond Gaussians; becomes one of the projection operators |

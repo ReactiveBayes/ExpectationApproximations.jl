@@ -310,8 +310,9 @@ What it found:
 
 ### U4. Universal Laplace rules
 
-Repository: a new rules package (name open, see [Open questions](#open-questions)), depending
-on MessagePassingRulesBase, BayesBase and EA.
+Repository: DeltaMessagePassingRules (D37), which gains EA, BayesBase 1.7 and
+MessagePassingRulesBase 1.2 as dependencies; the form constraint's ReactiveMP methods are
+RxInfer's.
 
 1. **Stochastic nodes**, any node with a `nodefunction`: the message towards a target is the
    expected log-density `log m(x) = E_q(y)[log f(x, y)]` over the other inputs, computed through
@@ -329,9 +330,9 @@ on MessagePassingRulesBase, BayesBase and EA.
    `out` a projection of the pushforward. `Linearization()` stays an option when every message
    is Gaussian; it cannot serve `Bernoulli(logistic(x))`, whose message to `p` is a Beta.
 5. **Average energies** for the free energy on the universal path.
-6. **Automatic initialisation** from the priors (Gaussian in unconstrained space).
+6. ~~**Automatic initialisation** from the priors~~: U5's, with the switch (D38).
 
-Done when, with no rules, methods or initialisation written by the user (D17):
+Done when, with no rules or methods written by the user (D17):
 - **correctness**, tight: on linear-Gaussian models under BP the posterior equals the Kalman
   smoother's, means and variances (the spike reaches 4e-16 today); on any model the result
   equals the same approximation computed directly (a Laplace fit of the hand-written
@@ -341,18 +342,93 @@ Done when, with no rules, methods or initialisation written by the user (D17):
   regression tolerances on that gap, not on agreement with NUTS;
 - conjugate models never trigger a fallback (checked through rule annotations).
 
+#### What U4 delivered and found
+
+A branch `universal-inference` in DeltaMessagePassingRules (1.1.0), on top of the U3 branches, one
+tested commit per step, with the docs of DeltaMessagePassingRules and RxInfer building:
+
+| Repository | Julia 1.13 | Julia 1.10 |
+|---|---|---|
+| DeltaMessagePassingRules | 678 | 677 |
+| EA | 1002 | 1001 |
+| MessagePassingRulesBase | 953 | 946, and the registry fixture's error: its subprocess environment cannot resolve the unregistered BayesBase 1.7 without `[sources]` |
+| ReactiveMP | 15654 | not run |
+| RxInfer | 15095, the 31 acceptance items included | not run |
+| StandardMessagePassingRules, GCVMessagePassingRules | 10193, 463 | |
+
+| Item | Result |
+|---|---|
+| 1. Stochastic nodes | `ExpectationRuleFallback`: towards an interface or a member of a group, `x ↦ E_q[log f(x, ·)]` over every other input, prepared once through `ctx.expectation`, evaluated without allocating. Towards `out` of a node that is a distribution saying its support, a `ContinuousUnivariateLogPdf` on it; elsewhere a `NodeFunctionLogPdf` (D40) |
+| 2. Laplace projection | `LaplaceForm` and `laplace_form(form, density, previous)`: closed forms pass, `EA.laplace` in `EA.domain(product)` otherwise, reporting `logZ`; a warm start from the variable's last mode (RxInfer's context); a point mass among the factors is the product |
+| 3. Finite discrete | normalised exactly over the support, `logZ = logsumexp` |
+| 4. Deterministic nodes | towards `out` the moment-matched pushforward, `EA.mean_cov` through `ctx.expectation`, a Gaussian (a point mass for point masses), so U3's point mass that nothing multiplies is gone; towards an input the pull-back, in expectation over the other inputs, exact for one |
+| 5. Average energies | `-E_q[log f]` with joint keys and groups; joints of a cluster by joint Laplace (D42), so the Bethe free energy is available under BP; a Delta node's term is the entropy of the joint over its inputs |
+| Log scales | `with_logscale` from a fallback, MessagePassingRulesBase's `unwrap_fallback`, ReactiveMP unwrapping it (D39): the bioassay's posterior log scale equals Laplace's evidence to 1e-8 |
+| 6. Initialisation | moved to U5 (D38) |
+
+Acceptance (RxInfer `test/inference/universal_laplace_tests.jl`), with only `rulefallback =
+ExpectationRuleFallback()`, `default_form_constraint = LaplaceForm()` and an expectation backend:
+
+| Model | Check | Result |
+|---|---|---|
+| linear-Gaussian chain under BP, observations through a node with no rules | Kalman smoother | posteriors and Bethe free energy equal to rounding |
+| bioassay logistic regression | `EA.laplace` of the hand-written posterior | mean, covariance and log evidence to 1e-8 |
+| Poisson regression | the same | to 1e-8 |
+| `z := tanh(x)`, every variable returned | Laplace of the exact posterior | to 1e-8; z a Gaussian |
+| `z := a * exp(b)` under BP | free energy | finite |
+| conjugate iid Normal–Gamma (mean field) and Beta–Bernoulli | fallback events, posteriors, free energy | no fallback; identical with and without the options |
+| zero-inflated Poisson, Beta and Gamma priors, mean field | grid | E[p] 0.441 vs 0.389, E[λ] 0.503 vs 0.475: within half a posterior sd (guarded); the sds halved by mean field |
+| stochastic volatility, T = 50 | global Laplace | RMSE of the means 0.19 (guarded at 0.25) |
+
+On the hub, `prototype/protocol/acceptance/universal_laplace.jl`: the mixture and zero-inflated
+Poisson notebooks with the package pieces in place of their own give the notebooks' posteriors,
+to 1.4e-14 and 1.3e-9 (Laplace kernels that stop differently); `compare.jl` and
+`free_energy.jl` are unchanged.
+
+What it found:
+
+- **Under BP the expected log-density is not the BP message** unless every other input is a point
+  mass (a likelihood of data) or, for a Delta node, there is one input; elsewhere it is the
+  VMP-like message, so BP with fallbacks between two random variables is approximate. Cavity
+  methods (U7) are the fix; the Kalman check holds because the transitions have their rules.
+- **`mean(log, q)` exists for neither `LogNormal` nor `LogitNormal`** (ExponentialFamily, beside its
+  `mean(log, Gamma)`, is where it belongs: P), so a Gamma prior's average energy failed on a
+  Laplace posterior. Every constrained domain now pushes forward to EA's `TransformedGaussian`,
+  which has `mean(f, q)` (D41).
+- **Distributions gives no default `minimum`, `maximum` or `mean`** for a user's distribution: the
+  fallback and the projection do without them, and a prior gives its domain only by saying its
+  support (the RxInfer docs example adds `minimum` and `maximum`).
+- **A likelihood's message alone** (the backward message at the end of a chain) tells no
+  dimension; as in the spike it is projected as a density of a number when it takes one.
+- **Pkg takes no unregistered test-only dependency from `[sources]`**, so RxInfer's tests load EA
+  as DeltaMessagePassingRules' dependency, `Base.require(Base.PkgId(uuid, name))`; Pkg does read
+  a path-sourced dependency's own `[sources]` (EA through DeltaMessagePassingRules).
+- **RxInfer's docs environment** takes its direct dependencies from General, so it has not resolved
+  against the U3 branches either; it gains the same temporary `[sources]`, and its stale manifest
+  (from `ReactiveMP.jl/lib/`) was set aside.
+- **EA is private**: a pushed branch can name it by its SSH URL, which Pkg resolves for anyone with
+  access (checked); the HTTPS URL waits for credentials.
+- **On Julia 1.10 a node's keyword function allocates** 16 bytes a call, so the prepared
+  message's allocation check runs from 1.11.
+- **Joints are of numbers**: a cluster with a vector member, or an input that is itself a joint
+  (structured factorisations), gets no fallback yet.
+
 ### U5. RxInfer integration
 
 Repository: RxInfer.jl.
 
 1. **One user-facing switch** for the universal scheme (keyword or option, name open) that
    sets the fallback, the default form constraint, the expectation backend and initialisation.
-2. **The context**: `ctx.expectation = with_expectation_rng(ExpectationFirstOf(CFEBackend(),
+2. **Automatic initialisation** from the priors (D38): there is no hook a package can use
+   (`default_init` is per model), so the switch adds one where RxInfer applies initial marginals
+   (`reactivemp_inference.jl`, after activating each variable). Priors cannot break a mixture's
+   symmetry: the mixture notebook needs distinct initial means.
+3. **The context**: `ctx.expectation = with_expectation_rng(ExpectationFirstOf(CFEBackend(),
    EADefault()), rng)` by default, overridable from the inference options and per node.
-3. **An approximation report** on the inference result: which nodes ran exact rules, which ran
+4. **An approximation report** on the inference result: which nodes ran exact rules, which ran
    fallbacks, with which projection and which backend labels (via annotations or callbacks).
-4. **Error hints**: `RuleNotFoundError` and the Delta-node hint point to the universal switch.
-5. **The default**: decide whether the universal scheme is on by default, after U6.
+5. **Error hints**: `RuleNotFoundError` and the Delta-node hint point to the universal switch.
+6. **The default**: decide whether the universal scheme is on by default, after U6.
 
 Done when: the canonical models run from `infer` with one switch; the report is documented;
 existing tests unchanged.
@@ -510,7 +586,8 @@ Added in U2:
   parameters, so duals pass through parameters and integrands; static means give static points.
 - **D27. Transformed Gaussians are EA's `TransformedGaussian`**, with `LogNormal` and
   `LogitNormal` for the positive half-line and the unit interval; this settles the open
-  question on their representation.
+  question on their representation. The `LogNormal` and `LogitNormal` results are superseded by
+  D41.
 - **D28. Sigma points keep their covariance weight** in a `SigmaPointSet`, which `mean_cov`
   applies; they do not support products or tilting, their weights can be negative.
 - **D29. MPRA's 1.0 API is ported into EA**, not reimplemented on the backends: its shapes,
@@ -545,6 +622,27 @@ Added in U2:
   it was about expectations, and the integrand of `E_q[log p]` is Julia's `Base.Fix1(logpdf, p)`,
   on which a closed form dispatches with no alias and no constructor of ours. Point sets stay apart
   from `SampleList`: a rule, with unnormalised and possibly negative weights, not a distribution.
+
+Added in U4:
+
+- **D37. The universal rules live in DeltaMessagePassingRules**: `ExpectationRuleFallback` and
+  `LaplaceForm`, plain types; the form constraint's ReactiveMP methods are RxInfer's
+  (`src/constraints/form/form_laplace.jl`), as `ProjectionExt`'s are for `ProjectedTo`, and no rule
+  package depends on the engine. Delta gains EA, its approximations' home after P.
+- **D38. Automatic initialisation is U5's**, set by the one switch: it needs an RxInfer hook.
+- **D39. A fallback declares its message's log scale** by returning `with_logscale(message,
+  logscale)`, which an engine takes apart with MessagePassingRulesBase's `unwrap_fallback`;
+  `ExpectationRuleFallback` declares one only where its message is exact, pending the normaliser
+  (`:unnormalised_product`) that `LaplaceForm` reports.
+- **D40. Fallback messages are existing types**: BayesBase's `ContinuousUnivariateLogPdf` where the
+  support is known (towards `out` of a distribution node), MessagePassingRulesBase's
+  `NodeFunctionLogPdf` elsewhere; towards a parameter not even the variate form is known.
+- **D41. Every domain but the real line pushes forward to a `TransformedGaussian`**, which has
+  `mean`, `var`, `entropy` and `mean(f, q)`; `LogNormal` and `LogitNormal` lack `mean(log, q)` in the
+  ecosystem. Supersedes D27's `LogNormal` and `LogitNormal` as results.
+- **D42. A joint without a rule is the joint Laplace approximation** of the node's log-density
+  times its members' messages, in the product of their domains (`EA.Componentwise`), in
+  expectation over the other clusters; its members are numbers for now.
 
 The protocol, as decided (BayesBase):
 
@@ -583,8 +681,8 @@ The full, tested version, with point sets, products and `ExpectationDynamicRoute
 - **Gradients**: `expectation_gradient(backend, f, q, space)`; the parameter-space types live
   in ExponentialFamily, so BayesBase can only declare it with an untyped `space`.
 - **`Differentiable` as a core label**, needed by CVI and natural-gradient schemes.
-- **The universal rules package**: a new package (`UniversalMessagePassingRules.jl`?), part
-  of EA as an extension on MessagePassingRulesBase, or part of DeltaMessagePassingRules.
+- ~~**The universal rules package**~~: DeltaMessagePassingRules, with the form constraint's
+  methods in RxInfer (D37).
 - ~~**The fallback signature**~~: positional, through `call_fallback` (D31).
 - ~~**Where the Laplace projection lives**~~: a form constraint reporting its normaliser through
   ReactiveMP's hook, composed by RxInfer's option (D33); the constraint itself is U4's.
@@ -616,7 +714,7 @@ The full, tested version, with point sets, products and `ExpectationDynamicRoute
 | MessagePassingRulesBase.jl | `~/Projects/Julia/MessagePassingRulesBase.jl` |
 | ReactiveMP.jl | `~/Projects/Julia/ReactiveMP.jl` |
 | RxInfer.jl | `~/Projects/Julia/RxInfer.jl` |
-| DeltaMessagePassingRules.jl | `~/Projects/Julia/DeltaMessagePassingRules.jl` |
+| DeltaMessagePassingRules.jl | `~/Projects/Julia/DeltaMessagePassingRules.jl` (local branch `universal-inference`) |
 | ExponentialFamilyProjection.jl | `~/Projects/Julia/ExponentialFamilyProjection.jl` |
 | MessagePassingRulesApproximations.jl | `~/Projects/Julia/MessagePassingRulesApproximations.jl` |
 | RxInferExamples.jl | `~/Projects/Julia/RxInferExamples.jl` |
@@ -691,7 +789,7 @@ Every repository follows the ReactiveBayes
 | U1 | BayesBase | draft until everything is tested together (1.7.0), after the template tooling and the JET fixes, with the names of D36: 6600 tests on Julia 1.13, 6578 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
 | U2 | EA | done on this branch (977 tests); MPRA 1.1 shim verified on a local MPRA branch, kept local while EA is private | |
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
-| U4 | universal rules (new) | not started | |
+| U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | done on the local `universal-inference` branches, not pushed (see "What U4 delivered and found") | |
 | U5 | RxInfer | not started | |
 | U6 | RxInferExamples | started: four Laplace notebooks on `universal-inference` | |
 | U7 | several | not started | |
