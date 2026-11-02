@@ -26,7 +26,7 @@ Each milestone names its repositories, its deliverables and how we know it is do
 
 Repositories: EA (hub), scratch environments.
 
-1. Check out every repository involved locally (BayesBase.jl is not checked out yet) and set up
+1. Check out every repository involved locally and set up
    the shared development environment ([Working across repositories](#working-across-repositories)).
 2. Prototype the BayesBase protocol in a scratch environment: `expectation`, `supports`,
    labels, `withrng`, `FirstOf`, `DynamicRouter`, with a toy closed-form backend and a
@@ -115,25 +115,62 @@ valid near a boundary. What it needs, by milestone:
 - **Open.** The domain comes from a factor with a known support in the product; a variable
   without such a factor (only deterministic or fused neighbours) has no domain yet.
 
+#### Findings of the protocol prototype (U0.2)
+
+Code, tests and measurements in `prototype/protocol/` on this branch: `ProtoBase` stands in for
+the BayesBase additions, `ProtoBackends` for EA and ClosedFormExpectations. Written test first:
+247 tests for `ProtoBase` on Julia 1.13 (225 on 1.10), 129 for `ProtoBackends`, Aqua with
+ambiguity and piracy checks on. Details in `prototype/protocol/RESULTS.md`.
+
+| Measurement | Result |
+|---|---|
+| Routing (`FirstOf`) | decided by inference: `which_backend` compiles to `return <backend>`; JET clean |
+| Labels | `isexact` compiles to a constant, for backends, routers and products |
+| `withrng` | 0 bytes, nested routers included |
+| Prepared path | 0 bytes for products of Categorical × MvNormal × PointMass, with the mixture notebook's integrand differentiated twice by ForwardDiff |
+| `DynamicRouter` | 1.4–1.8 µs and 1.4–2.3 KB per call, against 8.7 ns and 0 bytes for `FirstOf`; freezing recovers the static numbers |
+| Collisions | none with `using RxInfer`, since nothing is exported (D18) |
+| Operation axis | can be added later, additively (D21) |
+| Acceptance | the mixture and zero-inflated Poisson notebooks, their fallback rewritten with the protocol: posteriors equal to ≤ 1.4e-15; compiled inference time unchanged (6.04 → 6.18 s, 1.31 → 1.17 s) |
+
+What the design had not said yet, now decided (D18–D22):
+
+- A preparation is chosen without the integrand: `supports(backend, Any, Q)` means "every
+  integrand". A prepared router prepares that backend and still sends an integrand with a
+  closed form to its closed form, decided by inference.
+- Numerical preparations are weighted point sets, the parts of product rules; products are
+  routed component by component, and labels combine per label (`combine_label`).
+- The default `expectation` goes through the preparation, guarded by `NoBackendError`.
+  Backends define methods for specific families only; routers define the product methods.
+- Quantile quadrature over Beta and Gamma priors converges algebraically (about n⁻²): fine as
+  the universal fallback, but U2's Gauss–Laguerre and Gauss–Jacobi rules matter.
+
 ### U1. BayesBase: the expectation protocol
 
 Repository: BayesBase.jl. Additive, minor release.
 
-1. `expectation(backend, f, q)`; `supports` at type level (hook) and instance level (API).
+Start from `prototype/protocol/ProtoBase`: its code and tests move over with the names changed.
+Every name is public and none is exported (D18).
+
+1. `expectation(backend, f, q)`, falling back to the preparation and guarded by
+   `NoBackendError`; `supports` at type level (hook) and instance level (API), with
+   `supports(backend, Any, Q)` meaning "every integrand"; `which_backend` for every backend.
 2. Labels: `ExpectationLabel`, `Exact`, `Stochastic`; `haslabel` per backend and per pair;
-   `isexact`, `isstochastic`.
-3. `withrng`, `getrng`; the integrand `Logpdf`.
+   `isexact`, `isstochastic`; `combine_label` for products (D20).
+3. `withrng`, `getrng`; the integrand `Logpdf`, callable for anything with a `logpdf`.
 4. Routers: `FirstOf` with `prefer` and `exclude`; opt-in `DynamicRouter` with
-   `register_backend!` and `which_backend`.
-5. Decide the operation axis (`expectation`, `expectation_gradient`, `mean_cov`) before
-   release; adding it later is breaking.
+   `BackendRegistry`, `register_backend!` and `which_backend`; `FirstOf(DynamicRouter())`
+   freezes the choice.
+5. No operation axis in this release (D21); it can be added later without breaking anything.
 6. **Prepared expectations** (D13): `prepare_expectation(backend, q)` returns an object that
    evaluates `E_q[f]` for many `f` without rebuilding nodes or weights, and through which
    ForwardDiff numbers pass. The universal fallback evaluates `x ↦ E_q[log f(x, ·)]` inside a
    Newton loop, so this is the hot path, not an optimisation.
-7. **Independent products** (D14): a representation for `q = q₁ × q₂ × …` with components of
-   different kinds (Categorical × MvNormal × PointMass), with `supports` and labels composed
-   from the components (exact only if every component's expectation is exact).
+7. **Independent products** (D14): `FactorizedJoint` (D19), with components of different
+   kinds (Categorical × MvNormal × PointMass), `supports` and labels composed from the
+   components, routed component by component, computed as a product rule over point sets.
+8. **Point sets** (D20): `PointSet(points, weights)` and `ProductPointSet`, the preparation of
+   every numerical backend, with a generic, dual-safe and allocation-free sum.
 
 Done when: tests including inference and allocation tests, Aqua with ambiguity and piracy
 checks, JET, and documentation of the protocol and of the label contracts.
@@ -277,7 +314,12 @@ Repositories: the universal rules package, EA, ReactiveMP.
 
 - **ClosedFormExpectations 1.0** (BIASlab, Mykola): `CFEBackend`, `supports`, the `Exact`
   label; `mean(ClosedFormExpectation(), f, q)` deprecated for one cycle; Williams-product
-  gradients once the gradient operation is settled. Depends on BayesBase only.
+  gradients once the gradient operation is settled. Depends on BayesBase only. Its own
+  `Logpdf` (callable only for a `Distribution`) is replaced by `BayesBase.Logpdf`, and its
+  recursive calls pass `backend` on instead of constructing `ClosedFormExpectation()`.
+- **MessagePassingRulesApproximations**: PR #2 exports its own `expectation(method, f,
+  params...)`; it should extend `BayesBase.expectation` instead of owning a second function
+  of the same name (no clash today only because BayesBase exports nothing, D18).
 - **MessagePassingRulesApproximations 1.1**: a shim re-exporting EA's types with
   deprecations (`approximate` → `mean_cov`, `unscented_statistics` → `mean_cov_cross`,
   `approximate_meancov` → `tilted_mean_cov`, `local_linearization` → `linearize`); `smoothRTS`
@@ -350,6 +392,23 @@ Added after the Laplace spike (U0.3):
   approximation computed another way; reported gaps, not tight agreement, against NUTS. Laplace
   is mode-seeking and will miss skew by design (bioassay: E[β] 30% low).
 
+Added after the protocol prototype (U0.2):
+
+- **D18. Protocol names are public, never exported.** They are declared with
+  `Compat.@compat public ...` (the keyword exists from Julia 1.11; CI runs 1.10) and used
+  qualified, `BayesBase.expectation`. No clash with `Stochastic` and `isstochastic` of
+  MessagePassingRulesBase and ReactiveMP, nor with `expectation` of MPRA PR #2.
+- **D19. `FactorizedJoint` is the independent product of D14.** BayesBase already defines it
+  as "a joint distribution of independent random variables"; the integrand receives a tuple.
+- **D20. Point sets are the common preparation of numerical backends.** Products are product
+  rules over them, routed component by component; labels combine with `combine_label`
+  (`Exact`: all parts, `Stochastic`: any part, other labels conservatively).
+- **D21. No operation axis now.** A four-argument `supports(backend, op, F, Q)` added later
+  forwards to the three-argument form for `expectation`, so it breaks nothing.
+- **D22. Strict test-driven development.** Every function has tests written before it, and
+  type stability, allocations and folding are tests, not observations. A function that is hard
+  to test is a design signal.
+
 The protocol, as decided (BayesBase):
 
 ```julia
@@ -378,14 +437,14 @@ struct FirstOf{B <: Tuple, P <: Tuple, X <: Tuple}         # a router is a backe
 end
 ```
 
+The full, tested version, with point sets, products and `DynamicRouter`, is
+`prototype/protocol/ProtoBase/src` (U0.2).
+
 ## Open questions
 
-- **Operation axis** in `supports` and `haslabel` (`expectation`, `expectation_gradient`,
-  `mean_cov`): now or never, since adding it later is breaking.
 - **Gradients**: `expectation_gradient(backend, f, q, space)`; the parameter-space types live
   in ExponentialFamily, so BayesBase can only declare it with an untyped `space`.
 - **`Differentiable` as a core label**, needed by CVI and natural-gradient schemes.
-- **Exports** of BayesBase: which names are exported, which stay qualified.
 - **The universal rules package**: a new package (`UniversalMessagePassingRules.jl`?), part
   of EA as an extension on MessagePassingRulesBase, or part of DeltaMessagePassingRules.
 - **The fallback signature** in MessagePassingRulesBase: extra positional arguments, a
@@ -417,7 +476,7 @@ end
 | Repository | Local path |
 |---|---|
 | ExpectationApproximations.jl (hub) | `~/Projects/Julia/ExpectationApproximations.jl` |
-| BayesBase.jl | not checked out yet: clone to `~/Projects/Julia/BayesBase.jl` |
+| BayesBase.jl | `~/Projects/Julia/BayesBase.jl` (local branch `universal-inference`) |
 | ClosedFormExpectations.jl | `~/Projects/BIASlab/ClosedFormExpectations.jl` |
 | MessagePassingRulesBase.jl | `~/Projects/Julia/MessagePassingRulesBase.jl` |
 | ReactiveMP.jl | `~/Projects/Julia/ReactiveMP.jl` |
@@ -446,6 +505,16 @@ ExpectationApproximations = {path = "../ExpectationApproximations.jl"}
 ClosedFormExpectations = {path = "../../BIASlab/ClosedFormExpectations.jl"}
 ```
 
+Set up in U0.1 with `Pkg.develop(path = ...)`, which on Julia 1.13 writes the `[sources]`
+entries itself. It develops BayesBase, ClosedFormExpectations, MessagePassingRulesBase,
+ReactiveMP and RxInfer. Today's EA is not part of it: its 28 dependencies only hold resolution
+back, and it joins at U2.
+
+- **Pitfall.** Pkg carries over the path entries in a developed package's own (git-ignored)
+  `Manifest.toml`. RxInfer's local manifest dated from when the rule packages lived in
+  `ReactiveMP.jl/lib/`, and broke resolution. It was moved to `universal-dev/stale/`.
+  Check for stale path entries when a checkout has a local manifest.
+
 For CI on unreleased branches, a repository's test environment may point at a branch of
 another one, `BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev =
 "universal-inference"}`, until that release is tagged. Such entries are removed before tagging.
@@ -461,14 +530,15 @@ another one, `BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl"
 
 ### Definition of done for any piece
 
-Tests (ReTestItems or TestItemRunner), Aqua with ambiguity and piracy checks, JET on Julia
-1.12+, allocation tests on hot paths, documentation, and a status entry here.
+Tests written before the code (D22), with ReTestItems or TestItemRunner; Aqua with ambiguity
+and piracy checks; JET on Julia 1.12+; allocation tests on hot paths; documentation; and a
+status entry here.
 
 ## Status
 
 | ID | Repository | State | Pull request |
 |---|---|---|---|
-| U0 | EA (hub), scratch | U0.3 spike done (findings under U0); U0.1, U0.2 open | |
+| U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
 | U1 | BayesBase | not started | |
 | U2 | EA | not started | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
