@@ -13,3 +13,6 @@ scripts/Manifest.toml
 # Coverage files CI writes
 lcov.info
 Manifest-v*.toml
+
+# Benchmark results
+benchmark/results/

@@ -9,7 +9,7 @@ CI_ENV := TEST_ALL=true
 test_args ?=
 TEST_ARGS := $(if $(test_args),test_args = split("$(test_args)") .|> string,)
 
-.PHONY: help test test-fast format check-format docs docs-serve clean
+.PHONY: help test test-fast format check-format docs docs-serve benchmark benchmark-compare clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -33,6 +33,14 @@ docs: ## Build the documentation into docs/build, running every example and doct
 
 docs-serve: ## Build and serve the documentation with live reload
 	$(JULIA) --project=docs -e 'import Pkg; Pkg.instantiate(); using LiveServer; servedocs()'
+
+benchmark: ## Run the benchmarks in benchmark/, results into benchmark/results
+	$(JULIA) --project=scripts -e 'import Pkg; Pkg.instantiate()'
+	$(JULIA) --project=scripts scripts/bench.jl
+
+benchmark-compare: ## Compare the benchmarks with a branch: make benchmark-compare branch=main
+	$(JULIA) --project=scripts -e 'import Pkg; Pkg.instantiate()'
+	$(JULIA) --project=scripts scripts/bench.jl --compare-branch $(branch)
 
 clean: ## Remove the documentation build and coverage files
 	rm -rf docs/build lcov.info

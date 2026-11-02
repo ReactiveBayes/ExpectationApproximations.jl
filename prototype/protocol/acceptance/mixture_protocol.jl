@@ -136,7 +136,12 @@ ncategories_in(d) = nothing
 # Like the built-in fallback, it is only consulted where no exact rule exists.
 
 # %%
-using BayesBase, ProtoBackends
+using BayesBase, ExpectationApproximations
+const EA = ExpectationApproximations
+
+# The notebook's own quadrature: exact sums, Gauss–Hermite for Gaussians and transformed
+# Gaussians, Gauss–Legendre in probability space for any other distribution
+notebook_router(order) = BayesBase.FirstOf(EA.ExactSum(), EA.GaussHermite(order), EA.QuantileLegendre(order))
 import BayesBase: FactorizedJoint
 
 # The fallback of the notebook, with its quadrature replaced by the expectation protocol: one
@@ -145,7 +150,7 @@ struct ExpectedLogPdfFallback{B}
     backend::B
 end
 
-ExpectedLogPdfFallback(order::Int = 5) = ExpectedLogPdfFallback(ProtoBackends.default_router(order))
+ExpectedLogPdfFallback(order::Int = 5) = ExpectedLogPdfFallback(notebook_router(order))
 
 (fallback::ExpectedLogPdfFallback)(node, target, args) = nothing
 

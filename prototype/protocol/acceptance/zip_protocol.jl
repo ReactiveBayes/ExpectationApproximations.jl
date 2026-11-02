@@ -186,7 +186,12 @@ end
 # - in the first iteration the marginals are the Beta and Gamma priors themselves. For these, and for any other univariate distribution, we use Gauss–Legendre quadrature in probability space: the nodes are quantiles of the distribution.
 
 # %%
-using BayesBase, ProtoBackends
+using BayesBase, ExpectationApproximations
+const EA = ExpectationApproximations
+
+# The notebook's own quadrature: exact sums, Gauss–Hermite for Gaussians and transformed
+# Gaussians, Gauss–Legendre in probability space for any other distribution
+notebook_router(order) = BayesBase.FirstOf(EA.ExactSum(), EA.GaussHermite(order), EA.QuantileLegendre(order))
 import BayesBase: FactorizedJoint
 
 # The fallback of the notebook, with its quadrature replaced by the expectation protocol: one
@@ -195,7 +200,7 @@ struct ExpectedLogPdfFallback{B}
     backend::B
 end
 
-ExpectedLogPdfFallback(order::Int = 16) = ExpectedLogPdfFallback(ProtoBackends.default_router(order))
+ExpectedLogPdfFallback(order::Int = 16) = ExpectedLogPdfFallback(notebook_router(order))
 
 (fallback::ExpectedLogPdfFallback)(node, target, args) = nothing
 
@@ -212,7 +217,7 @@ end
 # Distributions.jl provides no `mean` or `var` for `LogitNormal`, since they have no closed form. We compute moments with the same quadrature.
 
 # %%
-const MOMENTS = ProtoBackends.default_router(32)
+const MOMENTS = notebook_router(32)
 
 function moments(q)
     m = BayesBase.expectation(MOMENTS, identity, q)
@@ -447,7 +452,7 @@ try_infer(y, plain_constraints);
 
 # %%
 gaussian_p = NormalMeanVariance(moments(q_p)[1], moments(q_p)[2]^2)
-println("quadrature nodes for a Gaussian q(p) below zero: ", count(<(0), BayesBase.prepare_expectation(ProtoBackends.GaussHermite(16), gaussian_p).points), " of 16")
+println("quadrature nodes for a Gaussian q(p) below zero: ", count(<(0), BayesBase.prepare_expectation(EA.GaussHermite(16), gaussian_p).points), " of 16")
 
 # %% [markdown]
 # The transformed approximation also behaves well when little data pushes the posterior against a boundary. Take a new monastery with two weeks of records, whose monks rarely drink. The posterior of $p$ then piles up at $p = 0$.

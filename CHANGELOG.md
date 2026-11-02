@@ -41,6 +41,7 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   (`Unscented`, `Linearization`, `GaussHermiteCubature`, `approximate`, `unscented_statistics`,
   `approximate_meancov`, `smoothRTS` and the rest), for its 1.1 to re-export; tested against 1.0
   itself, with Gauss–Hermite weights from this package's more accurate rule.
+- Benchmarks with PkgBenchmark: `make benchmark` and `make benchmark-compare branch=main`.
 - An extension for ExponentialFamily: its univariate Gaussians through `GaussHermite` and
   `GammaShapeRate` through `GaussLaguerre`; its multivariate Gaussians, with static points for a
   static mean, are covered by the core.

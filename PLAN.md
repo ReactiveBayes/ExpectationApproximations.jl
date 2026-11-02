@@ -206,6 +206,40 @@ PR #2, new code.
 Done when: the conformance suite passes for every backend; zero allocations on scalars and
 static arrays; CI with Aqua, JET on Julia 1.12+, benchmarks on pull requests.
 
+#### What U2 delivered and found
+
+The rewrite is on this branch, one tested commit per step (D22): 977 tests on Julia 1.13 (976 on
+1.10), Aqua with every check, JET clean, every backend through the conformance suite.
+
+| Item | Result |
+|---|---|
+| Lean core | BayesBase, Compat, Distributions, ForwardDiff, LinearAlgebra, Random, SpecialFunctions, StaticArrays, StatsFuns, Test; ExponentialFamily as an extension. `using` costs 0.21 s on top of Distributions, of which 0.03 s is this package and 0.14 s BayesBase with StaticArrays |
+| Rules | Golub–Welsch Hermite, generalised Laguerre, Jacobi, Legendre, accurate to 1e-13 against 256-bit arithmetic; FastGaussQuadrature's smallest Hermite weights are off by up to 7e-10 at n = 50 |
+| Backends | GaussHermite (Normal, MvNormal with static points, LogNormal, LogitNormal, TransformedGaussian), GaussLaguerre (any Gamma shape, the old rule was singular below one), GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo, SNIS, Unscented, GenUnscented (exact to degree 4 for any univariate distribution), SphericalRadialCubature, and `EADefault` |
+| Projections | `laplace` (in any domain, with `logZ`), `mean_cov`, `mean_cov_cross`, `tilted_mean_cov` (log space), `linearize` |
+| Domains | RealLine, Positive, UnitInterval, LowerBounded, UpperBounded, Bounded, Simplex, Componentwise; `domain`, `forward`, `inverse`, `logjacobian`, `pushforward` |
+| Conformance | `EA.Testing.conformance` / `test_backend`, itself tested on deliberately broken backends |
+| MPRA compatibility | `EA.MPRACompat`, MPRA 1.0's API ported and checked against 1.0 itself |
+| Acceptance | the mixture and zero-inflated Poisson notebooks on EA's backends: posteriors equal to ≤ 2.2e-15 |
+
+What it found:
+
+- **A BayesBase bug.** Prepared routers allocated on every evaluation: methods that only pass the
+  integrand on were not specialised on it. Fixed in BayesBase (34ede71, for #69) with a test that
+  checks every method; until pushed, this branch takes BayesBase from the local checkout.
+- **`E[log x]` under a Gamma converges slowly by quadrature** (1e-3 relative at 16 points, `log`
+  being singular at zero): an expectation for closed forms (ClosedFormExpectations), which the
+  router puts first.
+- **Differentiating through a Gamma's or Beta's shape** is refused by Gauss–Laguerre and
+  Gauss–Jacobi, whose nodes depend on it; a dual scale with constant shapes works.
+- **MPRA 1.1 as a shim** (a local MPRA branch re-exporting `EA.MPRACompat`): MPRA's own suite passes
+  but for its closure test, which forbids Distributions in its dependencies; DeltaMessagePassingRules,
+  GCVMessagePassingRules, StandardMessagePassingRules, FlowMessagePassingRules (once the shim also
+  binds the internal accessors `getα`, `getL`, … its tests use), PolyaMessagePassingRules and RxInfer's
+  nonlinear and HGF tests pass.
+- **Load time**: 0.2 s on top of Distributions is met by this package's own code, not by its
+  dependencies; BayesBase's StaticArrays dominates.
+
 ### U3. Engine hooks: MessagePassingRulesBase and ReactiveMP
 
 Repositories: MessagePassingRulesBase.jl, ReactiveMP.jl. Can run in parallel with U2.
@@ -322,7 +356,11 @@ Repositories: the universal rules package, EA, ReactiveMP.
 - **MessagePassingRulesApproximations**: PR #2 exports its own `expectation(method, f,
   params...)`; it should extend `BayesBase.expectation` instead of owning a second function
   of the same name (no clash today only because BayesBase exports nothing, D18).
-- **MessagePassingRulesApproximations 1.1**: a shim re-exporting EA's types with
+- **MessagePassingRulesApproximations PR #2** is superseded: its algorithms (Golub–Welsch
+  Laguerre, Hermite grids, sigma-point weights, GenUnscented) are in EA 1.0; close it once U2 lands.
+- **MessagePassingRulesApproximations 1.1** is verified as a shim re-exporting `EA.MPRACompat`
+  (local branch `universal-inference`, see the U2 findings); it must also bind the internal
+  accessors its users' tests import. Originally planned as a shim re-exporting EA's types with
   deprecations (`approximate` → `mean_cov`, `unscented_statistics` → `mean_cov_cross`,
   `approximate_meancov` → `tilted_mean_cov`, `local_linearization` → `linearize`); `smoothRTS`
   moves to DeltaMessagePassingRules; then archived, still registered.
@@ -417,6 +455,24 @@ Added after the protocol prototype (U0.2):
   outcome: thousands of errors from API drift and no compat entries, now visible because the
   items run after Aqua instead of not at all.
 
+Added in U2:
+
+- **D24. EA's names are public, never exported**, as the protocol's (D18); `EA.MPRACompat` exports
+  MPRA's names for the shim.
+- **D25. ExponentialFamily is a weak dependency** of EA: its univariate Gaussians and
+  `GammaShapeRate` through an extension; its multivariate Gaussians are `AbstractMvNormal`s.
+- **D26. Rules in Float64, points from the parameters.** Golub–Welsch nodes and weights are
+  computed once in Float64; the points of an expectation are typed from the distribution's
+  parameters, so duals pass through parameters and integrands; static means give static points.
+- **D27. Transformed Gaussians are EA's `TransformedGaussian`**, with `LogNormal` and
+  `LogitNormal` for the positive half-line and the unit interval; this settles the open
+  question on their representation.
+- **D28. Sigma points keep their covariance weight** in a `SigmaPointSet`, which `mean_cov`
+  applies; they do not support products or tilting, their weights can be negative.
+- **D29. MPRA's 1.0 API is ported into EA**, not reimplemented on the backends: its shapes,
+  warnings, errors and fields are what the rule packages rely on, and the port is checked
+  against 1.0 itself.
+
 The protocol, as decided (BayesBase):
 
 ```julia
@@ -461,9 +517,9 @@ The full, tested version, with point sets, products and `DynamicRouter`, is
   is), or a ReactiveMP-level projection hook.
 - **Domains**: how a variable learns its support when several nodes connect to it, or when
   no neighbour carries a support (U0.3b found the prior factor is enough when there is one).
-- **Representation of transformed Gaussians**: Distributions' `LogNormal` and `LogitNormal`
-  (incomplete APIs, no simplex family) or an owned type holding the unconstrained Gaussian and
-  the bijection, with moments through the protocol.
+- **MPRA 1.1's dependencies**: as a shim over EA it depends on Distributions and BayesBase, which
+  its 1.0 closure test forbids by design. Accept (RxInfer loads both anyway), or keep MPRA free of
+  distributions by moving MPRACompat into a lighter package.
 - **The user-facing switch**: a keyword of `infer`, an option, or a constraint-level wildcard.
 - **Default on or off** for the universal scheme in RxInfer (decide after U6).
 - **Threads**: per-task RNGs for stochastic backends in parallel engines.
@@ -562,7 +618,7 @@ Every repository follows the ReactiveBayes
 |---|---|---|---|
 | U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
 | U1 | BayesBase | in review (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
-| U2 | EA | not started | |
+| U2 | EA | implemented on this branch (977 tests); pending: BayesBase fix 34ede71 on #69, then `[sources]` back to its branch; MPRA shim decision | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |
 | U5 | RxInfer | not started | |
