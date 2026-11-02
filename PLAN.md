@@ -561,7 +561,7 @@ Every repository follows the ReactiveBayes
 | ID | Repository | State | Pull request |
 |---|---|---|---|
 | U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
-| U1 | BayesBase | implemented on `universal-inference` (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | pending |
+| U1 | BayesBase | in review (1.7.0), after the template tooling and the JET fixes: 6609 tests on Julia 1.13, 6586 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
 | U2 | EA | not started | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |
