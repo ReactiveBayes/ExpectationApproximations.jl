@@ -28,6 +28,7 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 - `laplace`, the Laplace approximation of a density with its log-normaliser: Newton's method with
   a backtracking line search that stays in the domain, and an eigenvalue correction where the
   log-density is not concave; for numbers, vectors and static vectors.
+- `linearize`, the first-order expansion of a function of one or several inputs.
 - Domain transforms: `RealLine`, `Positive`, `UnitInterval`, `LowerBounded`, `UpperBounded`,
   `Bounded`, `Simplex` and `Componentwise` for blocks of components, with `forward`, `inverse`,
   `logjacobian`, `domain` (read from a distribution's support, or a product's first factor that

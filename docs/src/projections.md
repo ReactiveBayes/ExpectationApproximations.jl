@@ -9,4 +9,5 @@ ExpectationApproximations.laplace
 ExpectationApproximations.mean_cov
 ExpectationApproximations.mean_cov_cross
 ExpectationApproximations.tilted_mean_cov
+ExpectationApproximations.linearize
 ```
