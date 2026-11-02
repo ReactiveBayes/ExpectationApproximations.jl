@@ -42,6 +42,9 @@ end
     @test EA.domain(Pareto(3.0, 2.0)) == EA.LowerBounded(2.0)
     @test EA.domain(Dirichlet([1.0, 2.0, 3.0])) == EA.Simplex(3)
     @test EA.domain(Poisson(3.0)) === nothing
+    # a distribution that does not say its support: Distributions has no default
+    struct Unsaid <: ContinuousUnivariateDistribution end
+    @test EA.domain(Unsaid()) === nothing
     # a product: the first factor that has a support, as a prior times messages
     @test EA.domain(P.ProductOf(Gamma(2.0, 1.0), Normal(0.0, 1.0))) === EA.Positive()
     @test EA.domain(P.LinearizedProductOf([Beta(1.0, 1.0), Beta(2.0, 2.0)], 2)) === EA.UnitInterval()

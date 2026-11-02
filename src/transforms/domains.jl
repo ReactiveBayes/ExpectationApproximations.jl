@@ -127,7 +127,16 @@ an unspecified one says nothing. For a product of densities, as the product of a
 messages, the domain of the first factor that has one.
 """
 domain(::AbstractMvNormal) = RealLine()
-domain(q::ContinuousUnivariateDistribution) = interval(minimum(q), maximum(q))
+function domain(q::ContinuousUnivariateDistribution)
+    # the support is information a distribution may not give: Distributions has no default
+    lower, upper = try
+        minimum(q), maximum(q)
+    catch error
+        error isa MethodError || rethrow()
+        return nothing
+    end
+    return interval(lower, upper)
+end
 domain(q::Dirichlet) = Simplex(length(q))
 domain(q::ContinuousUnivariateLogPdf) = setdomain(support(q))
 domain(q::ContinuousMultivariateLogPdf) = setdomain(support(q))
