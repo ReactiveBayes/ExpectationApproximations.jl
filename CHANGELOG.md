@@ -37,6 +37,10 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 - `ExpectationApproximations.Testing`, the conformance suite every backend passes: correctness,
   exact labels, prepared against direct, reproducibility, type stability, no allocations, dual
   numbers and products.
+- `ExpectationApproximations.MPRACompat`, the API of MessagePassingRulesApproximations 1.0
+  (`Unscented`, `Linearization`, `GaussHermiteCubature`, `approximate`, `unscented_statistics`,
+  `approximate_meancov`, `smoothRTS` and the rest), for its 1.1 to re-export; tested against 1.0
+  itself, with Gauss–Hermite weights from this package's more accurate rule.
 - An extension for ExponentialFamily: its univariate Gaussians through `GaussHermite` and
   `GammaShapeRate` through `GaussLaguerre`; its multivariate Gaussians, with static points for a
   static mean, are covered by the core.

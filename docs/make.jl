@@ -13,7 +13,7 @@ makedocs(
     checkdocs = :all,
     authors = "Bagaev Dmitry <bvdmitri@gmail.com> and contributors",
     sitename = "ExpectationApproximations.jl",
-    pages = ["Home" => "index.md", "Backends" => "backends.md", "Projections" => "projections.md", "Domain transforms" => "transforms.md", "Quadrature rules" => "rules.md", "Conformance suite" => "testing.md"],
+    pages = ["Home" => "index.md", "Backends" => "backends.md", "Projections" => "projections.md", "Domain transforms" => "transforms.md", "Quadrature rules" => "rules.md", "Conformance suite" => "testing.md", "MessagePassingRulesApproximations 1.0" => "compat.md"],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
         canonical = "https://reactivebayes.github.io/ExpectationApproximations.jl",

@@ -32,7 +32,7 @@ using StatsFuns: log1pexp, log2π, logistic, logit
 @compat public mean_cov, mean_cov_cross, tilted_mean_cov, laplace, linearize
 @compat public Domain, RealLine, Positive, UnitInterval, LowerBounded, UpperBounded, Bounded, Simplex, Componentwise
 @compat public domain, forward, inverse, logjacobian, pushforward, TransformedGaussian
-@compat public Testing
+@compat public Testing, MPRACompat
 
 include("rules/golubwelsch.jl")
 include("backends/gausshermite.jl")
@@ -50,5 +50,6 @@ include("projections/linearize.jl")
 include("backends/sigmapoints.jl")
 
 include("Testing.jl")
+include("compat/MPRACompat.jl")
 
 end
