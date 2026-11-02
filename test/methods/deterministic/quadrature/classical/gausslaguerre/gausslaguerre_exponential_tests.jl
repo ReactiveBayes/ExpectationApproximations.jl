@@ -1,4 +1,4 @@
-@testitem "GaussLaguerre: Basic integrations/approximations when q is Exponential" begin
+@testitem "GaussLaguerre: Basic integrations/approximations when q is Exponential" tags = [:quadrature] begin
     using ExpectationApproximations, Distributions, StableRNGs
     import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 

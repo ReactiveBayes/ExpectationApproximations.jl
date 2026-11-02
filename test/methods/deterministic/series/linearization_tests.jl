@@ -1,4 +1,4 @@
-@testitem "Linearization approximation method" begin
+@testitem "Linearization approximation method" tags = [:series] begin
     using Test
     using ExpectationApproximations
     import ExpectationApproximations: Linearization, approximate

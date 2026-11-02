@@ -1,5 +1,4 @@
-@testitem "CVI" begin
-    include("./hybrid_setuptests.jl")
+@testitem "CVI" tags = [:hybrid] setup = [HybridSetup] begin
     @testset "Constructor CVI method" begin
         cvi_method = CVI(StableRNG(42), 1000, Optimisers.Adam(), ForwardDiffGrad(), 900, Val(true), true)
         @test cvi_method.n_iterations == 1000
@@ -16,8 +15,7 @@
     end
 end
 
-@testitem "cvi Bernoulli x Bernoulli prod" begin
-    include("./hybrid_setuptests.jl")
+@testitem "cvi Bernoulli x Bernoulli prod" tags = [:hybrid] setup = [HybridSetup] begin
     cvi_method = CVI(StableRNG(42), 500, Optimisers.Descent(0.01), ForwardDiffGrad(), 1000, Val(true), false)
 
     for i in -1:1, j in -1:1
@@ -30,8 +28,7 @@ end
     end
 end
 
-@testitem "cvi `prod` tests" begin
-    include("./hybrid_setuptests.jl")
+@testitem "cvi `prod` tests" tags = [:hybrid] setup = [HybridSetup] begin
     rng = StableRNG(42)
 
     tests = ((method = CVI(StableRNG(42), 500, Optimisers.Descent(0.01), ForwardDiffGrad(), 2000, Val(true), false), tol = 0.1),)
@@ -51,8 +48,7 @@ end
     end
 end
 
-@testitem "Normal x Normal" begin
-    include("./hybrid_setuptests.jl")
+@testitem "Normal x Normal" tags = [:hybrid] setup = [HybridSetup] begin
     seed = 123
     rng = StableRNG(seed)
     optimizer = Optimisers.Adam(0.01)

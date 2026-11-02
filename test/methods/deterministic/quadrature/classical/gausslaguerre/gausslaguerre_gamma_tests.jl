@@ -1,4 +1,4 @@
-@testitem "GaussLaguerre: Basic integrations/approximations when q is Gamma" begin
+@testitem "GaussLaguerre: Basic integrations/approximations when q is Gamma" tags = [:quadrature] begin
     using ExpectationApproximations, Distributions, StableRNGs
     import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
@@ -32,7 +32,7 @@
     end
 end
 
-@testitem "GaussLaguerre moments calculation when q is Gamma" begin
+@testitem "GaussLaguerre moments calculation when q is Gamma" tags = [:quadrature] begin
     using ExpectationApproximations, Distributions, StableRNGs
     import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 

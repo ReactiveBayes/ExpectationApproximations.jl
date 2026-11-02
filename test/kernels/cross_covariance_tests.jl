@@ -1,4 +1,4 @@
-@testitem "Cross-covariance method" begin
+@testitem "Cross-covariance method" tags = [:kernels] begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import ExpectationApproximations: CrossCovariance, adjust_integrand
 

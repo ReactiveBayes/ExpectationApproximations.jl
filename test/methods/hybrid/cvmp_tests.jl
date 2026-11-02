@@ -1,6 +1,4 @@
-@testitem "CVMP" begin
-    include("./hybrid_setuptests.jl")
-
+@testitem "CVMP" tags = [:hybrid] setup = [HybridSetup] begin
     @testset "Constructor CVMP method" begin
         cvmp_method = CVMP(StableRNG(42), 1000, Optimisers.Adam(), ForwardDiffGrad(), 1000, Val(true), true, SimpleInitStrategy())
 

@@ -1,4 +1,4 @@
-@testitem "Laplace approximation method" begin
+@testitem "Laplace approximation method" tags = [:series] begin
     using Test, Distributions
     using ExpectationApproximations
     import SpecialFunctions: beta

@@ -1,6 +1,4 @@
-@testitem "Constructor AHMC method" begin
-    include("./advanced_hmc_setuptests.jl")
-
+@testitem "Constructor AHMC method" tags = [:stochastic, :slow] setup = [AHMCSetup] begin
     autograd = ReverseDiff
     automatic_ϵ = false
     ϵ_step = 0.01
@@ -39,8 +37,7 @@
     end
 end
 
-@testitem "AHMC: simple expectation with respect to normal" begin
-    include("./advanced_hmc_setuptests.jl")
+@testitem "AHMC: simple expectation with respect to normal" tags = [:stochastic, :slow] setup = [AHMCSetup] begin
     true_dist = NormalMeanVariance(5.0, 6.0)
     brtol = 0.1
     method = AHMC(Univariate, 1, 1000, 100)
@@ -50,8 +47,7 @@ end
     @test isapprox(approximate(method, true_dist, (x) -> (x - tmp)^2), var(true_dist), rtol = brtol)
 end
 
-@testitem "AHMC: product of normal and gamma" begin
-    include("./advanced_hmc_setuptests.jl")
+@testitem "AHMC: product of normal and gamma" tags = [:stochastic, :slow] setup = [AHMCSetup] begin
     method = AHMC(Univariate, 1, 5000, 5000)
     ExpectationApproximations.sample_direction(::NormalMeanVariance, ::Gamma) = ExpectationApproximations.SampleRight()
     grid = -10:0.0001:30
@@ -90,8 +86,7 @@ end
 #     end
 # end
 
-@testitem "AHMC: Expectation of a multivariate function with respect to multivariate normal" begin
-    include("./advanced_hmc_setuptests.jl")
+@testitem "AHMC: Expectation of a multivariate function with respect to multivariate normal" tags = [:stochastic, :slow] setup = [AHMCSetup] begin
     f(x) = exp(-tr(x * x'))
     irng = StableRNG(123)
     D = 5

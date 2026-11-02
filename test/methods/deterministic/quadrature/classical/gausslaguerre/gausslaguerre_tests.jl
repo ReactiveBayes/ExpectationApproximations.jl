@@ -1,4 +1,4 @@
-@testitem "GaussLaguerre creation" begin
+@testitem "GaussLaguerre creation" tags = [:quadrature] begin
     using ExpectationApproximations
     import ExpectationApproximations: getrule, getpoints, getweights, getlogweights
 

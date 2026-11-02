@@ -1,4 +1,4 @@
-@testitem "Generalized Constrained Unscented approximation method" begin
+@testitem "Generalized Constrained Unscented approximation method" tags = [:quadrature] begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import ExpectationApproximations: GenConstrainedUnscented, unscented_statistics, approximate_expectation, sigma_points_weights!, getcache, _cov, _kurtosis, _skewness, FromTo
 

@@ -1,4 +1,4 @@
-@testitem "Moment tensors" begin
+@testitem "Moment tensors" tags = [:kernels] begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import ExpectationApproximations: MomentGenerator, DiagonalMomentGenerator, adjust_integrand
 

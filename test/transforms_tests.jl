@@ -1,4 +1,4 @@
-@testitem "RescaleArguments" begin
+@testitem "RescaleArguments" tags = [:transforms] begin
     import ExpectationApproximations: RescaleArguments
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
@@ -35,7 +35,7 @@
     @test_throws AssertionError RescaleArguments((x, y) -> x + y, (1.0,))(1.0, 2.0)
 end
 
-@testitem "RescaleOutput" begin
+@testitem "RescaleOutput" tags = [:transforms] begin
     import ExpectationApproximations: RescaleOutput
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1), scale in (1, 2.0, 0.5)
@@ -69,7 +69,7 @@ end
     end
 end
 
-@testitem "ShiftOutput" begin
+@testitem "ShiftOutput" tags = [:transforms] begin
     import ExpectationApproximations: ShiftOutput
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1), shift in (1, -2.0, 0.5)
@@ -103,7 +103,7 @@ end
     end
 end
 
-@testitem "Decay" begin
+@testitem "Decay" tags = [:transforms] begin
     import ExpectationApproximations: Decay
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1)
@@ -122,7 +122,7 @@ end
     end
 end
 
-@testitem "Displace" begin
+@testitem "Displace" tags = [:transforms] begin
     import ExpectationApproximations: Displace
 
     for ucallable in (sin, cos, abs2, (x) -> x + 1)

@@ -1,4 +1,4 @@
-@testitem "Unscented approximation method" begin
+@testitem "Unscented approximation method" tags = [:quadrature] begin
     using Test, Distributions
 
     import ExpectationApproximations: Unscented, unscented_statistics, approximate_expectation, FromTo, UnscentedParameters

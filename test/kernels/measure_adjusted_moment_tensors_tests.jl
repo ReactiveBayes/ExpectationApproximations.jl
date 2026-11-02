@@ -1,4 +1,4 @@
-@testitem "MeasureAdjustedMomentGenerator" begin
+@testitem "MeasureAdjustedMomentGenerator" tags = [:kernels] begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra
     import ExpectationApproximations: MeasureAdjustedMomentGenerator, adjust_integrand
 

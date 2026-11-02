@@ -1,4 +1,4 @@
-@testitem "LogIntegrand wrapper" begin
+@testitem "LogIntegrand wrapper" tags = [:log] begin
     import LogarithmicNumbers: Logarithmic
 
     testfn = ((x) -> -(x - 1.0)^2, (x) -> exp(Logarithmic, -x))

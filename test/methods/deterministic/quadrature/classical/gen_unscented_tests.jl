@@ -1,4 +1,4 @@
-@testitem "Generalized Unscented approximation method" begin
+@testitem "Generalized Unscented approximation method" tags = [:quadrature] begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra, StableRNGs
     import ExpectationApproximations: GenUnscented, unscented_statistics, approximate_expectation, _cov, getcache, _skewness, _kurtosis, FromTo, getoutputvariate, getinputvariate
 
@@ -388,7 +388,7 @@
     end
 end
 
-@testitem "GenUnscented: Numerical stability improvements" begin
+@testitem "GenUnscented: Numerical stability improvements" tags = [:quadrature] begin
     using Test, Distributions, ExponentialFamily, LinearAlgebra, Random
     import ExpectationApproximations: GenUnscented, prepare_cache!, _cov, _skewness, _kurtosis, approximate_expectation, FromTo
 

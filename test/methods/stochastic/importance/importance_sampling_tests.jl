@@ -1,6 +1,4 @@
-@testitem "ImportanceSampling: Basic integrations/approximations with Gaussian p" begin
-    include("./importance_setuptests.jl")
-
+@testitem "ImportanceSampling: Basic integrations/approximations with Gaussian p" tags = [:stochastic] setup = [ImportanceSetup] begin
     irng = StableRNG(123)
     true_dist = Normal(5.0, 6.0)
     n = 10000
@@ -19,9 +17,7 @@
     end
 end
 
-@testitem "ImportanceSampling: Basic integration with unnormalized distribution: exp(-x^2)" begin
-    include("./importance_setuptests.jl")
-
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution: exp(-x^2)" tags = [:stochastic] setup = [ImportanceSetup] begin
     irng = StableRNG(123)
     true_dist = x -> exp(-0.5(x - 5)^2 / 36)
     n = 10000
@@ -39,9 +35,7 @@ end
     end
 end
 
-@testitem "ImportanceSampling: Basic integration with normalized distribution: Gamma" begin
-    include("./importance_setuptests.jl")
-
+@testitem "ImportanceSampling: Basic integration with normalized distribution: Gamma" tags = [:stochastic] setup = [ImportanceSetup] begin
     irng = StableRNG(123)
     alpha = 5
     beta = 4
@@ -61,9 +55,7 @@ end
     end
 end
 
-@testitem "ImportanceSampling: Basic integration with unnormalized distribution: Beta" begin
-    include("./importance_setuptests.jl")
-
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution: Beta" tags = [:stochastic] setup = [ImportanceSetup] begin
     irng = StableRNG(123)
     alpha = 5
     beta = 4
@@ -83,9 +75,7 @@ end
     end
 end
 
-@testitem "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance (function)" begin
-    include("./importance_setuptests.jl")
-
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance (function)" tags = [:stochastic] setup = [ImportanceSetup] begin
     irng = StableRNG(123)
     true_dist = x -> x^(4) * (1 - x)^3 * exp(-x^2)
     trange = collect(0.0000001:0.00001:1.0)
@@ -109,9 +99,7 @@ end
     end
 end
 
-@testitem "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance (pdf)" begin
-    include("./importance_setuptests.jl")
-
+@testitem "ImportanceSampling: Basic integration with unnormalized distribution and Beta importance (pdf)" tags = [:stochastic] setup = [ImportanceSetup] begin
     irng = StableRNG(123)
     ##expectation of sin(2*pi*x)pdf(Normal(1,0.1),x)x
     trange = collect(0.0000001:0.00001:1.0)

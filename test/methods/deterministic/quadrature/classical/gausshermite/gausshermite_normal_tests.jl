@@ -1,4 +1,4 @@
-@testitem "GaussHermite: Basic integrations/approximations when q is Normal" begin
+@testitem "GaussHermite: Basic integrations/approximations when q is Normal" tags = [:quadrature] begin
     using ExpectationApproximations, Distributions, StableRNGs
     import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
@@ -32,7 +32,7 @@
     end
 end
 
-@testitem "GaussHermite moments calculation when q is Normal" begin
+@testitem "GaussHermite moments calculation when q is Normal" tags = [:quadrature] begin
     using ExpectationApproximations, Distributions, StableRNGs
     import ExpectationApproximations: ClassicalQuadratureStrategyAutomatic
 
