@@ -5,7 +5,7 @@ Gauss–Hermite quadrature with `n` points per dimension: for Gaussians, a tenso
 multivariate ones, and for log-normal and logit-normal distributions through their Gaussian in
 unconstrained coordinates. Point masses and categoricals get exact sums, labelled exact.
 
-Preparations are [`PointSet`](@ref ProtoBase.PointSet)s whose points are typed from the
+Preparations are [`PointSet`](@ref BayesBase.PointSet)s whose points are typed from the
 parameters of the distribution, so dual numbers pass through both the parameters and the
 integrand.
 """
@@ -20,25 +20,25 @@ struct GaussHermite
     end
 end
 
-ProtoBase.supports(::GaussHermite, ::Type, ::Type{<:Union{Gaussian, MvGaussian, LogNormal, LogitNormal}}) = true
-ProtoBase.supports(::GaussHermite, ::Type, ::Type{<:Union{PointMass, Categorical}}) = true
-ProtoBase.haslabel(::GaussHermite, ::Type, ::Type{<:Union{PointMass, Categorical}}, ::Exact) = true
+BayesBase.supports(::GaussHermite, ::Type, ::Type{<:Union{Gaussian, MvGaussian, LogNormal, LogitNormal}}) = true
+BayesBase.supports(::GaussHermite, ::Type, ::Type{<:Union{PointMass, Categorical}}) = true
+BayesBase.haslabel(::GaussHermite, ::Type, ::Type{<:Union{PointMass, Categorical}}, ::Exact) = true
 
-function ProtoBase.prepare_expectation(rule::GaussHermite, q::Gaussian)
+function BayesBase.prepare_expectation(rule::GaussHermite, q::Gaussian)
     return PointSet(mean(q) .+ std(q) .* rule.nodes, rule.weights)
 end
 
-function ProtoBase.prepare_expectation(rule::GaussHermite, q::LogNormal)
+function BayesBase.prepare_expectation(rule::GaussHermite, q::LogNormal)
     μ, σ = params(q)
     return PointSet(exp.(μ .+ σ .* rule.nodes), rule.weights)
 end
 
-function ProtoBase.prepare_expectation(rule::GaussHermite, q::LogitNormal)
+function BayesBase.prepare_expectation(rule::GaussHermite, q::LogitNormal)
     μ, σ = params(q)
     return PointSet(logistic.(μ .+ σ .* rule.nodes), rule.weights)
 end
 
-function ProtoBase.prepare_expectation(rule::GaussHermite, q::MvGaussian)
+function BayesBase.prepare_expectation(rule::GaussHermite, q::MvGaussian)
     m, L = mean(q), cholesky(Symmetric(cov(q))).L
     grid = vec(CartesianIndices(ntuple(_ -> length(rule.nodes), length(m))))
     points = [m + L * [rule.nodes[i] for i in Tuple(index)] for index in grid]
@@ -46,5 +46,5 @@ function ProtoBase.prepare_expectation(rule::GaussHermite, q::MvGaussian)
     return PointSet(points, weights)
 end
 
-ProtoBase.prepare_expectation(::GaussHermite, q::PointMass) = PointSet((mean(q),), (1.0,))
-ProtoBase.prepare_expectation(::GaussHermite, q::Categorical) = PointSet(1:ncategories(q), probs(q))
+BayesBase.prepare_expectation(::GaussHermite, q::PointMass) = PointSet((mean(q),), (1.0,))
+BayesBase.prepare_expectation(::GaussHermite, q::Categorical) = PointSet(1:ncategories(q), probs(q))

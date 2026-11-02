@@ -186,7 +186,7 @@ end
 # - in the first iteration the marginals are the Beta and Gamma priors themselves. For these, and for any other univariate distribution, we use Gauss–Legendre quadrature in probability space: the nodes are quantiles of the distribution.
 
 # %%
-using ProtoBase, ProtoBackends
+using BayesBase, ProtoBackends
 import BayesBase: FactorizedJoint
 
 # The fallback of the notebook, with its quadrature replaced by the expectation protocol: one
@@ -203,9 +203,9 @@ function (fallback::ExpectedLogPdfFallback)(node, ::Target{E}, args::RuleArgs) w
     applicable(nodefunction, node) || return nothing
     inputs = (rule_inputs(node, args.m)..., rule_inputs(node, args.q)...)
     names = map(first, inputs)
-    prepared = ProtoBase.prepare_expectation(fallback.backend, FactorizedJoint(map(last, inputs)))
+    prepared = BayesBase.prepare_expectation(fallback.backend, FactorizedJoint(map(last, inputs)))
     f = nodefunction(node)
-    return NodeFunctionLogPdf(x -> ProtoBase.expectation(prepared, values -> f(; NamedTuple{names}(values)..., NamedTuple{(E,)}((x,))...)))
+    return NodeFunctionLogPdf(x -> BayesBase.expectation(prepared, values -> f(; NamedTuple{names}(values)..., NamedTuple{(E,)}((x,))...)))
 end
 
 # %% [markdown]
@@ -215,8 +215,8 @@ end
 const MOMENTS = ProtoBackends.default_router(32)
 
 function moments(q)
-    m = ProtoBase.expectation(MOMENTS, identity, q)
-    return m, sqrt(ProtoBase.expectation(MOMENTS, x -> (x - m)^2, q))
+    m = BayesBase.expectation(MOMENTS, identity, q)
+    return m, sqrt(BayesBase.expectation(MOMENTS, x -> (x - m)^2, q))
 end
 
 # %% [markdown]
@@ -445,7 +445,7 @@ try_infer(y, plain_constraints);
 
 # %%
 gaussian_p = NormalMeanVariance(moments(q_p)[1], moments(q_p)[2]^2)
-println("quadrature nodes for a Gaussian q(p) below zero: ", count(<(0), ProtoBase.prepare_expectation(ProtoBackends.GaussHermite(16), gaussian_p).points), " of 16")
+println("quadrature nodes for a Gaussian q(p) below zero: ", count(<(0), BayesBase.prepare_expectation(ProtoBackends.GaussHermite(16), gaussian_p).points), " of 16")
 
 # %% [markdown]
 # The transformed approximation also behaves well when little data pushes the posterior against a boundary. Take a new monastery with two weeks of records, whose monks rarely drink. The posterior of $p$ then piles up at $p = 0$.

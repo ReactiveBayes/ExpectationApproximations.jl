@@ -7,20 +7,20 @@ Gaussian `p` under a Gaussian `q`.
 """
 struct ClosedForms end
 
-ProtoBase.haslabel(::ClosedForms, ::Exact) = true
+BayesBase.haslabel(::ClosedForms, ::Exact) = true
 
-ProtoBase.supports(::ClosedForms, ::Type{typeof(identity)}, ::Type{<:Gaussian}) = true
-ProtoBase.supports(::ClosedForms, ::Type{typeof(abs2)}, ::Type{<:Gaussian}) = true
-ProtoBase.supports(::ClosedForms, ::Type{typeof(log)}, ::Type{<:Gamma}) = true
-ProtoBase.supports(::ClosedForms, ::Type{typeof(log)}, ::Type{<:LogNormal}) = true
-ProtoBase.supports(::ClosedForms, ::Type{<:Logpdf{<:Gaussian}}, ::Type{<:Gaussian}) = true
+BayesBase.supports(::ClosedForms, ::Type{typeof(identity)}, ::Type{<:Gaussian}) = true
+BayesBase.supports(::ClosedForms, ::Type{typeof(abs2)}, ::Type{<:Gaussian}) = true
+BayesBase.supports(::ClosedForms, ::Type{typeof(log)}, ::Type{<:Gamma}) = true
+BayesBase.supports(::ClosedForms, ::Type{typeof(log)}, ::Type{<:LogNormal}) = true
+BayesBase.supports(::ClosedForms, ::Type{<:Logpdf{<:Gaussian}}, ::Type{<:Gaussian}) = true
 
-ProtoBase.expectation(::ClosedForms, ::typeof(identity), q::Gaussian) = mean(q)
-ProtoBase.expectation(::ClosedForms, ::typeof(abs2), q::Gaussian) = mean(q)^2 + var(q)
-ProtoBase.expectation(::ClosedForms, ::typeof(log), q::Gamma) = digamma(shape(q)) + log(scale(q))
-ProtoBase.expectation(::ClosedForms, ::typeof(log), q::LogNormal) = first(params(q))
+BayesBase.expectation(::ClosedForms, ::typeof(identity), q::Gaussian) = mean(q)
+BayesBase.expectation(::ClosedForms, ::typeof(abs2), q::Gaussian) = mean(q)^2 + var(q)
+BayesBase.expectation(::ClosedForms, ::typeof(log), q::Gamma) = digamma(shape(q)) + log(scale(q))
+BayesBase.expectation(::ClosedForms, ::typeof(log), q::LogNormal) = first(params(q))
 
-function ProtoBase.expectation(::ClosedForms, f::Logpdf{<:Gaussian}, q::Gaussian)
+function BayesBase.expectation(::ClosedForms, f::Logpdf{<:Gaussian}, q::Gaussian)
     m, v = mean(f.dist), var(f.dist)
     return -(log2π + log(v)) / 2 - ((mean(q) - m)^2 + var(q)) / (2v)
 end

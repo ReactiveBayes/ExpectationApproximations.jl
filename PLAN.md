@@ -149,8 +149,10 @@ What the design had not said yet, now decided (D18–D22):
 
 Repository: BayesBase.jl. Additive, minor release.
 
-Start from `prototype/protocol/ProtoBase`: its code and tests move over with the names changed.
-Every name is public and none is exported (D18).
+Implemented from the prototype (`ProtoBase`, now in this branch's history) in
+`src/expectations/` and `test/expectations/` of BayesBase, as release 1.7.0. Every name is
+public and none is exported (D18). The prototype's backends, acceptance test and experiments
+in `prototype/protocol/` run against it.
 
 1. `expectation(backend, f, q)`, falling back to the preparation and guarded by
    `NoBackendError`; `supports` at type level (hook) and instance level (API), with
@@ -438,7 +440,7 @@ end
 ```
 
 The full, tested version, with point sets, products and `DynamicRouter`, is
-`prototype/protocol/ProtoBase/src` (U0.2).
+`src/expectations/` in BayesBase (U1), documented on its "Expectations" page.
 
 ## Open questions
 
@@ -539,7 +541,7 @@ status entry here.
 | ID | Repository | State | Pull request |
 |---|---|---|---|
 | U0 | EA (hub), scratch | done: U0.1 (`universal-dev`), U0.2 (`prototype/protocol/`), U0.3 (findings under U0) | |
-| U1 | BayesBase | not started | |
+| U1 | BayesBase | implemented on `universal-inference` (1.7.0): 6591 tests on Julia 1.13, 6569 on 1.10; docs build | pending |
 | U2 | EA | not started | |
 | U3 | MessagePassingRulesBase, ReactiveMP | not started | |
 | U4 | universal rules (new) | not started | |

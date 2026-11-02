@@ -1,31 +1,23 @@
 # Prototype of the expectation protocol (U0.2)
 
-A prototype of the protocol planned for BayesBase (PLAN.md, milestone U0.2), in two small
-packages so that the code and its tests move into BayesBase (U1) and ExpectationApproximations
-(U2) without rewriting. Deleted once those land.
+The protocol was prototyped here for BayesBase (PLAN.md, milestone U0.2) and now lives in
+BayesBase itself (U1, `src/expectations/` on its `universal-inference` branch, to be released
+as 1.7). The prototype of the protocol, `ProtoBase`, is in the history of this branch.
 
-- `ProtoBase/` stands in for the BayesBase additions: `expectation`, `prepare_expectation`,
-  `supports`, labels, `withrng`, `Logpdf`, point sets, products over `FactorizedJoint`,
-  `FirstOf` and `DynamicRouter`. Nothing is exported.
-- `ProtoBackends/` stands in for ExpectationApproximations and ClosedFormExpectations:
-  `ClosedForms`, `GaussHermite`, `QuantileLegendre`, `MonteCarlo`, `default_router`.
+- `ProtoBackends/` stands in for ExpectationApproximations and ClosedFormExpectations, on top of
+  the BayesBase protocol: `ClosedForms`, `GaussHermite`, `QuantileLegendre`, `MonteCarlo`,
+  `default_router`. Its code and tests move into EA in U2.
 - `acceptance/` runs two notebooks of the Universal Inference section with their fallback
   rewritten with the protocol, and compares the posteriors with the originals.
 - `experiments/` measures the cost of `DynamicRouter` and tries the operation axis.
-- `RESULTS.md` has the measurements and findings.
+- `RESULTS.md` has the measurements and findings of U0.2, made against `ProtoBase`.
 
-Run everything in the shared environment `~/Projects/Julia/universal-dev` (Julia 1.11+):
+Run everything in the shared environment `~/Projects/Julia/universal-dev` (Julia 1.11+), which
+uses the local BayesBase checkout:
 
 ```sh
-julia --project=~/Projects/Julia/universal-dev ProtoBase/test/runtests.jl
 julia --project=~/Projects/Julia/universal-dev ProtoBackends/test/runtests.jl
 julia --project=~/Projects/Julia/universal-dev acceptance/compare.jl
 julia --project=~/Projects/Julia/universal-dev experiments/dynamic_router.jl
 julia --project=~/Projects/Julia/universal-dev experiments/operation_axis.jl
-```
-
-`ProtoBase` also runs on Julia 1.10, in a temporary environment:
-
-```sh
-julia +1.10 -e 'using Pkg; Pkg.activate(temp = true); Pkg.develop(path = "ProtoBase"); Pkg.test("ProtoBase")'
 ```

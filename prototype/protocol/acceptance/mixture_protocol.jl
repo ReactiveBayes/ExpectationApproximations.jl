@@ -136,7 +136,7 @@ ncategories_in(d) = nothing
 # Like the built-in fallback, it is only consulted where no exact rule exists.
 
 # %%
-using ProtoBase, ProtoBackends
+using BayesBase, ProtoBackends
 import BayesBase: FactorizedJoint
 
 # The fallback of the notebook, with its quadrature replaced by the expectation protocol: one
@@ -153,9 +153,9 @@ function (fallback::ExpectedLogPdfFallback)(node, ::Target{E}, args::RuleArgs) w
     applicable(nodefunction, node) || return nothing
     inputs = (rule_inputs(node, args.m)..., rule_inputs(node, args.q)...)
     names = map(first, inputs)
-    prepared = ProtoBase.prepare_expectation(fallback.backend, FactorizedJoint(map(last, inputs)))
+    prepared = BayesBase.prepare_expectation(fallback.backend, FactorizedJoint(map(last, inputs)))
     f = nodefunction(node)
-    return NodeFunctionLogPdf(x -> ProtoBase.expectation(prepared, values -> f(; NamedTuple{names}(values)..., NamedTuple{(E,)}((x,))...)))
+    return NodeFunctionLogPdf(x -> BayesBase.expectation(prepared, values -> f(; NamedTuple{names}(values)..., NamedTuple{(E,)}((x,))...)))
 end
 
 # %% [markdown]

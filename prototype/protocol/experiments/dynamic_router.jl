@@ -3,9 +3,9 @@
 #
 #     julia --project=~/Projects/Julia/universal-dev dynamic_router.jl
 
-using ProtoBase, ProtoBackends, BenchmarkTools, Distributions, StableRNGs, Printf
+using BayesBase, ProtoBackends, BenchmarkTools, Distributions, StableRNGs, Printf
 
-const P = ProtoBase
+const P = BayesBase
 const B = ProtoBackends
 
 function registry(backends...)

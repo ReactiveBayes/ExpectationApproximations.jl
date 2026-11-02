@@ -8,16 +8,16 @@
 #
 #     julia --project=~/Projects/Julia/universal-dev operation_axis.jl
 
-using ProtoBase, ProtoBackends, Distributions, ExponentialFamily, Test
+using BayesBase, ProtoBackends, Distributions, ExponentialFamily, Test
 
-const P = ProtoBase
+const P = BayesBase
 const B = ProtoBackends
 
 "The operation axis as a later, additive extension of the protocol."
 module WithOperations
 
-using ProtoBase: ProtoBase, FirstOf
-const P = ProtoBase
+using BayesBase: BayesBase, FirstOf
+const P = BayesBase
 
 "A second operation: mean and covariance of a pushforward, `(E[f], Cov[f])`."
 function mean_cov end

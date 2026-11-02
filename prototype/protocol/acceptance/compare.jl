@@ -1,5 +1,5 @@
 # Acceptance test of the protocol prototype (U0.2, item 8 of the plan): the notebooks' fallback
-# rewritten with `ProtoBase.prepare_expectation` and `ProtoBase.expectation` must give the same
+# rewritten with `BayesBase.prepare_expectation` and `BayesBase.expectation` must give the same
 # posteriors as the hand-written quadrature, to 1e-10. Run in the universal-dev environment:
 #
 #     julia --project=~/Projects/Julia/universal-dev compare.jl

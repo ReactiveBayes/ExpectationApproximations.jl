@@ -17,8 +17,8 @@ struct QuantileLegendre
     end
 end
 
-ProtoBase.supports(::QuantileLegendre, ::Type, ::Type{<:ContinuousUnivariateDistribution}) = true
+BayesBase.supports(::QuantileLegendre, ::Type, ::Type{<:ContinuousUnivariateDistribution}) = true
 
-function ProtoBase.prepare_expectation(rule::QuantileLegendre, q::ContinuousUnivariateDistribution)
+function BayesBase.prepare_expectation(rule::QuantileLegendre, q::ContinuousUnivariateDistribution)
     return PointSet(quantile.(q, rule.nodes), rule.weights)
 end

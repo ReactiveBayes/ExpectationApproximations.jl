@@ -1,8 +1,8 @@
 @testsetup module Helpers
 
-using ProtoBase, ProtoBackends, BenchmarkTools
+using BayesBase, ProtoBackends, BenchmarkTools
 
-const P = ProtoBase
+const P = BayesBase
 const B = ProtoBackends
 
 export P, B, folds_to, allocations
