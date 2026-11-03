@@ -540,11 +540,25 @@ All four pass in 2 min 35 s: the mixture takes 146 s (seven fits of 30 iteration
 A full `make examples` takes registered RxInfer, so these four fail there until the release.
 
 **Found while moving them**, to settle before U7 (brainstorm with the user):
-1. **`dot` in a model is RxInfer's `dot` node**, not a Delta node.
-   `p := logistic(dot([1, x], θ))` fails inside its Gaussian rules (`iterate(::Normal)`).
+1. **`dot` in a model is RxInfer's `dot` node**, a declared deterministic node with exact
+   Gaussian rules, and it shares the one rule fallback with Delta nodes (D48). The first record
+   here, that `dot` throws, was wrong: the `iterate(::Normal)` is Bernoulli's energy (item 2). A
+   callback trace of `p[i] := logistic(dot([1, x[i]], θ)); y[i] ~ Bernoulli(p[i])` without the
+   free energy shows a silent wrong answer instead, the prior (E[θ] ≈ 0 against Laplace's
+   (1.71, 11.80)), from three gaps:
+   - **a declared function node carries no function**: RxInfer gives `nodefn` only to an
+     undeclared function, so the fallback reaches `dot` and stops ("created without `nodefn`");
+   - **a projection that found no mode is used**: Laplace on the lone pulled-back Bernoulli
+     message, monotone in η, does not converge, the curvature floor gives σ = 10⁴, and `dot`'s
+     exact rule turns that into an uninformative message (D49);
+   - **two `ProductOf`s cannot be multiplied** (item 3), once the messages towards θ stay
+     log-densities.
+
+   See "One fallback for every deterministic node" below.
 2. **A Delta node's forward message ignores the function's range.** For
    `p := f(θ, x)` with `f` a logistic, the message to `p` is a moment-matched Gaussian on the
-   real line. Bernoulli's energy rule then calls `mean(log, ::Normal)`.
+   real line. Bernoulli's energy rule then calls `mean(log, ::Normal)`. **After the merge** (the
+   user's call): outside this effort's scope.
 3. **The same model without the free energy** stops at BayesBase:
    `prod(::GenericProd, ::ProductOf, ::ProductOf)` is ambiguous (20 pulled-back messages towards θ).
 4. **`Binomial` is not a factor node**, and GraphPPL does not index a multivariate variable
@@ -556,6 +570,18 @@ A full `make examples` takes registered RxInfer, so these four fail there until 
    projection's Distributions `FullNormal`. Should `laplace_form` return ExponentialFamily's
    Gaussian types, or the rules accept any `MvNormal`? The bioassay's `θ ~ prior` does not hit
    this.
+
+#### One fallback for every deterministic node
+
+From the brainstorm of finding 1 (D48, D49), one tested commit each, in progress:
+1. ReactiveMP: `getnodefn` gives a node whose form is a function that function; a test checks
+   that `+`, `-`, `dot` and `*` have their interfaces in argument order.
+2. DeltaMessagePassingRules: `LaplaceForm` leaves a message it finds no mode for unprojected.
+3. BayesBase (U1's branch): `prod(::GenericProd, ::ProductOf, ::ProductOf)`.
+4. Acceptance on the hub, `prototype/protocol/acceptance/deterministic_nodes.jl`: the bioassay as
+   Bernoulli trials, written `p := logistic(dot([1, x], θ))` and `p := f(θ, x)`, equals the fused
+   node and `EA.laplace` of the joint, without the free energy (item 2 waits).
+5. The logistic regression notebook runs that form, with a hidden check against the fused node.
 
 ### U7. Beyond Laplace
 
@@ -791,6 +817,14 @@ Added in U4:
 - **D47. Explicit settings win over a scheme**: `options.rulefallback`,
   `options.default_form_constraint`, `options.context.expectation` and an initialization strategy
   replace the scheme's, as a variable's own constraint replaces the default form.
+- **D48. Every deterministic node goes through the one rule fallback**: Delta nodes, `dot`, `+`,
+  `-` and `*` alike, its function coming from the engine. ReactiveMP's `getnodefn` gives a node
+  whose form is a function that function, its inputs in interface order; a declared node's exact
+  rules keep precedence.
+- **D49. A projection that finds no mode is not used for a message**: `LaplaceForm` leaves a
+  message unprojected when Newton does not converge, so an exact rule downstream does not match
+  and the fallback pulls back through the node; a marginal keeps the result, its record saying
+  `converged = false` for the report.
 
 The protocol, as decided (BayesBase):
 
@@ -937,8 +971,8 @@ Every repository follows the ReactiveBayes
 | U2 | EA | done on this branch (977 tests); MPRA 1.1 shim verified on a local MPRA branch, kept local while EA is private | |
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
-| U5 | RxInfer, EA, DeltaMessagePassingRules | done on the local `universal-inference` branches, not pushed (see "What U5 delivered and found") | |
-| U6 | RxInferExamples | started: the four Laplace notebooks on `fallback = LaplaceApproximation()` with hidden checks, local on `universal-inference`, not pushed (see "The notebooks on the switch") | |
+| U5 | RxInfer, EA, DeltaMessagePassingRules | done on the pushed `universal-inference` branches (see "What U5 delivered and found") | the U3 and U4 pull requests updated |
+| U6 | RxInferExamples | started: the four Laplace notebooks on `fallback = LaplaceApproximation()` with hidden checks, a draft on the pushed `universal-inference` branch (see "The notebooks on the switch") | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
 | U7 | several | not started | |
 | U8 | RxInfer | not started; its foundation is U5's | |
 | P | CFE, MPRA, rule packages, EFP | not started | |
