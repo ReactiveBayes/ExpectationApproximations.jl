@@ -352,8 +352,8 @@ tested commit per step, with the docs of DeltaMessagePassingRules and RxInfer bu
 | DeltaMessagePassingRules | 678 | 677 |
 | EA | 1002 | 1001 |
 | MessagePassingRulesBase | 953 | 946, and the registry fixture's error: its subprocess environment cannot resolve the unregistered BayesBase 1.7 without `[sources]` |
-| ReactiveMP | 15654 | not run |
-| RxInfer | 15095, the 31 acceptance items included | not run |
+| ReactiveMP | 15654 | 15650 (4 version-gated tests fewer, as in U3) |
+| RxInfer | 15095, the 31 acceptance items included | 15095 |
 | StandardMessagePassingRules, GCVMessagePassingRules | 10193, 463 | |
 
 | Item | Result |
