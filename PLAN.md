@@ -639,6 +639,27 @@ U5 lays its foundation (D46); this makes it a product:
    for the conjugate Poisson", and a notebook dedicated to the report joins them (U6 item 4).
    U8 is not done until they do.
 
+#### What U8 delivered and found
+
+Local on the `universal-inference` branches, one tested commit per step, not pushed.
+
+| Item | Result |
+|---|---|
+| 1. Presentation | By posterior (the user's choice of layout). Each approximated posterior is a row group: how it was projected (Laplace, converged in n iterations, log Z), then the node instances whose messages formed it, with exact and fallback counts and the expectations. Instances are named as the model writes them, `y[3] ~ Bernoulli(p[3])`, `p[3] := logistic(·)`, `· := dot([1.0, -0.86], θ)`, built from ReactiveMP's interfaces and the GraphPPL labels of their variables. They are folded by shape, `y[1:300] ~ LogPrecisionMixture(z[1:300], m, s)`, and so are variables formed alike (the stochastic volatility path is three groups: `x[1]`, `x[2:29]`, `x[30]`). Records are kept per instance and per node type (`RxInfer.node_types`). |
+| Tables, plain or pretty | `report_tables(section)`: `ReportTable`s of strings, with row groups and a level per row. `RxInfer.render_report_table` prints aligned text; RxInfer's PrettyTables extension overrides it through the `summarize_invokes` pattern, with rounded borders, row groups, warnings in red and notes in yellow, and adds `pretty_table(io, report)`. The same `result.report` prints as tables wherever PrettyTables is loaded. |
+| 2. Diagnostics | `RxInfer.diagnostics(report)` returns `ReportDiagnostic(kind, level, subject, text)`s, folded by name. Warnings: `:laplace_not_converged`, `:joint_not_converged`, `:expectation_over_messages` (a fallback under BP averaging over another random variable's message). Notes: `:unprojected_messages` (D49), `:stochastic_expectation`, `:last_resort_expectation`. The last one uses a negative registry priority, read through BayesBase's new `expectation_backend_priority`, because a frozen `ExpectationFirstOf` keeps the order and not the priorities. Four of the six are provoked in RxInfer's tests; the joint's non-convergence and the last resort are not, as no small model reaches them (the joint's iterations are not configurable, and the last resort needs a type no other backend takes). |
+| 3. Missing records | MessagePassingRulesBase `with_outcome` and `unwrap_outcome`: a fallback says how it computed an answer. ReactiveMP's three After rule events carry the `outcome`, and the old constructors remain. DeltaMessagePassingRules' joint Laplace returns `(method = :joint_laplace, converged, iterations)`, and ExponentialFamily Gaussians, as D50 does for marginals. Deterministic nodes' energy terms are covered by the joint inside their span. Provenance: each message event's target interface leads to its variable, `VariableRecord.incoming`. |
+| 4. Timings | `TimingsReport`, `report = (:timings,)`, both by default: model creation, inference and per-iteration times. The time of exact rules, the fallback, projections and free-energy terms is measured from Before/After span pairs on a stack, so it is exclusive and the kinds add up; it is also broken down by node type and by variable. |
+| 5. Notebooks | The four notebooks gain "What was approximated", with `result.report.approximations` shown and the hidden checks on the report: no warnings, the conjugate parts exact, Laplace converged, the deterministic nodes' rules and fallbacks. The zero-inflated Poisson notebook's callback counter is gone: its conjugate model's report is shown instead. A fifth notebook, "Reading the Inference Report", runs one model under mean field (no warnings) and under BP (`:expectation_over_messages`), and covers the report as data and the timings. RxInferExamples gains the `meta.jl` option `wide_output = true`, because Weave wraps output at 75 characters, which breaks tables. |
+| Docs | RxInfer: a manual page, "What was approximated: the inference report", linked from the `report` keyword, the Laplace section and the Rule Not Found sharp bits. |
+| Tests | MessagePassingRulesBase 956, ReactiveMP 15684, DeltaMessagePassingRules 697, BayesBase 6625, RxInfer 15225 (41 new); RxInfer's docs build with the new page; the five Universal Inference notebooks build in 3 min 14 s (`make examples-env … FILTER=laplace`). All run in an environment with every checkout by path and Distributions pinned at 0.25.132. |
+
+What it found:
+- **A stochastic backend cannot join a product expectation.** `MonteCarlo` in a `FactorizedJoint`, even with a `PointMass`, fails, because the product rule needs point sets for every component. A fallback with two inputs therefore cannot use it (EA, P).
+- **Exclusive timings are honest, and they are mostly the engine's.** On the report notebook's model, a second run: the engine's products, streams and entropies take about 86%, the fallback and projections about 6% each.
+- **A first run's timings include compilation.** The notebook times a second run.
+- **Anonymous variables share one key**, `(anonymous_var_graphppl, nothing)`, so the report counts them as one posterior, shown as `· (anonymous)`.
+
 ### P. Ecosystem migration (parallel track)
 
 - **ClosedFormExpectations 1.0** (BIASlab, Mykola): `CFEBackend`, `supports_expectation`, the
@@ -1005,7 +1026,7 @@ Every repository follows the ReactiveBayes
 | U5 | RxInfer, EA, DeltaMessagePassingRules | done on the pushed `universal-inference` branches (see "What U5 delivered and found") | the U3 and U4 pull requests updated |
 | U6 | RxInferExamples | started: the four Laplace notebooks on `fallback = LaplaceApproximation()` with hidden checks, a draft on the pushed `universal-inference` branch (see "The notebooks on the switch") | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
 | U7 | several | not started | |
-| U8 | RxInfer | not started; its foundation is U5's | |
+| U8 | RxInfer, ReactiveMP, MessagePassingRulesBase, DeltaMessagePassingRules, BayesBase, RxInferExamples | done on the local `universal-inference` branches, not pushed (see "What U8 delivered and found") | |
 | P | CFE, MPRA, rule packages, EFP | not started | |
 
 ## Appendix: the ecosystem as of October 2026
