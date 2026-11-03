@@ -493,14 +493,69 @@ Repository: RxInferExamples.jl.
 1. A new "Universal inference" section, starting with purely Laplace examples. Done in the
    spike: bioassay logistic regression, Poisson regression, stochastic volatility, Gaussian
    mixture, zero-inflated Poisson with Beta and Gamma priors (automatic domain transform).
-   Next: a pendulum state-space model, a hierarchical model with a Gamma precision, a Poisson
-   count time series. Each compared with an exact or
-   sampling reference.
+   **Moved to the U5 API** (see "The notebooks on the switch" below): each runs through
+   `fallback = LaplaceApproximation()` with no machinery of its own, and hidden checks make it a
+   test. Next: a pendulum state-space model, a hierarchical model with a Gamma precision, a
+   Poisson count time series. Each compared with an exact or sampling reference.
 2. "Simple Nonlinear Node" rewritten without its hand-written rules.
 3. Later: the same models under EP, and with exact refinements via ClosedFormExpectations.
-4. A section on the inference report: how to enable it (`report = true`) and read it.
+4. A section on the inference report: how to enable it (`report = true`) and read it. Waits for
+   U8, whose item 5 updates the notebooks to the report.
 
 Done when: the examples run in the examples' CI and show the approximation report.
+
+#### The notebooks on the switch
+
+The four notebooks of `examples/Universal Inference/` on RxInferExamples' `universal-inference`
+branch, one commit each:
+- the notebooks' own Laplace kernels, form constraints, rule fallbacks, domains and moments
+  (40 to 150 lines each) are gone; each calls `infer(...; fallback = LaplaceApproximation())`;
+- the hand-written references call `ExpectationApproximations.laplace`;
+- the report is not shown yet (U8, item 5).
+
+**The notebooks are tests.** Lines ending in `# hide` run but are left out of the page.
+Hidden `@assert`s guard two kinds of claim:
+- **identities**: message passing equals the Laplace fit of the hand-written posterior, and the
+  linear-Gaussian chain equals the Kalman smoother, free energy included;
+- **numbers the text states**: β about a third low, the stochastic volatility RMSEs, the mixture
+  against the conjugate `NormalMixture`, the mean-field standard deviations against the grid,
+  and that a conjugate model under the switch never calls the fallback.
+
+The examples' build missed an error that followed a cell's printed output, so a failing hidden
+check passed. `has_error_blocks` in `examples/make.jl` now looks at every line of an output
+block (its own commit, checked with a deliberately failing assert). The acceptance command,
+which builds the four in the dev environment while the packages are unreleased:
+
+```
+make examples-env ENVIRONMENT=~/Projects/Julia/universal-dev FILTER=laplace
+```
+
+All four pass in 2 min 35 s: the mixture takes 146 s (seven fits of 30 iterations), the others
+22 to 42 s. Their numbers are the spike's, plus some new ones:
+- bioassay: −log p(y) is 5.30 on the grid and 5.36 by Laplace; the free energy is 6.41, an
+  upper bound that the Gaussian misses by its KL divergence of 1.1 nats;
+- stochastic volatility: RMSE of the means against the sampler 0.177, global Laplace 0.10;
+- zero-inflated Poisson: E[p] 0.166 against the grid's 0.127.
+
+A full `make examples` takes registered RxInfer, so these four fail there until the release.
+
+**Found while moving them**, to settle before U7 (brainstorm with the user):
+1. **`dot` in a model is RxInfer's `dot` node**, not a Delta node.
+   `p := logistic(dot([1, x], θ))` fails inside its Gaussian rules (`iterate(::Normal)`).
+2. **A Delta node's forward message ignores the function's range.** For
+   `p := f(θ, x)` with `f` a logistic, the message to `p` is a moment-matched Gaussian on the
+   real line. Bernoulli's energy rule then calls `mean(log, ::Normal)`.
+3. **The same model without the free energy** stops at BayesBase:
+   `prod(::GenericProd, ::ProductOf, ::ProductOf)` is ambiguous (20 pulled-back messages towards θ).
+4. **`Binomial` is not a factor node**, and GraphPPL does not index a multivariate variable
+   (`θ[1]`). So the bioassay keeps its likelihood node.
+5. **`logscales = true` returns posteriors as ReactiveMP `Marginal`s**, on which `rand` fails;
+   the bioassay asks for them in a separate call.
+6. **The mixture has no free energy.** The energy rule of `m ~ MvNormalMeanCovariance(zeros(K),
+   100I)` (StandardMessagePassingRules, `mv_normal_mean_covariance.jl:9`) calls `ndims` on the
+   projection's Distributions `FullNormal`. Should `laplace_form` return ExponentialFamily's
+   Gaussian types, or the rules accept any `MvNormal`? The bioassay's `θ ~ prior` does not hit
+   this.
 
 ### U7. Beyond Laplace
 
@@ -533,6 +588,11 @@ U5 lays its foundation (D46); this makes it a product:
 3. **Missing records**: joint Laplace convergence, deterministic nodes' free-energy terms,
    per-posterior provenance (perhaps through annotations).
 4. **Other sections** of `InferenceReport`, such as timings beside the benchmark callbacks.
+5. **The Universal Inference notebooks show the report.** Each of the four notebooks
+   (RxInferExamples, see U6) gains a "What was approximated" part with `report = true`. Its
+   hidden checks move from counting callbacks to the report, such as "the fallback never ran
+   for the conjugate Poisson", and a notebook dedicated to the report joins them (U6 item 4).
+   U8 is not done until they do.
 
 ### P. Ecosystem migration (parallel track)
 
@@ -561,7 +621,7 @@ U5 lays its foundation (D46); this makes it a product:
 
 ```
 U0 ─► U1 ─► U2 ─────────► U4 ─► U5 ─► U6 ─► U7
-        └─► U3 (parallel) ─┘         └─► U8 (after U5, beside U6)
+        └─► U3 (parallel) ─┘         └─► U8 (after U5, beside U6; ends by updating U6's notebooks)
         └─► P  (parallel; CFE 1.0 after U1, MPRA 1.1 after U2)
 ```
 
@@ -878,7 +938,7 @@ Every repository follows the ReactiveBayes
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
 | U5 | RxInfer, EA, DeltaMessagePassingRules | done on the local `universal-inference` branches, not pushed (see "What U5 delivered and found") | |
-| U6 | RxInferExamples | started: four Laplace notebooks on `universal-inference` | |
+| U6 | RxInferExamples | started: the four Laplace notebooks on `fallback = LaplaceApproximation()` with hidden checks, local on `universal-inference`, not pushed (see "The notebooks on the switch") | |
 | U7 | several | not started | |
 | U8 | RxInfer | not started; its foundation is U5's | |
 | P | CFE, MPRA, rule packages, EFP | not started | |
