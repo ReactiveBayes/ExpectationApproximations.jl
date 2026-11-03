@@ -604,19 +604,75 @@ merge.
 
 ### U7. Beyond Laplace
 
-Repositories: the universal rules package, EA, ReactiveMP.
+Repositories: DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer; ReactiveMP for
+U7a. Split into three, after the brief of November 2026:
 
-1. **Laplace propagation and EP**: belief-propagation structure with cavities (rules that read
-   the message on their own edge, as Probit's EP rules already do), Gaussian division with
-   positive-definite correction, damping. Same code, two projections: Laplace or moment
-   matching through EA's quadrature. Acceptance: Laplace propagation reaches the global
-   Laplace solution on nonlinear chains (the stochastic volatility notebook is the benchmark:
-   local projection has RMSE 0.085 to it today), and EP improves on Laplace against the
-   sampler.
-2. **CVI and natural-gradient projection** through `expectation_gradient`;
-   ExponentialFamilyProjection as the projection to families beyond the Gaussian.
-3. **Exact refinements**: ClosedFormExpectations as the first backend in `ExpectationFirstOf`,
-   showcased on Delta nodes computing `exp` or `log` against a log-density, `Base.Fix1(logpdf, p)`.
+#### U7a. Cavity methods: Laplace propagation and EP (on hold)
+
+On hold, the user's call: rules that read the message on their own edge need more thought before
+any design. Every method that needs a cavity waits with them. What the brief found, for when it
+resumes:
+- **The target.** A node without rules would send a Gaussian site,
+  `proj(cavity · f) / cavity`. Laplace's method gives Laplace propagation, whose fixed point on
+  a chain like stochastic volatility is the global Laplace approximation, means and covariances.
+  Moment matching through EA's `tilted_mean_cov` gives EP.
+- **Own-edge rules work in ReactiveMP.** Probit's EP rule declares `:in => (m[:out], m[:in])`
+  with an initial message (StandardMessagePassingRules `src/nodes/probit.jl:72-82`). ReactiveMP
+  iterates such cycles to the fixed point: two Probit nodes feeding each other's cavity reach
+  hand-computed EP to 1e-10 in ten iterations (`test/engine/approximation_tests.jl:156`).
+- **A fallback never sees its own edge.** Its arguments are the node's dependency scheme, which
+  leaves the target out (ReactiveMP `src/nodes/dependencies.jl:127-143`), and adding `m[:x]`
+  everywhere would stop exact rules from matching. The cavity could be added only where a node
+  has no rule for the target (`list_rules`), or at the moment a fallback is asked, a deeper
+  engine change. Neither is decided.
+- **There is no global per-algorithm switch** in RxInfer, and `FallbackScheme` has no hook for
+  damping or initial messages.
+- **Sites must be eager Gaussians.** DMPR's `DivisionOf` cancels only on two-connection
+  variables. Division would be a natural-parameter subtraction, as Probit does, with a
+  positive-definite correction, because `damp` errors on improper natural parameters.
+- **Names chosen:** `LaplacePropagation()` and `ExpectationPropagation()`, as fallback schemes
+  (D43).
+
+#### U7b. CVI and natural-gradient projection (this round)
+
+CVI as a projection, with no cavity (D51).
+- Under mean field a variable's marginal is the product of its messages. Minimising KL(q‖p̃) of
+  that product over Gaussians gives the optimal mean-field Gaussian, the CVI fixed point.
+- The natural-gradient step in mean parameters needs E_q[∇ log p̃] and E_q[∇² log p̃]
+  (Bonnet/Price) through EA's quadrature (D52). Gradients of an expectation are not needed.
+- Items:
+  1. EA `gaussian_variational(logp, x0[, domain]; backend, …)`, Laplace's sibling, returning the
+     ELBO as `logZ`.
+  2. DMPR `VariationalForm`, `LaplaceForm`'s sibling.
+  3. RxInfer `fallback = CVI()`.
+  4. ExponentialFamilyProjection: a deterministic strategy holding a BayesBase expectation
+     backend, `ExpectationStrategy(backend)` (D53), so that `ProjectedTo(Beta)` and other
+     families run on quadrature.
+  5. The notebooks: CVI against Laplace on the bioassay; a Beta posterior for the zero-inflated
+     Poisson's two-week case.
+
+Acceptance:
+- `CVI()` equals `gaussian_variational` of the hand-written joint on the bioassay, and its free
+  energy is at most Laplace's there and under mean field on the zero-inflated Poisson;
+- the linear-Gaussian chain is exact;
+- a Beta projection of a Beta-Bernoulli posterior through a rule-free likelihood equals the
+  conjugate Beta.
+
+#### U7c. Exact refinements: moved to the P track
+
+ClosedFormExpectations is BIASlab's (Mykola), so its adapter belongs to its 1.0 (P). The brief
+found what it needs:
+- **Support at the type level.** CFE fits BayesBase's type-level protocol: each closed form
+  dispatches on a concrete integrand type. A support table must be written by hand, because the
+  generic methods on `ExponentialFamilyDistribution` would claim everything.
+- **The fallback never sends a recognisable integrand.** It asks for anonymous closures under a
+  `FactorizedJoint`, and product routing (`prepare_product`, `F = Any` per component) never
+  reaches a closed-form backend. Exact refinements need integrands such as `Fix1(logpdf, m_out) ∘
+  exp` under a plain distribution.
+- **Missing closed forms:** E[exp(x)] under a Gaussian, anything under a Beta, `log` under a
+  LogNormal, and `GammaShapeRate` without conversion.
+- **The local checkout is stale:** branch `fix/check-args-distributions`, 0.4.1, 15 commits
+  behind `origin/main` (0.4.3); ExponentialFamilyProjection needs 0.4.2.
 
 ### U8. The inference report
 
@@ -666,7 +722,8 @@ What it found:
   `ExpectationExact` label; `mean(ClosedFormExpectation(), f, q)` deprecated for one cycle;
   Williams-product gradients once the gradient operation is settled. Depends on BayesBase only. Its
   own `Logpdf` (callable only for a `Distribution`) is replaced by `Base.Fix1(logpdf, p)`, and its
-  recursive calls pass `backend` on instead of constructing `ClosedFormExpectation()`.
+  recursive calls pass `backend` on instead of constructing `ClosedFormExpectation()`. It now
+  also carries U7c, the exact refinements (see U7c for what the brief found).
 - **MessagePassingRulesApproximations**: PR #2 exports its own `expectation(method, f,
   params...)`; it should extend `BayesBase.expectation` instead of owning a second function
   of the same name (no clash today only because BayesBase exports nothing, D18).
@@ -680,15 +737,37 @@ What it found:
   moves to DeltaMessagePassingRules; then archived, still registered.
 - **Rule packages** (Delta, Flow, GCV, Standard, Polya, RxGP): use EA directly; rules that need
   an expectation as one step call `expectation(ctx.expectation, f, q)`.
-- **ExponentialFamilyProjection**: its ClosedFormExpectations extension becomes a strategy
-  holding any backend, once gradients are part of the protocol.
+- **ExponentialFamilyProjection**: a strategy holding any BayesBase backend comes in U7b, for
+  quadrature; its ClosedFormExpectations extension can become one once CFE's adapter exists.
+
+### After the merge
+
+What the effort set aside on purpose, to revise once the branches are merged and released:
+- **The range of a Delta node's output.** The message from `p := logistic(…)` is a Gaussian on
+  the real line, so a Bernoulli after it has no free energy (U6, finding 2).
+- **Indexing a vector variable**, `θ[1]`, a large change in GraphPPL (U6, finding 4).
+- **A `Binomial` factor node** (U6, finding 4).
+- **`MonteCarlo` in product expectations.** A stochastic backend cannot take part in a
+  `FactorizedJoint`, whose product rule needs point sets (U8).
+- **Anonymous variables share one report key**, `(anonymous_var_graphppl, nothing)` (U8).
+
+### Release order
+
+Before any tag:
+- **Releases in critical-path order:** BayesBase, MessagePassingRulesBase, EA, ReactiveMP,
+  DeltaMessagePassingRules, ExponentialFamilyProjection, RxInfer, then RxInferExamples. Each
+  release drops its cross-branch `[sources]` entries (`url`, `rev = "universal-inference"`).
+- **EA becomes public and registered.** DeltaMessagePassingRules takes it by SSH URL while it is
+  private.
+- **The Distributions 0.25.133 break** of ExponentialFamily 2.9.0 (`distrname`) is fixed
+  upstream; the user handles it separately.
 
 ### Critical path
 
 ```
-U0 ─► U1 ─► U2 ─────────► U4 ─► U5 ─► U6 ─► U7
-        └─► U3 (parallel) ─┘         └─► U8 (after U5, beside U6; ends by updating U6's notebooks)
-        └─► P  (parallel; CFE 1.0 after U1, MPRA 1.1 after U2)
+U0 ─► U1 ─► U2 ─────────► U4 ─► U5 ─► U6 ─► U8 ─► U7b ─► (U7a on hold)
+        └─► U3 (parallel) ─┘
+        └─► P  (parallel; CFE 1.0 with U7c after U1, MPRA 1.1 after U2)
 ```
 
 ## Decisions
@@ -870,6 +949,14 @@ Added in U4:
   and `MvNormalMeanCovariance`, the types the Gaussian nodes' rules take. EA itself stays on
   Distributions, ExponentialFamily being its weak dependency; a Gaussian on another domain stays a
   `TransformedGaussian`.
+- **D51. CVI is a projection, with no cavity**: `VariationalForm`, a form constraint in
+  `LaplaceForm`'s place, minimises KL(q‖p̃) of a variable's product of messages over Gaussians in
+  the variable's unconstrained coordinates. The rules stay as they are.
+- **D52. Its Gaussian step takes expectations of derivatives**, E_q[∇ log p̃] and
+  E_q[∇² log p̃] by quadrature (Bonnet/Price), in mean parameters, with no Fisher matrix.
+  `expectation_gradient` stays an open question for closed-form gradients (P).
+- **D53. ExponentialFamilyProjection's deterministic strategy holds a BayesBase backend**,
+  `ExpectationStrategy(backend)`, and depends on the protocol only, not on EA (D2).
 
 The protocol, as decided (BayesBase):
 
@@ -916,7 +1003,7 @@ The full, tested version, with point sets, products and `ExpectationDynamicRoute
 - **Domains**: how a variable learns its support when several nodes connect to it, or when
   no neighbour carries a support (U0.3b found the prior factor is enough when there is one).
 - ~~**The user-facing switch**~~: `infer(...; fallback = LaplaceApproximation())` (D43).
-- **Default on or off** for the universal scheme in RxInfer (decide after U6).
+- ~~**Default on or off**~~: off; `fallback = nothing` by default (the user's call).
 - **Threads**: per-task RNGs for stochastic backends in parallel engines.
 - **ClosedFormExpectations 1.0**: Mykola's agreement to adopt the protocol.
 
@@ -1024,10 +1111,10 @@ Every repository follows the ReactiveBayes
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
 | U5 | RxInfer, EA, DeltaMessagePassingRules | done on the pushed `universal-inference` branches (see "What U5 delivered and found") | the U3 and U4 pull requests updated |
-| U6 | RxInferExamples | started: the four Laplace notebooks on `fallback = LaplaceApproximation()` with hidden checks, a draft on the pushed `universal-inference` branch (see "The notebooks on the switch") | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
-| U7 | several | not started | |
-| U8 | RxInfer, ReactiveMP, MessagePassingRulesBase, DeltaMessagePassingRules, BayesBase, RxInferExamples | done on the local `universal-inference` branches, not pushed (see "What U8 delivered and found") | |
-| P | CFE, MPRA, rule packages, EFP | not started | |
+| U6 | RxInferExamples | partly done: five Universal Inference notebooks on the switch, with the report and hidden checks; new examples wait until after U7 (see "The notebooks on the switch") | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
+| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer | U7a (cavity methods) on hold; U7b (CVI, deterministic EFP) started; U7c moved to P | |
+| U8 | RxInfer, ReactiveMP, MessagePassingRulesBase, DeltaMessagePassingRules, BayesBase, RxInferExamples | done on the pushed `universal-inference` branches (see "What U8 delivered and found") | the open pull requests updated |
+| P | CFE (with U7c), MPRA, rule packages | not started | |
 
 ## Appendix: the ecosystem as of October 2026
 
