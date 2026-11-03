@@ -573,15 +573,31 @@ A full `make examples` takes registered RxInfer, so these four fail there until 
 
 #### One fallback for every deterministic node
 
-From the brainstorm of finding 1 (D48, D49), one tested commit each, in progress:
-1. ReactiveMP: `getnodefn` gives a node whose form is a function that function; a test checks
-   that `+`, `-`, `dot` and `*` have their interfaces in argument order.
-2. DeltaMessagePassingRules: `LaplaceForm` leaves a message it finds no mode for unprojected.
-3. BayesBase (U1's branch): `prod(::GenericProd, ::ProductOf, ::ProductOf)`.
-4. Acceptance on the hub, `prototype/protocol/acceptance/deterministic_nodes.jl`: the bioassay as
-   Bernoulli trials, written `p := logistic(dot([1, x], θ))` and `p := f(θ, x)`, equals the fused
-   node and `EA.laplace` of the joint, without the free energy (item 2 waits).
-5. The logistic regression notebook runs that form, with a hidden check against the fused node.
+From the brainstorm of finding 1 (D48, D49), one tested commit each, local on the
+`universal-inference` branches:
+1. **ReactiveMP**: `getnodefn` gives a node created without `nodefn` its form when that is a
+   function. A test checks that `+` (a group), `-`, `*` (`A`, `in`) and `dot` take their inputs in
+   their declared order, whatever order they are given in. 15663 tests.
+2. **DeltaMessagePassingRules**: `LaplaceForm(nomode = :leave)` leaves a product Newton finds no
+   mode for as it is, method `:unprojected`; `:project` stays the default. 692 tests.
+   **RxInfer**: `LaplaceApproximation` projects marginals with `:project` and messages with
+   `:leave`, `(q = LaplaceForm(), μ = LaplaceForm(nomode = :leave))`. 15184 tests, as in U5.
+3. **BayesBase** (U1's branch): `prod(GenericProd(), ::ProductOf, ::ProductOf)` joins the right
+   tree to the left one side at a time. 6619 tests.
+4. **Acceptance** on the hub, `prototype/protocol/acceptance/deterministic_nodes.jl`. The
+   bioassay as 20 Bernoulli trials, written `p := logistic(dot([1, x], θ))` and
+   `p := dose_response(θ, x)` (a Delta node), equals the fused node and `EA.laplace` of the joint
+   to 1.4e-9. Its trace: `dot → in2` through the fallback, its message on `out` being a
+   log-density; `dot → out` by its own exact rule, its inputs Gaussian. `universal_laplace.jl`
+   and `free_energy.jl` still pass.
+5. **The logistic regression notebook** has a section "The model as it reads on paper" with the
+   `dot` form, its posterior equal to the fused node's (hidden check). The four notebooks build
+   in 2 min 34 s.
+
+Before them, the `dot` form ran and returned the prior. Laplace on the lone pulled-back Bernoulli
+message gave `Normal(±22.9, 10⁴)`, which `dot`'s exact rule took. Item 2 of the findings, the
+range of a Delta node's output, keeps that form without a free energy; it waits until after the
+merge.
 
 ### U7. Beyond Laplace
 
@@ -928,6 +944,13 @@ back, and it joins at U2.
   `Manifest.toml`. RxInfer's local manifest dated from when the rule packages lived in
   `ReactiveMP.jl/lib/`, and broke resolution. It was moved to `universal-dev/stale/`.
   Check for stale path entries when a checkout has a local manifest.
+- **Pitfall: `Pkg.test` re-resolves.** Its sandbox reads a path dependency's own `[sources]`, so
+  RxInfer's tests took EA through DeltaMessagePassingRules' SSH URL, at a stale cached clone without
+  `register_backends!`, while `Pkg.status` showed EA by path. Since then (November 2026),
+  Distributions 0.25.133 drops `distrname`, which ExponentialFamily 2.9.0 imports, so a fresh
+  resolve no longer precompiles. To test against the local checkouts, use an environment that
+  develops all of them by path, with Distributions pinned at 0.25.132, and RxInfer's test targets
+  added. Run `runtests.jl` from the package's `test/` with `--project` set to that environment.
 
 For CI on unreleased branches, a repository's test environment may point at a branch of
 another one, `BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev =
