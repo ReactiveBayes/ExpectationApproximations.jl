@@ -658,6 +658,34 @@ Acceptance:
 - a Beta projection of a Beta-Bernoulli posterior through a rule-free likelihood equals the
   conjugate Beta.
 
+#### What U7b delivered and found
+
+Local on the `universal-inference` branches, one tested commit per step, not pushed;
+ExponentialFamilyProjection gains a `universal-inference` branch (3.5.0).
+
+| Item | Result |
+|---|---|
+| 1. EA `gaussian_variational` | `gaussian_variational(logp, x0[, domain]; backend, tol, maxiters) -> (; distribution, logZ, mean, iterations, converged)`, `logZ` the evidence lower bound (D52). 5 Newton steps on a skewed 1-D density, 6 on the bioassay; exact in one for a Gaussian. Tested against the fixed-point conditions with a 64- or 40-point quadrature and against Laplace's bound. 1046 tests. |
+| 2. DMPR `VariationalForm` | `LaplaceForm`'s sibling, `variational_form`, sharing its closed forms, point masses and discrete products through `project_form`; `nomode` and a `backend`. 717 tests. |
+| 3. RxInfer `CVI()` | A `FallbackScheme`: `ExpectationRuleFallback` with `(q = VariationalForm, μ = VariationalForm(nomode = :leave))`. `fallback_form(scheme, backend)` hands the form the inference's backend, as `apply_fallback` now chooses the backend first. The form glue serves both forms (`form_laplace.jl`). The report reads "CVI, converged in n iterations, ELBO = …" and warns `:variational_not_converged`. A CVI section in the docs. |
+| 4. EFP `ExpectationStrategy(backend)` | Deterministic: the score-form natural gradient over a point set from any BayesBase backend, the cost the negative ELBO (D53). Its tests use a quantile-midpoint backend, since EA is private. RxInfer's `ProjectedTo` form reports the strategy's ELBO and an outcome, `(method = :projection, family, logZ)`. |
+| 5. Notebooks | Logistic Regression, "CVI: the best Gaussian": E[β] 10.29 against the grid's 10.35 (Laplace 7.2), free energy 5.44 against −log p(y) = 5.30 (Laplace 6.41), sd(β) 3.66 against 4.87. Constrained Variables, "A Beta posterior": E[p] 0.222 against the grid's 0.226 (logit-normal 0.298). |
+| Tests | EA 1046, DeltaMessagePassingRules 717, RxInfer 15253 (28 new), ExponentialFamilyProjection 2808 (11 new; three slow performance items time out under load and pass alone), RxInfer's docs build; the five notebooks build. |
+| Acceptance | `prototype/protocol/acceptance/cvi.jl`: CVI equals `gaussian_variational` of the bioassay's joint; −log p(y) < F(CVI) < F(Laplace); the zero-inflated Poisson's F(CVI) < F(Laplace) under mean field (24.80 < 24.86); a Beta-Bernoulli posterior projected onto the exact Beta. |
+
+What it found:
+- **`laplace` reported no convergence when started at its mode.** A Newton step of zero
+  cannot pass the line search's sufficient-increase test. Fixed in EA: a step below the
+  tolerance ends the iterations.
+- **The natural-gradient iteration oscillates**: see D52.
+- **EFP's sampled default is far off where quadrature is not.** On a Beta-Bernoulli target with
+  conjugate answer Beta(9, 16), the default `ControlVariateStrategy` gives Beta(8.0, 14.3); a crude
+  midpoint quadrature gives Beta(8.98, 15.97), Gauss–Jacobi the exact one.
+- **KL(q‖p) underestimates the spread**, as expected: the bioassay's sd(β) is 3.66 under CVI
+  against 4.87 exact.
+- **universal-dev now takes ClosedFormExpectations from the registry** (0.4.3): EFP needs 0.4.2,
+  and the BIASlab checkout is a stale 0.4.1 branch.
+
 #### U7c. Exact refinements: moved to the P track
 
 ClosedFormExpectations is BIASlab's (Mykola), so its adapter belongs to its 1.0 (P). The brief
@@ -952,9 +980,14 @@ Added in U4:
 - **D51. CVI is a projection, with no cavity**: `VariationalForm`, a form constraint in
   `LaplaceForm`'s place, minimises KL(q‖p̃) of a variable's product of messages over Gaussians in
   the variable's unconstrained coordinates. The rules stay as they are.
-- **D52. Its Gaussian step takes expectations of derivatives**, E_q[∇ log p̃] and
-  E_q[∇² log p̃] by quadrature (Bonnet/Price), in mean parameters, with no Fisher matrix.
-  `expectation_gradient` stays an open question for closed-form gradients (P).
+- **D52. The variational Gaussian maximises its bound by Newton's method**, not by the
+  natural-gradient iteration. The bound, `Σ wᵢ log p̃(m + L zᵢ) + log det L`, is a quadrature of a
+  standard Gaussian at fixed points, a smooth function of the mean and the log-Cholesky factor,
+  and `laplace` maximises it. At the maximum E_q[∇ log p̃] = 0 and E_q[∇² log p̃] = -Σ⁻¹, the CVI
+  fixed point. *(Revised in U7b: the natural-gradient iteration in mean parameters fell into a
+  two-cycle at full step and crawled for hundreds of iterations on a 2-D logistic regression,
+  where Newton takes six.)* `expectation_gradient` stays an open question for closed-form
+  gradients (P).
 - **D53. ExponentialFamilyProjection's deterministic strategy holds a BayesBase backend**,
   `ExpectationStrategy(backend)`, and depends on the protocol only, not on EA (D2).
 
@@ -1112,7 +1145,7 @@ Every repository follows the ReactiveBayes
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
 | U5 | RxInfer, EA, DeltaMessagePassingRules | done on the pushed `universal-inference` branches (see "What U5 delivered and found") | the U3 and U4 pull requests updated |
 | U6 | RxInferExamples | partly done: five Universal Inference notebooks on the switch, with the report and hidden checks; new examples wait until after U7 (see "The notebooks on the switch") | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
-| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer | U7a (cavity methods) on hold; U7b (CVI, deterministic EFP) started; U7c moved to P | |
+| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer, RxInferExamples | U7a (cavity methods) on hold; U7b (CVI, deterministic EFP) done on the local `universal-inference` branches, not pushed (see "What U7b delivered and found"); U7c moved to P | |
 | U8 | RxInfer, ReactiveMP, MessagePassingRulesBase, DeltaMessagePassingRules, BayesBase, RxInferExamples | done on the pushed `universal-inference` branches (see "What U8 delivered and found") | the open pull requests updated |
 | P | CFE (with U7c), MPRA, rule packages | not started | |
 
