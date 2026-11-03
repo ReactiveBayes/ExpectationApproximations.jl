@@ -25,6 +25,11 @@ function laplace(logp::L, x0::Real; tol::Real = 1.0e-10, maxiters::Integer = 100
         iterations = iteration
         g, h = derivatives(logp, x)
         step = g / curvature(-h)
+        # at the mode already: a step below the tolerance cannot raise `logp` measurably
+        if abs(step) <= tol * (1 + abs(x))
+            converged = true
+            break
+        end
         x, fx, moved = backtrack(logp, x, fx, step, g * step)
         if isnothing(moved)
             break
@@ -47,6 +52,10 @@ function laplace(logp::L, x0::AbstractVector; tol::Real = 1.0e-10, maxiters::Int
         iterations = iteration
         g, H = ForwardDiff.gradient(logp, x), ForwardDiff.hessian(logp, x)
         step = curvature(-H) \ g
+        if norm(step) <= tol * (1 + norm(x))
+            converged = true
+            break
+        end
         x, fx, moved = backtrack(logp, x, fx, step, dot(g, step))
         if isnothing(moved)
             break

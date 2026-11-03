@@ -29,6 +29,8 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
 - `mean_cov` and `mean_cov_cross`, the moments of a function of a random variable and its
   cross-covariance with the input, and `tilted_mean_cov`, the log-normaliser and moments of a
   tilted distribution, computed in log space.
+- `laplace` reports convergence when it starts at the mode: a Newton step below the tolerance
+  ends the iterations, rather than a line search that cannot raise the log-density.
 - `gaussian_variational`, the variational Gaussian of a density, the `q` minimising `KL(q ‖ p)`,
   with its evidence lower bound: the bound, a quadrature of a standard Gaussian at `m + L z`, is
   maximised by Newton's method over the mean and the Cholesky factor, from Laplace's

@@ -68,3 +68,12 @@ end
     @test !result.converged
     @test result.iterations == 3
 end
+
+@testitem "laplace: converged when it starts at the mode" tags = [:projections] setup = [EAHelpers] begin
+    using Distributions
+    # a Newton step of zero cannot raise the log-density, which is no failure to converge
+    result = EA.laplace(x -> logpdf(Normal(0.3, 0.7), x), 0.3)
+    @test result.converged && result.mode == 0.3
+    result = EA.laplace(x -> -sum(abs2, x .- [1.0, 2.0]) / 2, [1.0, 2.0])
+    @test result.converged && result.mode == [1.0, 2.0]
+end
