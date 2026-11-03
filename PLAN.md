@@ -789,7 +789,7 @@ Every repository follows the ReactiveBayes
 | U1 | BayesBase | draft until everything is tested together (1.7.0), after the template tooling and the JET fixes, with the names of D36: 6600 tests on Julia 1.13, 6578 on 1.10; docs build | [BayesBase.jl#69](https://github.com/ReactiveBayes/BayesBase.jl/pull/69) |
 | U2 | EA | done on this branch (977 tests); MPRA 1.1 shim verified on a local MPRA branch, kept local while EA is private | |
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
-| U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | done on the local `universal-inference` branches, not pushed (see "What U4 delivered and found") | |
+| U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
 | U5 | RxInfer | not started | |
 | U6 | RxInferExamples | started: four Laplace notebooks on `universal-inference` | |
 | U7 | several | not started | |
