@@ -123,7 +123,9 @@ a block of variables**.
 5. **Honest results.** Labels (`ExpectationExact`, `ExpectationStochastic`) travel with the
    computation, so a result can report how it was obtained, and tests can choose their tolerances.
 6. **No piracy, no global magic.** Every method is defined on a type its package owns.
-   Results never depend on which packages happen to be loaded, unless the user asked for it.
+   Results never depend on which packages happen to be loaded, unless the user asked for it:
+   a fallback scheme's default backend is the session's, frozen once per call and named in the
+   inference report.
 7. **Fast where it matters.** Type-stable, allocation-free hot paths for scalars and static
    arrays. Universality must not tax the conjugate models that are fast today.
 

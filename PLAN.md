@@ -415,23 +415,76 @@ What it found:
 
 ### U5. RxInfer integration
 
-Repository: RxInfer.jl.
+Repositories: RxInfer.jl, with EA and DeltaMessagePassingRules for what they need.
 
-1. **One user-facing switch** for the universal scheme (keyword or option, name open) that
-   sets the fallback, the default form constraint, the expectation backend and initialisation.
-2. **Automatic initialisation** from the priors (D38): there is no hook a package can use
-   (`default_init` is per model), so the switch adds one where RxInfer applies initial marginals
-   (`reactivemp_inference.jl`, after activating each variable). Priors cannot break a mixture's
-   symmetry: the mixture notebook needs distinct initial means.
-3. **The context**: `ctx.expectation = with_expectation_rng(ExpectationFirstOf(CFEBackend(),
-   EADefault()), rng)` by default, overridable from the inference options and per node.
-4. **An approximation report** on the inference result: which nodes ran exact rules, which ran
-   fallbacks, with which projection and which backend labels (via annotations or callbacks).
-5. **Error hints**: `RuleNotFoundError` and the Delta-node hint point to the universal switch.
+1. **One user-facing switch**: `infer(...; fallback = LaplaceApproximation())` (D43), a
+   `FallbackScheme` that sets the rule fallback, the default form constraint, the expectation
+   backend and the initialization strategy, each unless `options` or `initialization` set it
+   (D47).
+2. **Automatic initialisation** (D38, D45): `initialization` takes a strategy as well as a
+   specification. `FromPriors()` starts every random variable a specification leaves out from its
+   prior at its parents' initial means; `FromPriors(@initialization …)` applies the block first.
+   Priors cannot break a mixture's symmetry: its means are given in the block.
+3. **The context** (D44): the scheme's default backend is the session's, the backends registered
+   with BayesBase (EA registers `EADefault`'s rules when it loads), frozen once per call of
+   `infer` into a type-stable `ExpectationFirstOf`, before the options reach the model;
+   `LaplaceApproximation(expectation = …)` pins one. Per-node overrides are deferred (RxInfer
+   has no per-node context).
+4. **The approximation report's foundation** (D46): `infer(...; report = true)` and
+   `result.report`, a composite `InferenceReport` whose section `approximations` records from the
+   engine's events which nodes ran exact rules and which the fallback, the backend each input of
+   the fallback went to, and each variable's projections with their outcome. The report as a
+   product (its presentation and diagnostics) is U8.
+5. **Error hints**: a missing rule's hint and RxInfer's guide name `fallback =
+   LaplaceApproximation()`, the Delta node's hint too; variables never updated name
+   `initialization = FromPriors()`.
 6. **The default**: decide whether the universal scheme is on by default, after U6.
 
 Done when: the canonical models run from `infer` with one switch; the report is documented;
 existing tests unchanged.
+
+#### What U5 delivered and found
+
+On the `universal-inference` branches, one tested commit per step: EA's backend registration,
+DeltaMessagePassingRules' projection record (`laplace_form` says its `method`) and Delta hint, and
+in RxInfer `FromPriors`, `fallback`, `report` and the hints. The docs of RxInfer build.
+
+| Repository | Julia 1.13 | Julia 1.10 |
+|---|---|---|
+| EA | 1016 | 1015 |
+| DeltaMessagePassingRules | 687 | 686 (the allocation check runs from 1.11) |
+| RxInfer | 15184, U5's 89 new tests included | 15184 |
+
+| Item | Result |
+|---|---|
+| 1. The switch | `fallback = LaplaceApproximation(; tol, maxiters, expectation, initialization)`, through batch and streaming inference; `RxInfer.FallbackScheme` with `fallback_rule`, `fallback_form`, `fallback_expectation`, `fallback_initialization` for other schemes (U7's) |
+| 2. Initialisation | `RxInfer.InitializationStrategy`, `RxInfer.initial_marginal(strategy, model, label)`; `FromPriors` walks each variable's `out` factor, constants by value and random parents by their initial means, recursively, deterministic parents as `f` at their inputs' means; only marginals are set |
+| 3. The context | `register_backends!` in EA's `__init__`; `ExpectationFirstOf(ExpectationDynamicRouter())` with `with_expectation_rng` in `apply_fallback`; every node's rule context is concretely typed (tested) |
+| 4. The report | `InferenceReport`, `ApproximationsReport` with `NodeRecord`, `VariableRecord`, `ProjectionRecord`; `RxInfer.form_outcome` (`LaplaceForm`'s context keeps its last `method`, `logZ`, `converged`, `iterations`); `report = (:approximations,)` selects sections; events it does not record are never built |
+| 5. Hints | in RxInfer's log text, the never-updated error, the Rule Not Found guide and the Delta hint |
+
+Acceptance: every U4 acceptance model, rerun with `fallback = LaplaceApproximation()` and no
+options, gives the options' posteriors, free energies and log scales exactly (`==`), the
+zero-inflated Poisson with no `initialization` (its priors are the hand-written initial marginals)
+and the conjugate models with no fallback call. On the hub, `universal_laplace.jl` runs the two
+notebooks through the switch: the zero-inflated Poisson with no initialization matches the
+notebook to 1.3e-9, the mixture with its means alone given to 4.5e-13; `compare.jl` and
+`free_energy.jl` unchanged.
+
+What it found:
+
+- **The frozen router orders backends of equal priority by name** (`ExactSum, GaussHermite,
+  GaussJacobi, GaussLaguerre, QuantileLegendre`); EA's rules have disjoint supports, so it chooses
+  as `EADefault` does, and the catch-all `QuantileLegendre` is registered last by priority.
+- **Registering again needs equal backends**: `GaussHermite` and `QuantileLegendre` hold vectors,
+  so they gained `==` and `hash`; `ExpectationFirstOf` has no `==` (tests compare by identity).
+- **Initial marginals under belief propagation change nothing**: the switch's results equal the
+  options' exactly although `FromPriors` initialises every variable.
+- **Streaming models keep an `initialization`**: their priors' parameters are data (the
+  autoupdates), which `FromPriors` cannot read when the model is built.
+- **What the events do not say**: a deterministic node's free-energy term has no rule, and a
+  joint Laplace drops its convergence (`expectation_joint.jl`), so neither is in the report yet;
+  nodes are recorded by type, not instance. U8.
 
 ### U6. RxInferExamples: universal inference
 
@@ -445,6 +498,7 @@ Repository: RxInferExamples.jl.
    sampling reference.
 2. "Simple Nonlinear Node" rewritten without its hand-written rules.
 3. Later: the same models under EP, and with exact refinements via ClosedFormExpectations.
+4. A section on the inference report: how to enable it (`report = true`) and read it.
 
 Done when: the examples run in the examples' CI and show the approximation report.
 
@@ -463,6 +517,22 @@ Repositories: the universal rules package, EA, ReactiveMP.
    ExponentialFamilyProjection as the projection to families beyond the Gaussian.
 3. **Exact refinements**: ClosedFormExpectations as the first backend in `ExpectationFirstOf`,
    showcased on Delta nodes computing `exp` or `log` against a log-density, `Base.Fix1(logpdf, p)`.
+
+### U8. The inference report
+
+Repositories: RxInfer.jl, with ReactiveMP and DeltaMessagePassingRules where an event or a
+record is missing.
+
+U5 lays its foundation (D46); this makes it a product:
+
+1. **Presentation**: a summary that says in a few lines what was exact and what was approximated,
+   and how; per node instance (its label in the model), not only per type.
+2. **Diagnostics**: the parts most likely to be inaccurate (a Laplace iteration that did not
+   converge, a stochastic backend, a fallback between two random variables under BP, a quantile
+   rule as the last resort).
+3. **Missing records**: joint Laplace convergence, deterministic nodes' free-energy terms,
+   per-posterior provenance (perhaps through annotations).
+4. **Other sections** of `InferenceReport`, such as timings beside the benchmark callbacks.
 
 ### P. Ecosystem migration (parallel track)
 
@@ -491,7 +561,7 @@ Repositories: the universal rules package, EA, ReactiveMP.
 
 ```
 U0 ─► U1 ─► U2 ─────────► U4 ─► U5 ─► U6 ─► U7
-        └─► U3 (parallel) ─┘
+        └─► U3 (parallel) ─┘         └─► U8 (after U5, beside U6)
         └─► P  (parallel; CFE 1.0 after U1, MPRA 1.1 after U2)
 ```
 
@@ -643,6 +713,24 @@ Added in U4:
 - **D42. A joint without a rule is the joint Laplace approximation** of the node's log-density
   times its members' messages, in the product of their domains (`EA.Componentwise`), in
   expectation over the other clusters; its members are numbers for now.
+- **D43. The switch is `infer(...; fallback = scheme)`**, a `FallbackScheme` such as
+  `LaplaceApproximation()`: a keyword, not an option, and an object, not a boolean, so that U7's
+  schemes are other values of it. A bare `Laplace` is Distributions' distribution.
+- **D44. A fallback scheme's default backend is the session's** (revises D4 for this one use): the
+  backends registered with BayesBase, frozen once per call of `infer` into a type-stable
+  `ExpectationFirstOf` before the options reach the model, the dynamic choice paid once behind
+  that barrier. It applies only under a scheme the user asked for, is recorded in the report, and
+  is pinned by `LaplaceApproximation(expectation = …)`. EA registers `EADefault`'s rules when it
+  loads, not its stochastic backends.
+- **D45. Initialisation is a strategy any package can provide**: `RxInfer.InitializationStrategy`
+  and `RxInfer.initial_marginal`, given as `initialization`; a specification applies first and is
+  never overwritten. `FromPriors` sets marginals only.
+- **D46. The report is collected from events and is composite**: `InferenceReport`, a section per
+  subject, `approximations` first; off by default and free when off. Annotations cannot see which
+  rule ran and have no hooks for joints, energies or forms. Its product is U8.
+- **D47. Explicit settings win over a scheme**: `options.rulefallback`,
+  `options.default_form_constraint`, `options.context.expectation` and an initialization strategy
+  replace the scheme's, as a variable's own constraint replaces the default form.
 
 The protocol, as decided (BayesBase):
 
@@ -688,8 +776,7 @@ The full, tested version, with point sets, products and `ExpectationDynamicRoute
   ReactiveMP's hook, composed by RxInfer's option (D33); the constraint itself is U4's.
 - **Domains**: how a variable learns its support when several nodes connect to it, or when
   no neighbour carries a support (U0.3b found the prior factor is enough when there is one).
-- **The user-facing switch**: a keyword of `infer`, an option, or a constraint-level wildcard.
-  U3 adds the option `default_form_constraint`, which U5 can build on.
+- ~~**The user-facing switch**~~: `infer(...; fallback = LaplaceApproximation())` (D43).
 - **Default on or off** for the universal scheme in RxInfer (decide after U6).
 - **Threads**: per-task RNGs for stochastic backends in parallel engines.
 - **ClosedFormExpectations 1.0**: Mykola's agreement to adopt the protocol.
@@ -790,9 +877,10 @@ Every repository follows the ReactiveBayes
 | U2 | EA | done on this branch (977 tests); MPRA 1.1 shim verified on a local MPRA branch, kept local while EA is private | |
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
-| U5 | RxInfer | not started | |
+| U5 | RxInfer, EA, DeltaMessagePassingRules | done on the local `universal-inference` branches, not pushed (see "What U5 delivered and found") | |
 | U6 | RxInferExamples | started: four Laplace notebooks on `universal-inference` | |
 | U7 | several | not started | |
+| U8 | RxInfer | not started; its foundation is U5's | |
 | P | CFE, MPRA, rule packages, EFP | not started | |
 
 ## Appendix: the ecosystem as of October 2026

@@ -1,7 +1,8 @@
-# Acceptance test of U4 (PLAN.md): the two notebooks' models inferred with the package pieces,
-# DeltaMessagePassingRules' `ExpectationRuleFallback` and `LaplaceForm` given once as RxInfer's
-# options, in place of the notebooks' own fallback and form constraints. The posteriors must be
-# the notebooks'. Run in the universal-dev environment:
+# Acceptance test of U4 and U5 (PLAN.md): the two notebooks' models inferred with the package
+# pieces, DeltaMessagePassingRules' `ExpectationRuleFallback` and `LaplaceForm`, in place of the
+# notebooks' own fallback and form constraints: given once as RxInfer's options (U4), and through
+# the one keyword `fallback = LaplaceApproximation()` with the priors initialising the rest (U5).
+# The posteriors must be the notebooks'. Run in the universal-dev environment:
 #
 #     julia --project=~/Projects/Julia/universal-dev universal_laplace.jl
 
@@ -58,6 +59,41 @@ const UNIVERSAL = Dict(
     ),
 )
 
+# The same through U5's one keyword: no options, the priors initialising what is not given, the
+# zero-inflated Poisson nothing at all and the mixture its means alone, which break the symmetry
+# of its components. The backend is pinned to the notebooks'.
+const SWITCHED = Dict(
+    "mixture" => :(
+        infer(
+            model = laplace_mixture(K = K), data = (y = y,),
+            constraints = @constraints(
+                begin
+                    q(π, m, s, z) = q(π)q(m)q(s)q(z)
+                end
+            ),
+            initialization = @initialization(
+                begin
+                    q(m) = MvNormalMeanCovariance([-1.0, 1.0], diageye(K))
+                end
+            ),
+            iterations = n_iterations, returnvars = (m = KeepLast(), s = KeepLast(), π = KeepLast()),
+            fallback = LaplaceApproximation(expectation = notebook_router(5)),
+        )
+    ),
+    "zip" => :(
+        infer(
+            model = monastery(prior_p = prior_p, prior_λ = prior_λ), data = (y = y,),
+            constraints = @constraints(
+                begin
+                    q(p, λ) = q(p)q(λ)
+                end
+            ),
+            iterations = n_iterations, returnvars = KeepLast(),
+            fallback = LaplaceApproximation(expectation = notebook_router(16)),
+        )
+    ),
+)
+
 const COMPARED = Dict(
     "mixture" => [(:m, :q_m), (:s, :q_s), (:π, :q_π)],
     "zip" => [(:p, :q_p), (:λ, :q_λ)],
@@ -68,12 +104,15 @@ for name in ("mixture", "zip")
     notebook = load("$(name)_protocol.jl")
     Core.eval(notebook, :(using DeltaMessagePassingRules))
     universal = Base.invokelatest(Core.eval, notebook, UNIVERSAL[name])
+    switched = Base.invokelatest(Core.eval, notebook, SWITCHED[name])
     println(name)
     for (variable, reference) in COMPARED[name]
-        δ = Base.invokelatest(difference, universal.posteriors[variable], Core.eval(notebook, reference))
-        ok = δ <= 1.0e-6
-        global passed &= ok
-        @printf("  %-4s max relative difference to the notebook %.1e  %s\n", variable, δ, ok ? "ok" : "FAILED")
+        for (how, result) in (("options", universal), ("fallback", switched))
+            δ = Base.invokelatest(difference, result.posteriors[variable], Core.eval(notebook, reference))
+            ok = δ <= 1.0e-6
+            global passed &= ok
+            @printf("  %-4s through %-8s max relative difference to the notebook %.1e  %s\n", variable, how, δ, ok ? "ok" : "FAILED")
+        end
     end
 end
 
