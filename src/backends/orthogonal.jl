@@ -76,6 +76,9 @@ struct QuantileLegendre
     end
 end
 
+Base.:(==)(a::QuantileLegendre, b::QuantileLegendre) = a.nodes == b.nodes && a.weights == b.weights
+Base.hash(rule::QuantileLegendre, h::UInt) = hash(rule.nodes, hash(:QuantileLegendre, h))
+
 BayesBase.supports_expectation(::QuantileLegendre, ::Type, ::Type{<:ContinuousUnivariateDistribution}) = true
 
 function BayesBase.prepare_expectation(rule::QuantileLegendre, q::ContinuousUnivariateDistribution)

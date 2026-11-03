@@ -22,6 +22,9 @@ struct GaussHermite
 end
 
 Base.length(rule::GaussHermite) = length(rule.nodes)
+# Two rules of the same size are the same rule, so registering one again changes nothing
+Base.:(==)(a::GaussHermite, b::GaussHermite) = a.nodes == b.nodes && a.weights == b.weights
+Base.hash(rule::GaussHermite, h::UInt) = hash(rule.nodes, hash(:GaussHermite, h))
 
 BayesBase.supports_expectation(::GaussHermite, ::Type, ::Type{<:Union{Normal, AbstractMvNormal, LogNormal, LogitNormal}}) = true
 

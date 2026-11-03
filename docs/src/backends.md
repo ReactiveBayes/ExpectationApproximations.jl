@@ -8,6 +8,7 @@ pass dual numbers through, and products of distributions combine them component 
 
 ```@docs
 ExpectationApproximations.EADefault
+ExpectationApproximations.register_backends!
 ExpectationApproximations.GaussHermite
 ExpectationApproximations.GaussLaguerre
 ExpectationApproximations.GaussJacobi

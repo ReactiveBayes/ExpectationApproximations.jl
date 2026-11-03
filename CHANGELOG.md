@@ -22,6 +22,10 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   `SphericalRadialCubature`.
 - `EADefault`, the default backend: a router that sends each family to its rule, and any other
   continuous univariate distribution to `QuantileLegendre`.
+- `register_backends!`, called when the package loads: `EADefault`'s rules join BayesBase's registry
+  of backends for automatic choice, `QuantileLegendre` last, so that a frozen
+  `ExpectationDynamicRouter` chooses as `EADefault` does (U5). The stochastic backends are left
+  out. `GaussHermite` and `QuantileLegendre` rules of the same size are equal.
 - `mean_cov` and `mean_cov_cross`, the moments of a function of a random variable and its
   cross-covariance with the input, and `tilted_mean_cov`, the log-normaliser and moments of a
   tilted distribution, computed in log space.

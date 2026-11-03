@@ -40,3 +40,26 @@ end
     @test P.which_expectation_backend(backend, sin, NormalMeanVariance(0.0, 1.0)) isa EA.GaussHermite
     @test P.which_expectation_backend(backend, sin, GammaShapeRate(2.0, 1.0)) isa EA.GaussLaguerre
 end
+
+@testitem "register_backends!: the session's choice is EADefault's" tags = [:backends] setup = [EAHelpers] begin
+    using Distributions
+    registry = P.ExpectationBackendRegistry()
+    EA.register_backends!(; registry)
+    @test length(registry) == 5
+    # registering again changes nothing
+    EA.register_backends!(; registry)
+    @test length(registry) == 5
+    frozen = P.ExpectationFirstOf(P.ExpectationDynamicRouter(registry))
+    reference = EA.EADefault()
+    for q in (Normal(0.0, 1.0), MvNormal([0.0, 0.0], [1.0 0.0; 0.0 1.0]), LogNormal(0.0, 1.0), Gamma(2.0, 1.0), Beta(2.0, 3.0), Weibull(2.0, 1.0), Categorical([0.5, 0.5]), P.PointMass(1.0))
+        @test P.which_expectation_backend(frozen, sin, q) == P.which_expectation_backend(reference, sin, q)
+    end
+    @test P.which_expectation_backend(frozen, sin, Poisson(3.0)) === nothing
+    joint = P.FactorizedJoint((P.PointMass(3), Beta(1.0, 1.0), Gamma(2.0, 2.0)))
+    f = ((y, p, λ),) -> y * p * λ
+    @test P.expectation(frozen, f, joint) ≈ P.expectation(reference, f, joint)
+    @test allocations(P.expectation, P.prepare_expectation(frozen, joint), f) == 0
+    # loading the package registers them in the global registry
+    global_frozen = P.ExpectationFirstOf(P.ExpectationDynamicRouter())
+    @test P.which_expectation_backend(global_frozen, sin, Gamma(2.0, 1.0)) == EA.GaussLaguerre(16)
+end
