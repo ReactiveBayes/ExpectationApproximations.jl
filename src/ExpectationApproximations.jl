@@ -22,7 +22,7 @@ using Distributions: Distributions, Distribution, UnivariateDistribution, Variat
     mean, std, cov, params, scale, support, probs, pdf, quantile, failprob, succprob, skewness, kurtosis, entropy
 using DomainSets: DomainSets
 using ForwardDiff: ForwardDiff
-using LinearAlgebra: Diagonal, SymTridiagonal, Symmetric, cholesky, dot, eigen, eigvals, isposdef, logdet, norm
+using LinearAlgebra: Diagonal, I, SymTridiagonal, Symmetric, cholesky, dot, eigen, eigvals, isposdef, logdet, norm
 using SpecialFunctions: gamma, loggamma
 using StaticArrays: StaticVector, SVector
 using Random: AbstractRNG
@@ -31,7 +31,7 @@ using StatsFuns: log1pexp, log2π, logistic, logit
 @compat public gausshermite, gausslaguerre, gaussjacobi, gausslegendre
 @compat public GaussHermite, GaussLaguerre, GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo, EADefault, register_backends!
 @compat public Unscented, SigmaPointSet, GenUnscented, SphericalRadialCubature, SNIS, effective_sample_size
-@compat public mean_cov, mean_cov_cross, tilted_mean_cov, laplace, linearize
+@compat public mean_cov, mean_cov_cross, tilted_mean_cov, laplace, gaussian_variational, linearize
 @compat public Domain, RealLine, Positive, UnitInterval, LowerBounded, UpperBounded, Bounded, Simplex, Componentwise
 @compat public domain, forward, inverse, logjacobian, pushforward, TransformedGaussian
 @compat public Testing, MPRACompat
@@ -49,6 +49,7 @@ include("transforms/domains.jl")
 include("transforms/transformed.jl")
 include("projections/moments.jl")
 include("projections/laplace.jl")
+include("projections/variational.jl")
 include("projections/linearize.jl")
 include("backends/sigmapoints.jl")
 
