@@ -562,14 +562,17 @@ A full `make examples` takes registered RxInfer, so these four fail there until 
 3. **The same model without the free energy** stops at BayesBase:
    `prod(::GenericProd, ::ProductOf, ::ProductOf)` is ambiguous (20 pulled-back messages towards θ).
 4. **`Binomial` is not a factor node**, and GraphPPL does not index a multivariate variable
-   (`θ[1]`). So the bioassay keeps its likelihood node.
-5. **`logscales = true` returns posteriors as ReactiveMP `Marginal`s**, on which `rand` fails;
-   the bioassay asks for them in a separate call.
+   (`θ[1]`). So the bioassay keeps its likelihood node. Indexing a vector variable is a large
+   change of GraphPPL's: **outside this effort** (the user's call).
+5. **`logscales = true` returns posteriors as ReactiveMP `Marginal`s**, on which `rand` failed.
+   **Fixed**: a `Marginal` samples as its distribution (ReactiveMP), and the bioassay keeps the
+   evidence from its one `infer` call.
 6. **The mixture has no free energy.** The energy rule of `m ~ MvNormalMeanCovariance(zeros(K),
    100I)` (StandardMessagePassingRules, `mv_normal_mean_covariance.jl:9`) calls `ndims` on the
    projection's Distributions `FullNormal`. Should `laplace_form` return ExponentialFamily's
    Gaussian types, or the rules accept any `MvNormal`? The bioassay's `θ ~ prior` does not hit
-   this.
+   this. **Fixed** by the former (D50): the mixture notebook plots its free energy, which falls
+   from 670.8 to 554.16 in eight iterations and, once settled, rises by at most 3e-6.
 
 #### One fallback for every deterministic node
 
@@ -841,6 +844,11 @@ Added in U4:
   message unprojected when Newton does not converge, so an exact rule downstream does not match
   and the fallback pulls back through the node; a marginal keeps the result, its record saying
   `converged = false` for the report.
+- **D50. The Laplace projection gives ExponentialFamily's Gaussians on the real line**:
+  `LaplaceForm` turns ExpectationApproximations' `Normal` and `MvNormal` into `NormalMeanVariance`
+  and `MvNormalMeanCovariance`, the types the Gaussian nodes' rules take. EA itself stays on
+  Distributions, ExponentialFamily being its weak dependency; a Gaussian on another domain stays a
+  `TransformedGaussian`.
 
 The protocol, as decided (BayesBase):
 
