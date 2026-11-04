@@ -604,6 +604,69 @@ message gave `Normal(±22.9, 10⁴)`, which `dot`'s exact rule took. Item 2 of t
 range of a Delta node's output, keeps that form without a free energy; it waits until after the
 merge.
 
+#### What the second round of U6 delivered and found
+
+Three new notebooks, each under `LaplaceApproximation()` and `CVI()` (the user's call) against an
+exact or sampling reference, and "Simple Nonlinear Node" with a better story, its hand-written
+rules kept (the user's call). All with hidden checks. `make examples-env FILTER=laplace` builds
+the eight Universal Inference notebooks: the new ones in 70 s (hierarchical), 54 s (count
+series) and 42 s (pendulum), the mixture still the longest at 200 s. "Simple Nonlinear Node"
+builds in 16 s.
+- **Laplace and CVI: A Hierarchical Model**, the BUGS pumps: `λ[i] ~ Gamma(α, β)`, `y[i] ~
+  Poisson(λ[i] * t[i])`, mean field. Every node has rules; only q(α), the prior times
+  `GammaShapeLikelihood`s, is projected. Against the (α, β) grid with λ integrated out
+  (negative binomial) and the best mean-field posterior (coordinate ascent, q(α) on a grid):
+  - CVI is the best mean field: E[α] 0.6524 against 0.6526, F 37.08 against 37.07;
+  - Laplace's E[α] 0.722 is closer to the exact 0.697 by a coincidence of two opposite errors,
+    its F 37.12 the highest; −log p(y) = 36.58;
+  - mean field is overconfident: sd(α) 0.17–0.19 against 0.27, sd(β) 0.33–0.34 against 0.54.
+- **Laplace and CVI: A Poisson Count Series**, an AR(1) log-rate through a fused `LogPoisson`
+  node, against forward-backward on an 801-point grid:
+  - CVI's smoothed means are four times closer (RMS 0.028 against 0.112); sds within 0.021;
+  - the free energies rank the other way, 207.35 (Laplace) and 207.74 (CVI) against −log p(y)
+    = 206.64 (finding 2);
+  - τ learned under q(x)q(τ): exact E[τ] 16.9 (sd 6.7), Laplace 17.1 (1.95), CVI 14.3 (1.64).
+- **Laplace and CVI: A Pendulum Filter**, Särkkä's pendulum with `transition` and `sine` as plain
+  functions, filtered online (finding 3), against a 20 000-particle bootstrap filter and the
+  unscented transform chosen by hand:
+  - RMSE against the truth: particle filter 0.295, unscented 0.272, CVI 0.289; CVI within 0.083
+    of the particle filter, as unscented;
+  - Laplace is lost at t = 32, as the swing comes back across −π/2 (t = 31), and never recovers
+    (RMSE 4.8): the mode jumps to the mirror angle.
+- **Simple Nonlinear Node**: what the tutorial teaches and when to write rules; each part of the
+  rules explained; the model's LaTeX fixed; a check of E[f(θ)] and q(m) against the truth; θ's
+  two modes shown; a closing section pointing to the universal notebooks. A closing code cell
+  with the fallback was dropped: f(0) = 0 makes the prior's mean an infinite log-density, a
+  poor ending for a tutorial.
+
+Found:
+1. **The joint of a node with a known input.** `λ[i] * t[i]` has message rules but no joint rule
+   for (λ, t), which the free energy needs. DMPR's fallback refused a point-mass member; now a
+   known member is a block of its own in a `FactorizedCluster`. Laplace over the rest made the
+   free energy wrong, 36.10 below −log p(y) = 36.58, because λ's block was Laplace's while λ's
+   marginal is an exact Gamma (the gap, 1.011, is their entropy difference, 1.015). So one
+   member left is its own marginal, its message times the node's own message towards it, in
+   closed form where the node has that rule (`method = :closed_form`); Laplace otherwise, as
+   that marginal takes it. RxInfer's report names it "closed form". Tests: DMPR's joint
+   fallback, and RxInfer's `y ~ Poisson(λ * t)` whose free energy is −log p(y) to 1e-8.
+2. **Under belief propagation the free energy of projected beliefs is not a bound.** A
+   projected marginal and its neighbours' joints come from different messages and do not agree,
+   so a lower free energy is not a better fit (the count series). Consistent beliefs are what EP
+   gives (U7a, on hold).
+3. **Messages backwards through a nonlinear transition.** In the pendulum smoother, a message
+   on x[T] is the pulled-back `sine` alone: a log-density with no dimension, which
+   `LaplaceForm` cannot place, and flat along the velocity, which no proper Gaussian
+   represents. The filter asks only for q(x), so it needs neither. Smoothing would need
+   messages that carry their dimension and improper (rank-deficient) Gaussian messages, or
+   cavities (U7a). For the user to decide.
+4. **A BayesBase bug from 2023**, found through "Simple Nonlinear Node": when a `SampleList`
+   product resamples (effective number below a tenth), `approximate_prod_with_sample_list`
+   resamples by the list's old weights, `Weights(weights)`, not the new `rweights`, so the
+   product is the unweighted list. The tutorial's q(w) had a mean of 10¹¹ (registered RxInfer
+   6.1.1 too) and q(m) a standard deviation of 10⁻⁷. One word fixes it; q(w) becomes 0.314
+   (true 0.31) and q(m) −9.84 ± 0.080, the conjugate answer. A test is added.
+5. **The streaming report** is `engine.model.metadata[:report]`, as the report page says.
+
 ### U7. Beyond Laplace
 
 Repositories: DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer; ReactiveMP for
