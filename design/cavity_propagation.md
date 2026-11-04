@@ -1,8 +1,8 @@
 # Cavity propagation: sites at the variables (U7a, design B)
 
 Status: a design, not implemented. The user chose design B, sites computed at the variables,
-over design A, sites computed by the nodes. A prototype on the hub comes before any change in
-the engine (section 10). PLAN.md, U7a, links here.
+over design A, sites computed by the nodes. Its prototype on the hub is done, and it met every
+criterion (section 10); the engine changes of section 9 come next. PLAN.md, U7a, links here.
 
 ## 1. The problem
 
@@ -215,18 +215,19 @@ B passes as closed. A node that needs joint sites can get an A-style rule later,
     - the product, with `GenericProd` taking improper factors;
     - the division;
     - damping (`damp` errors on improper natural parameters today, PLAN.md U7a).
-- **Cavities and marginals must be proper.** When a new site would make one improper, the
-  options from EP's practice are:
-  - skip the update and keep the previous site;
-  - damp it until the result is proper;
-  - clip the precision, as power EP or "positive-definite correction" does.
-
-  The default is to skip, and the report counts the skips. **Open question (O2):** whether to
-  clip by default.
-- **A message out is a cavity, so it is proper whenever the marginal is.** That holds when one
-  site is not needed to make the marginal proper, which a raw message such as the pendulum's
-  `sin θ` can't guarantee. **Open question (O3):** whether an outbound message may be improper,
-  sent to nodes whose rules accept it, Gaussian transitions for example.
+- **Nothing checks proper-ness (the user's decision, O2).**
+  - Improper sites, cavities, outbound messages and marginals are allowed, and each is passed as
+    computed. No update is skipped, clipped or reported for it.
+  - There is no reliable automatic test for proper-ness, and the prototype found improper
+    messages harmless where they went (O3).
+  - A computation that can't use an improper input, such as the moments of an improper
+    marginal, gives whatever it gives.
+- **Code on the site path works in natural parameters,** through `weightedmean_precision`. It
+  never calls `mean_cov`, `cov` or `logpdf` on a message that may be improper.
+  - For an indefinite precision, FastCholesky's GMW81 fallback silently inverts a different,
+    positive definite matrix.
+  - The Gaussian rules that take such messages get natural-parameter methods
+    (StandardMessagePassingRules).
 
 ## 9. What changes, package by package
 
@@ -313,10 +314,10 @@ B passes as closed. A node that needs joint sites can get an A-style rule later,
 - MessagePassingRulesBase.
 - Hand-written EP rules such as Probit's, whose messages are closed.
 
-## 10. The prototype (the next step)
+## 10. The prototype (done)
 
-Before any engine change, the sites are computed by hand on the hub, in
-`prototype/cavity/`, in a small loop:
+Before any engine change, the sites were computed on the hub, in `prototype/cavity/`, by a
+small factor-graph engine:
 - the raw messages are written as BP defines them, the log-densities the fallback sends;
 - the sites come from EA's projections;
 - the products and divisions are done in natural parameters.
@@ -329,19 +330,50 @@ The prototype runs three models, each with a criterion it must meet:
 | The count series, EP and Laplace propagation | the grid forward-backward of the U6 notebook | the beliefs agree on every edge; the means closer to the grid than today's (RMS 0.112 Laplace, 0.028 CVI); the EP free energy against −log p(y) |
 | The pendulum, smoothed | a particle smoother (forward-filtering backward-simulation) | it runs, against today's filter that can't smooth; the RMS difference from the particle smoother |
 
-**What the prototype measures, for the open questions:**
-- how many iterations each model takes, with and without damping;
-- how often a site would make a marginal improper (O2, O3);
-- whether a site on the forward direction of the pendulum's transition changes the smoother
-  (O1).
+**What it found** (`prototype/cavity/RESULTS.md` has the numbers): every criterion is met.
+
+**The models.**
+- **Stochastic volatility:** LP equals the global Laplace approximation to 7.5e-10. EP's RMSE
+  of the means against the sampler is 0.016, against today's 0.177.
+- **The count series:**
+  - EP's means are within 1e-4 of the grid, against today's 0.028;
+  - its free energy is 206.686, against the exact 206.635 and today's 207.35;
+  - the beliefs agree.
+- **The pendulum smooths:**
+  - EP is 0.016 RMS from the particle smoother, with coverage 0.84 against the smoother's 0.82,
+    in 12 sweeps;
+  - RxInfer's hand-chosen unscented smoother is 0.159 from it;
+  - LP is lost at the turn, as the Laplace filter is.
+
+**Changes to the design.**
+- **EP's quadrature is centred on the tilted density** (its Laplace approximation, weighted
+  against it), not on the cavity. On the cavity it diverges where a factor is much sharper than
+  its cavity. Section 9's DMPR policy needs this, through a tilted-centred variant of EA's
+  `tilted_mean_cov`.
+- **The stopping rule sits above the projection's precision:** about 5e-9 for Laplace, and up
+  to 2e-3 for CVI on the pendulum.
+- **The test for a proper cavity tells singular from indefinite.** A singular message is
+  ordinary: an observation of `sin θ` says nothing about the velocity.
+- **The schedule.** A raw message must come from up-to-date cavities, which the stream
+  `combineLatestUpdates` of section 9 gives. A parallel schedule needs O(T) iterations on a
+  chain, and sweeps need 4–12.
 
 ## 11. Open questions
 
 - **O1.** Should a Delta node's forward message get a site against the output's cavity, through a
   lazy pushforward? (section 6)
-- **O2.** When a site would make a marginal improper, should the default skip it or clip it?
+  - *Prototype:* forward sites help a little (0.014 against 0.016 on the pendulum), and only
+    once a pushforward's site may use an improper cavity.
+  - Keep today's moment matching as the default, and add forward sites as an option.
+- ~~**O2.**~~ When a site would make a marginal improper, should the default skip it or clip it?
   (section 8)
+  - *Decided:* neither. Nothing checks proper-ness, and improper messages are passed as
+    computed. In the prototype, improper marginals never arose with tilted-centred EP, and
+    clipping changed nothing.
 - **O3.** May an outbound message be improper, for nodes whose rules accept it? (section 8)
+  - *Prototype:* yes, it must be allowed. Under EP, outbound messages were indefinite 44 times
+    on the pendulum, sent to Gaussian and Delta nodes, and nothing broke.
+  - Proper-ness is needed only where a projection needs a proper tilted density.
 - **O4.** What does `@initialization` call an initial site?
 - **O5.** Which projections does `ExpectationPropagation()` offer, besides moment matching (the
   variational Gaussian for the CVI variant; Laplace being `LaplacePropagation()`)?
