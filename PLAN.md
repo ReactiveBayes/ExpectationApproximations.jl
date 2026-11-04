@@ -497,7 +497,9 @@ Repository: RxInferExamples.jl.
    `fallback = LaplaceApproximation()` with no machinery of its own, and hidden checks make it a
    test. Next: a pendulum state-space model, a hierarchical model with a Gamma precision, a
    Poisson count time series. Each compared with an exact or sampling reference.
-2. "Simple Nonlinear Node" rewritten without its hand-written rules.
+2. "Simple Nonlinear Node" keeps its hand-written rules: it teaches writing a node and its rules,
+   which stays worth teaching (the user's call). Its story is improved, and it links to the
+   Universal Inference notebooks for the same model without rules.
 3. Later: the same models under EP, and with exact refinements via ClosedFormExpectations.
 4. A section on the inference report: how to enable it (`report = true`) and read it. Waits for
    U8, whose item 5 updates the notebooks to the report.
@@ -765,8 +767,9 @@ What it found:
   moves to DeltaMessagePassingRules; then archived, still registered.
 - **Rule packages** (Delta, Flow, GCV, Standard, Polya, RxGP): use EA directly; rules that need
   an expectation as one step call `expectation(ctx.expectation, f, q)`.
-- **ExponentialFamilyProjection**: a strategy holding any BayesBase backend comes in U7b, for
-  quadrature; its ClosedFormExpectations extension can become one once CFE's adapter exists.
+- **ExponentialFamilyProjection**: a strategy holding any BayesBase backend landed in U7b
+  (`ExpectationStrategy`, ReactiveBayes/ExponentialFamilyProjection.jl#120), for quadrature; its
+  ClosedFormExpectations extension can become one once CFE's adapter exists.
 
 ### After the merge
 
@@ -1144,8 +1147,8 @@ Every repository follows the ReactiveBayes
 | U3 | MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches, each taking the others from theirs through `[sources]` (see "What U3 delivered and found") | [MessagePassingRulesBase.jl#16](https://github.com/ReactiveBayes/MessagePassingRulesBase.jl/pull/16), [ReactiveMP.jl#687](https://github.com/ReactiveBayes/ReactiveMP.jl/pull/687), [RxInfer.jl#710](https://github.com/ReactiveBayes/RxInfer.jl/pull/710) |
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
 | U5 | RxInfer, EA, DeltaMessagePassingRules | done on the pushed `universal-inference` branches (see "What U5 delivered and found") | the U3 and U4 pull requests updated |
-| U6 | RxInferExamples | partly done: five Universal Inference notebooks on the switch, with the report and hidden checks; new examples wait until after U7 (see "The notebooks on the switch") | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
-| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer, RxInferExamples | U7a (cavity methods) on hold; U7b (CVI, deterministic EFP) done on the local `universal-inference` branches, not pushed (see "What U7b delivered and found"); U7c moved to P | |
+| U6 | RxInferExamples | partly done: five Universal Inference notebooks on the switch, with the report and hidden checks (see "The notebooks on the switch"); in progress: a pendulum, a hierarchical model and a Poisson count series, each under Laplace and CVI, and a better story for "Simple Nonlinear Node" | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
+| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer, RxInferExamples | U7a (cavity methods) on hold; U7b (CVI, deterministic EFP) done on the pushed `universal-inference` branches (see "What U7b delivered and found"); U7c moved to P | [ExponentialFamilyProjection.jl#120](https://github.com/ReactiveBayes/ExponentialFamilyProjection.jl/pull/120), and the open pull requests updated |
 | U8 | RxInfer, ReactiveMP, MessagePassingRulesBase, DeltaMessagePassingRules, BayesBase, RxInferExamples | done on the pushed `universal-inference` branches (see "What U8 delivered and found") | the open pull requests updated |
 | P | CFE (with U7c), MPRA, rule packages | not started | |
 
