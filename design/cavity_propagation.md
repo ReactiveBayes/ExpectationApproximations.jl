@@ -347,6 +347,58 @@ marginals, under a propagation scheme. Nothing else in the scores changes.
 - MessagePassingRulesBase.
 - Hand-written EP rules such as Probit's, whose messages are closed.
 
+### 9b. What was built, and where it differs from the above
+
+**Where it is.** Built in November 2026 on the `universal-inference` branches:
+- ExpectationApproximations: `moment_matching`;
+- StandardMessagePassingRules: the Gaussian nodes' rules in natural parameters;
+- DeltaMessagePassingRules: `site`, `MomentForm`, `PushforwardMessage`, `cavity_energy`;
+- ReactiveMP: the site stage, and `FactorBoundFreeEnergy(cavity = true)`;
+- RxInfer: `LaplacePropagation()`, `ExpectationPropagation()`, the free energy and the report.
+
+**Where it differs from the design.**
+- **The site stage replaces the equality chain.** The chain and the marginal's `collectLatest`
+  take each inbound message once per iteration. Sites depend on each other's cavities in cycles,
+  so the chain waited for updates that never came. The stage keeps the sites and computes the
+  outbound messages and the marginal as their products, at each inbound message:
+  - a site is computed as its message arrives, against the latest sites, and RxInfer gives the data
+    in order, so each iteration is a sweep;
+  - an outbound message goes out when another edge's site changed, and the marginal at every
+    inbound message.
+- **Sites are always sent.** Holding back a site that had not changed froze ReactiveMP's
+  consumers: a rule with two inputs, or a cluster's joint, fires only once each input is sent
+  again. Instead, a raw message that arrives again unchanged against the same cavity, to `tol`,
+  takes its last site without a projection.
+- **Forward sites (O1) are the default** for deterministic nodes. With no proper-ness checks, the
+  moment-matched pushforward of an improper cavity is undefined: it went through FastCholesky's
+  silent correction and the pendulum diverged. The pushforward's site against the output's cavity
+  uses a tilted density that is proper.
+- **The free energy is lazy.** A fallback node's term and the sums are computed when read, once
+  per iteration; computed at each update they cost a projection each, 86 s against 2 s on the
+  count series.
+- **The Gaussian rules' mixed forms needed natural parameters too.** RxInfer gives a constant noise
+  as a marginal, `q[:Σ]`, which selects rules the first change had missed.
+
+**What it gives.**
+
+| Model | Scheme | Result |
+|---|---|---|
+| A linear chain (raw observations, or through Delta nodes in two dimensions) | either | exact, free energy = −log p(y) |
+| Stochastic volatility, T = 50 | `LaplacePropagation()` | the global Laplace to 1e-6 |
+| Count series, T = 150 | `ExpectationPropagation()` | the grid to 5e-5, free energy 206.686 |
+| Count series, T = 150 | `LaplacePropagation()` | free energy 206.684 |
+| The pendulum, smoothed | `ExpectationPropagation()` | RMSE 0.140, free energy 37.276 (particle filter: 37.32) |
+| The pendulum, smoothed | `LaplacePropagation()` | RMSE 0.139 |
+
+On the pendulum both schemes follow the particle smoother; Laplace's method on its own lost it.
+
+**Cost** (compiled), on the pendulum, T = 100, 15 iterations:
+- EP: 74 s with 20 points per dimension, 25 s with 10;
+- LP: 9 s.
+
+An observation's arrival updates the sites back along the chain within the iteration. Making that
+cheaper is open (O6).
+
 ## 10. The prototype (done)
 
 Before any engine change, the sites were computed on the hub, in `prototype/cavity/`, by a
@@ -393,8 +445,8 @@ The prototype runs three models, each with a criterion it must meet:
 
 ## 11. Open questions
 
-- **O1.** Should a Delta node's forward message get a site against the output's cavity, through a
-  lazy pushforward? (section 6)
+- ~~**O1.**~~ Should a Delta node's forward message get a site against the output's cavity, through a
+  lazy pushforward? (section 6) *Decided by the codebase: yes, by default (section 9b).*
   - *Prototype:* forward sites help a little (0.014 against 0.016 on the pendulum), and only
     once a pushforward's site may use an improper cavity.
   - Keep today's moment matching as the default, and add forward sites as an option.
@@ -408,6 +460,9 @@ The prototype runs three models, each with a criterion it must meet:
     on the pendulum, sent to Gaussian and Delta nodes, and nothing broke.
   - Proper-ness is needed only where a projection needs a proper tilted density.
 - **O4.** What does `@initialization` call an initial site?
+- **O6.** The cost of the updates within an iteration: an observation's arrival projects the
+  sites back along the chain; a schedule that defers them to the iteration's end, or a cheaper
+  quadrature in two or more dimensions, would cut it.
 - **O5.** Which projections does `ExpectationPropagation()` offer, besides moment matching (the
   variational Gaussian for the CVI variant; Laplace being `LaplacePropagation()`)?
 
