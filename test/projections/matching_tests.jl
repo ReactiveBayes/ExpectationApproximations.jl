@@ -61,3 +61,15 @@ end
     mu = sum(w .* grid) / sum(w)
     @test log(result.mean) ≈ mu rtol = 1.0e-6
 end
+
+@testitem "moment_matching: moments that are not a Gaussian's fall back to its points' Gaussian" tags = [:projections] setup = [EAHelpers] begin
+    using Distributions, LinearAlgebra
+    # A density far sharper than the unit Gaussian the points fall back to when Laplace's method
+    # does not converge (here it is not allowed a step): the weights fall on one point.
+    logp(x) = -1.0e12 * sum(abs2, x .- 0.3)
+    result = EA.moment_matching(logp, [5.0, 5.0]; maxiters = 0)
+    @test !result.converged
+    @test result.distribution isa MvNormal && isposdef(cov(result.distribution))
+    result = EA.moment_matching(x -> -1.0e12 * (x - 0.3)^2, 5.0; maxiters = 0)
+    @test !result.converged && result.distribution isa Normal
+end

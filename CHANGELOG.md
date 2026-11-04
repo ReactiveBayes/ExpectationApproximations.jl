@@ -40,7 +40,8 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   projection of expectation propagation: a quadrature on the density's own Laplace
   approximation, weighted against it, so that a factor much sharper than its cavity is resolved
   where points on the cavity miss it (U7a). In a domain too, through the same transform as
-  `laplace`.
+  `laplace`. Moments that are not a Gaussian's, as when the weights fall on one point, give the
+  Gaussian the points were placed on, with `converged = false`.
 - `laplace`, the Laplace approximation of a density with its log-normaliser: Newton's method with
   a backtracking line search that stays in the domain, and an eigenvalue correction where the
   log-density is not concave; for numbers, vectors and static vectors.

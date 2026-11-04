@@ -14,7 +14,9 @@ Laplace's method does not converge, the points are on a unit Gaussian at `x0`.
 - `logZ` approximates `log ∫ exp(logp(x)) dx`, exactly for a Gaussian density;
 - `mean` is the Gaussian's mean;
 - `iterations` and `converged` are those of the Laplace approximation that places the points,
-  and `converged` is also false where the weights are not finite.
+  and `converged` is also false where the weights are not finite, or the moments are not a
+  Gaussian's, as when the weights fall on a single point: `distribution` is then the Gaussian
+  the points were placed on.
 
 `backend` must prepare a point set for a Gaussian with positive weights, a quadrature such as
 `GaussHermite` or a router that chooses one. `distribution` is a `Normal` or an `MvNormal`.
@@ -23,8 +25,9 @@ function moment_matching(logp::F, x0::Real; backend = GaussHermite(20), tol::Rea
     start = laplace(logp, x0; tol, maxiters)
     base = start.converged ? start.distribution : Normal(float(x0), 1.0)
     logZ, m, v = tilted_mean_cov(backend, x -> logp(x) - logpdf(base, x), base)
-    converged = start.converged && isfinite(logZ)
-    return (; distribution = Normal(m, sqrt(v)), logZ, mean = m, start.iterations, converged)
+    proper = isfinite(m) && isfinite(v) && v > 0
+    distribution = proper ? Normal(m, sqrt(v)) : base
+    return (; distribution, logZ, mean = mean(distribution), start.iterations, converged = start.converged && isfinite(logZ) && proper)
 end
 
 function moment_matching(logp::F, x0::AbstractVector; backend = GaussHermite(20), tol::Real = 1.0e-10, maxiters::Integer = 100) where {F}
@@ -32,8 +35,10 @@ function moment_matching(logp::F, x0::AbstractVector; backend = GaussHermite(20)
     d = length(x0)
     base = start.converged ? start.distribution : MvNormal(float.(collect(x0)), Matrix{Float64}(I, d, d))
     logZ, m, V = tilted_mean_cov(backend, x -> logp(x) - logpdf(base, x), base)
-    converged = start.converged && isfinite(logZ)
-    return (; distribution = MvNormal(collect(m), Matrix(Symmetric(V))), logZ, mean = m, start.iterations, converged)
+    V = Matrix(Symmetric(V))
+    proper = all(isfinite, m) && all(isfinite, V) && isposdef(V)
+    distribution = proper ? MvNormal(collect(m), V) : base
+    return (; distribution, logZ, mean = mean(distribution), start.iterations, converged = start.converged && isfinite(logZ) && proper)
 end
 
 """
