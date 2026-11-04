@@ -18,6 +18,12 @@
     @test mean(result.distribution) ≈ m && cov(result.distribution) ≈ Σ
     @test result.logZ ≈ 0.0 atol = 1.0e-10
     @test result.converged
+
+    # a vector start of length one: vector points, and an MvNormal
+    result = EA.gaussian_variational(x -> logpdf(MvNormal([2.0], fill(9.0, 1, 1)), x), [0.0])
+    @test result.distribution isa MvNormal
+    @test mean(result.distribution) ≈ [2.0] && cov(result.distribution) ≈ fill(9.0, 1, 1)
+    @test result.converged
 end
 
 @testitem "gaussian_variational: the fixed point of a skewed density, against a fine quadrature" tags = [:projections] setup = [EAHelpers] begin

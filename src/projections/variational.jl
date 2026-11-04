@@ -29,7 +29,7 @@ the Gaussian's mean parameters.
 """
 function gaussian_variational(logp::F, x0::Real; backend = EADefault(), tol::Real = 1.0e-10, maxiters::Integer = 100) where {F}
     m0, s0 = variational_start(logp, x0)
-    points = standard_points(backend, 1)
+    points = standard_points(backend, Normal(0.0, 1.0))
     bound(θ) = sum(w * logp(θ[1] + exp(θ[2]) * z) for (z, w) in points) + θ[2] + (log2π + 1) / 2
     result = maximise_bound(bound, [m0, log(s0)], tol, maxiters)
     m, s = result.mode[1], exp(result.mode[2])
@@ -39,7 +39,7 @@ end
 function gaussian_variational(logp::F, x0::AbstractVector; backend = EADefault(), tol::Real = 1.0e-10, maxiters::Integer = 100) where {F}
     d = length(x0)
     m0, L0 = variational_start(logp, x0)
-    points = standard_points(backend, d)
+    points = standard_points(backend, MvNormal(zeros(d), Matrix{Float64}(I, d, d)))
     pairs = lower_pairs(d)
     function bound(θ)
         m, L = unpack(θ, d, pairs)
@@ -87,8 +87,8 @@ function variational_start(logp, x0::AbstractVector)
 end
 
 # The quadrature of a standard Gaussian in `d` dimensions, as (point, weight) pairs
-function standard_points(backend, d)
-    q = d == 1 ? Normal(0.0, 1.0) : MvNormal(zeros(d), Matrix{Float64}(I, d, d))
+# a vector start of length one keeps vector points, as its `logp` expects
+function standard_points(backend, q)
     # a router's choice, so that its point set is reached
     chosen = which_expectation_backend(backend, Any, typeof(q))
     isnothing(chosen) && throw(UnsupportedExpectationError(backend, identity, q))
