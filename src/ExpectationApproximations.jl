@@ -31,7 +31,7 @@ using StatsFuns: log1pexp, log2π, logistic, logit
 @compat public gausshermite, gausslaguerre, gaussjacobi, gausslegendre
 @compat public GaussHermite, GaussLaguerre, GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo, EADefault, register_backends!
 @compat public Unscented, SigmaPointSet, GenUnscented, SphericalRadialCubature, SNIS, effective_sample_size
-@compat public mean_cov, mean_cov_cross, tilted_mean_cov, laplace, gaussian_variational, linearize
+@compat public mean_cov, mean_cov_cross, tilted_mean_cov, laplace, gaussian_variational, moment_matching, linearize
 @compat public Domain, RealLine, Positive, UnitInterval, LowerBounded, UpperBounded, Bounded, Simplex, Componentwise
 @compat public domain, forward, inverse, logjacobian, pushforward, TransformedGaussian
 @compat public Testing, MPRACompat
@@ -50,6 +50,7 @@ include("transforms/transformed.jl")
 include("projections/moments.jl")
 include("projections/laplace.jl")
 include("projections/variational.jl")
+include("projections/matching.jl")
 include("projections/linearize.jl")
 include("backends/sigmapoints.jl")
 

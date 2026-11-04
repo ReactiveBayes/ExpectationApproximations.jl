@@ -36,6 +36,11 @@ All notable changes to ExpectationApproximations.jl are documented here. The for
   maximised by Newton's method over the mean and the Cholesky factor, from Laplace's
   approximation; at the maximum the fixed point of conjugate-computation variational inference.
   In a domain too, through the same transform as `laplace`.
+- `moment_matching`, the moment-matched Gaussian of a density with its log-normaliser, the
+  projection of expectation propagation: a quadrature on the density's own Laplace
+  approximation, weighted against it, so that a factor much sharper than its cavity is resolved
+  where points on the cavity miss it (U7a). In a domain too, through the same transform as
+  `laplace`.
 - `laplace`, the Laplace approximation of a density with its log-normaliser: Newton's method with
   a backtracking line search that stays in the domain, and an eigenvalue correction where the
   log-density is not concave; for numbers, vectors and static vectors.
