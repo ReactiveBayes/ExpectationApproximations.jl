@@ -12,7 +12,7 @@ import ExpectationApproximations as EA
 
 export NP, Graph, Prior, LinearGaussian, Observation, Delta,
     LaplacePropagation, ExpectationPropagation, CVIPropagation,
-    variable!, factor!, run!, marginal, free_energy, isproper
+    variable!, factor!, run!, marginal, free_energy, local_free_energy, isproper
 
 ## Gaussians in natural parameters: exp(hᵀx - xᵀJx/2), with no constant, J possibly indefinite
 
@@ -415,5 +415,71 @@ function free_energy(graph::Graph)
     end
     return -logZ
 end
+
+"""
+    local_free_energy(graph, policy) -> Float64
+
+The same free energy as [`free_energy`](@ref), in terms that each node and each variable computes
+from what it sees, as ReactiveMP would. Bethe's terms for the variables, `(d_i - 1) H[q_i]`, and for
+the nodes with rules, `E_b[-log f_a] - H[b_a]` with `b_a ∝ f_a ∏ c_ia`, stay as they are. Only a
+node that sends a raw message takes a new term,
+
+    F_a = -log ∫ f_a ∏_i c_ia + Σ_i E_{q_i}[log c_ia],
+
+from its inbound messages `c_ia` (the cavities) and the marginals `q_i`. It does not change when a
+`c_ia` is rescaled, so the cavities enter as kernels, improper ones included. The integral is the
+policy's own estimate: Laplace's for Laplace propagation, the moments' quadrature for EP.
+"""
+function local_free_energy(graph::Graph, policy)
+    F = 0.0
+    for node in graph.factors
+        cavities = [graph.edges[e].cavity for e in node.edges]
+        if node.factor isa Union{Prior, LinearGaussian}
+            F += bethe_term(node.factor, cavities)
+        else
+            raw = findfirst(e -> graph.edges[e].inbound isa Raw, node.edges)
+            edge = graph.edges[node.edges[raw]]
+            # log ∫ f ∏ c with the cavities as kernels: the raw message carries the other cavities
+            # as kernels, and its own edge's enters here, so no cavity needs to be proper
+            start = mean(distribution(belief(graph, edge.variable)))
+            F -= log_integral(policy, x -> edge.inbound.logf(x) + logkernel(edge.cavity, x), start)
+            for (e, c) in zip(node.edges, cavities)
+                F += expected_logkernel(distribution(belief(graph, graph.edges[e].variable)), c)
+            end
+        end
+    end
+    for (vi, v) in enumerate(graph.variables)
+        F += (length(v.edges) - 1) * entropy(distribution(belief(graph, vi)))
+    end
+    return F
+end
+
+# log ∫ exp(logp), as each policy estimates it: Laplace's method, the variational bound, or
+# Gauss–Hermite points on the Laplace approximation, weighted against it
+log_integral(::LaplacePropagation, logp, start) = EA.laplace(logp, start).logZ
+log_integral(::CVIPropagation, logp, start) = EA.gaussian_variational(logp, start).logZ
+log_integral(p::ExpectationPropagation, logp, start) = log_integral(logp, start; n = p.n)
+function log_integral(logp, start; n = 30)
+    base = EA.laplace(logp, start).distribution
+    set = BayesBase.prepare_expectation(EA.GaussHermite(n), base)
+    logw = [log(w) + logp(collect(x)) - logpdf(base, collect(x)) for (x, w) in zip(set.points, set.weights)]
+    top = maximum(logw)
+    return top + log(sum(exp, logw .- top))
+end
+
+expected_logkernel(q, c::NP) = dot(c.h, mean(q)) - (tr(c.J * cov(q)) + dot(mean(q), c.J * mean(q))) / 2
+
+# E_b[-log f] - H[b], with b ∝ f ∏ c, the node's belief
+function bethe_term(f::Prior, cavities)
+    b = distribution(NP(f.q) + cavities[1])
+    return -expected_logpdf(f.q, b) - entropy(b)
+end
+function bethe_term(f::LinearGaussian, cavities)
+    h, J, k = joint(f)
+    b = distribution(NP(h, J) + NP(reduce(vcat, (c.h for c in cavities)), cat((c.J for c in cavities)...; dims = (1, 2))))
+    logf_expectation = k + dot(h, mean(b)) - (tr(J * cov(b)) + dot(mean(b), J * mean(b))) / 2
+    return -logf_expectation - entropy(b)
+end
+expected_logpdf(p::MvNormal, q) = -(length(p) * log2π + logdet(cov(p)) + tr(cov(p) \ cov(q)) + dot(mean(q) - mean(p), cov(p) \ (mean(q) - mean(p)))) / 2
 
 end

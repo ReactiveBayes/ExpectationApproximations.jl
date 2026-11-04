@@ -37,6 +37,8 @@ for policy in POLICIES
     check("$(policyname(policy)): the exact posterior", δm < 1.0e-8 && δv < 1.0e-8, @sprintf("max |Δmean| %.1e, max |Δvar| %.1e, %d sweeps", δm, δv, result.iterations))
     F = free_energy(graph)
     check("$(policyname(policy)): free energy = -log p(y)", isapprox(F, -logevidence; rtol = 1.0e-8), @sprintf("%.10f against %.10f", F, -logevidence))
+    Flocal = local_free_energy(graph, policy)
+    check("$(policyname(policy)): the local free energy is the same", isapprox(Flocal, F; rtol = 1.0e-10), @sprintf("%.10f", Flocal))
     obs = [e for e in graph.edges if e.factor > T]
     δs = maximum(e -> max(abs(e.site.h[1] - y[e.variable] / r), abs(e.site.J[1] - 1 / r)), obs)
     check("$(policyname(policy)): each site is its message", δs < 1.0e-6, @sprintf("max difference %.1e", δs))

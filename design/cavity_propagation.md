@@ -256,9 +256,8 @@ B passes as closed. A node that needs joint sites can get an A-style rule later,
 - **Callbacks:** `BeforeSiteComputationEvent` and `AfterSiteComputationEvent`, with the
   variable, the edge, the message, the cavity and the site, as the product events do. The report
   (U8) takes its rows from them.
-- **The free energy (RxInfer, below):** the variable's entropy term needs the site
-  normalisers. The site stage keeps each site's `log Z_k = log ∫ m_k c_k`, as the log scale of
-  the site message.
+- **The free energy needs nothing from the site stage** (section 9a): the variables' Bethe term
+  stays `(d_i − 1) H[q_i]`.
 - **Tests:**
   - a variable with one raw edge reaches the fixed point in one step;
   - one with two raw edges reaches hand-computed EP;
@@ -301,12 +300,46 @@ B passes as closed. A node that needs joint sites can get an A-style rule later,
   - `iterations` stays `infer`'s.
 - **Initial sites** through `@initialization`, under a name to be decided, for example
   `site(x, :edge)`, or the initial messages it already has.
-- **The free energy** under these schemes is EP's (Minka 2001, section 3.4), the sum of the
-  sites' `log Z_k` and the log-normalisers of the marginals and cavities. Like Bethe's under
-  projections, it isn't a bound. At a fixed point it approximates `−log p(y)`, and the
-  notebooks compare it with the exact one.
-- **The report** gets a column for sites: the edges given sites, the projection, the outcome
-  and the skips.
+- **The free energy** under these schemes is EP's (Minka 2001, section 3.4), in the local terms
+  of section 9a. Like Bethe's under projections, it isn't a bound. At a fixed point it
+  approximates `−log p(y)`, and the notebooks compare it with the exact one.
+- **The report** gets a column for sites: the edges given sites, the projection and the
+  outcome.
+
+### 9a. The free energy in local terms
+
+EP's free energy, `−(Σ_a log Z_a − Σ_i (d_i − 1) log ∫ q_i)` with `Z_a = ∫ f_a ∏_i c_ia`, can
+be split into terms that each node and each variable computes from what it sees. Bethe's terms
+stay as they are except one kind:
+
+- **A variable:** `(d_i − 1) H[q_i]`, as today.
+- **A node with rules,** whose messages are closed: `E_b[−log f_a] − H[b_a]` with
+  `b_a ∝ f_a ∏_i c_ia`, as today. At a fixed point the marginals of `b_a` are the `q_i`.
+- **A node that sends a raw message** (the fallback's nodes):
+  ```
+  F_a = −log ∫ f_a ∏_i c_ia + Σ_i E_{q_i}[log c_ia]
+  ```
+  from its inbound messages `c_ia`, which are the cavities, and the marginals `q_i`.
+  - Rescaling any `c_ia` doesn't change it, so the cavities enter as kernels,
+    `log c(x) = ξᵀx − xᵀΛx/2`.
+  - So no cavity has to be proper, only the tilted density `f_a ∏ c` must be integrable.
+  - The integral is the scheme's own estimate: Laplace's for `LaplacePropagation()`, the
+    moments' quadrature for `ExpectationPropagation()`.
+
+Why it holds:
+- Sites multiply to the marginal, so `Σ_a η(c_ia) = (d_i − 1) η(q_i)`. The variable term is then
+  `(d_i − 1) A(q_i) − Σ_a E_{q_i}[log c_ia]`.
+- A closed node's `−log Z_a` equals its Bethe term minus `Σ_i E_{q_i}[log c_ia]`.
+- Moving the `E_{q_i}[log c_ia]` of every node to its own term leaves the variables' and closed
+  nodes' terms unchanged.
+
+The prototype checks it against the global form:
+- 1e-12 under EP and 1e-9 under LP (its fixed-point tolerance), on the chain and the count series;
+- on the pendulum, where improper cavities make the global form undefined, the local form gives
+  37.27 against a particle filter's −log p(y) of 37.32 ± 0.02.
+
+In ReactiveMP this is a fallback energy that sees the node's inbound messages as well as the
+marginals, under a propagation scheme. Nothing else in the scores changes.
 
 ### What does not change
 

@@ -143,6 +143,31 @@ parallel = run!(graph, ExpectationPropagation(20); schedule = :parallel, tol = 1
 println("    EP under the parallel schedule: ", parallel.converged ? "$(parallel.iterations) iterations" : "not converged after $(parallel.iterations)")
 
 ep = results["ExpectationPropagation"]
+# The free energy: the global form needs every cavity's normaliser, and some are improper here;
+# the local form (`local_free_energy`) needs none. Against the particle filter's -log p(y).
+function pf_logevidence(seed; n = 50_000)
+    rng = StableRNG(seed)
+    L = cholesky(Q).L
+    particles = rand(rng, prior, n)
+    logZ = 0.0
+    for t in 1:T
+        if t > 1
+            for j in 1:n
+                particles[:, j] = transition(particles[:, j]) + L * randn(rng, 2)
+            end
+        end
+        lw = [logpdf(Normal(sin(particles[1, j]), sqrt(r)), y[t]) for j in 1:n]
+        top = maximum(lw)
+        w = exp.(lw .- top)
+        logZ += top + log(sum(w) / n)
+        particles = particles[:, rand(rng, Categorical(w ./ sum(w)), n)]
+    end
+    return logZ
+end
+estimates = [pf_logevidence(seed) for seed in 1:4]
+F_pf, F_ep = -sum(estimates) / 4, local_free_energy(results["ExpectationPropagation"].graph, ExpectationPropagation(20))
+check("EP's free energy is close to the particle filter's -log p(y)", abs(F_ep - F_pf) < 0.2, @sprintf("%.4f against %.4f ± %.4f", F_ep, F_pf, std(estimates)))
+
 check("EP smooths, every site settled", ep.result.converged && ep.graph.counters.failed == 0, @sprintf("%d sweeps", ep.result.iterations))
 check("EP's smoothed angle is close to the particle smoother", rms(ep.m - reference.mean) < 0.15, @sprintf("RMS difference %.3f", rms(ep.m - reference.mean)))
 

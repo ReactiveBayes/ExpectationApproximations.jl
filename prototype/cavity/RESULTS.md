@@ -136,6 +136,21 @@ coverage is 0.82.
 - **Damping:** none of the three models needed it. On the two-raw-edge toy it slowed
   convergence, 9 iterations against 44.
 
+## The free energy in local terms
+
+`local_free_energy` computes EP's free energy as ReactiveMP would, from terms each node and
+variable computes alone. They are Bethe's own terms, except for nodes that send raw messages
+(design section 9a).
+
+- **The chain:** it equals the global form to 1e-10 under every policy.
+- **The count series:** 1e-12 under EP, and 1e-9 under LP, its fixed-point tolerance.
+- **The pendulum:** the global form needs every cavity's normaliser, and some cavities are
+  improper, so it is undefined there. The local form needs none, and gives 37.27, against the
+  particle filter's −log p(y) of 37.32 ± 0.02 (four runs, 50 000 particles).
+
+A node's integral must be its scheme's own estimate. With an exact integral under LP the two
+forms differ by 0.34 on the count series; with Laplace's they agree.
+
 ## A bug found on the way
 
 EA's `gaussian_variational` failed for a one-element vector start: it took scalar quadrature

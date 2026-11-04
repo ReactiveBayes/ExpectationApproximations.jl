@@ -76,6 +76,8 @@ for policy in POLICIES
     site, joint = disagreement(graph, policy)
     check("$(policyname(policy)): converges", result.converged && graph.counters.failed == 0, @sprintf("%d sweeps", result.iterations))
     check("$(policyname(policy)): every belief agrees with the marginals", site < 1.0e-6 && joint < 1.0e-6, @sprintf("sites %.1e, transitions' joints %.1e", site, joint))
+    F, Flocal = free_energy(graph), local_free_energy(graph, policy)
+    check("$(policyname(policy)): the local free energy is the global one", isapprox(Flocal, F; rtol = 1.0e-10), @sprintf("%.9f against %.9f", Flocal, F))
     push!(rows, (policyname(policy), rms(m - exact.mean), maximum(abs, m - exact.mean), maximum(abs, s - exact.sd), free_energy(graph)))
 end
 @printf("    %-24s %10s %10s %10s %12s\n", "", "RMS Δmean", "max Δmean", "max Δsd", "free energy")
