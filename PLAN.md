@@ -672,11 +672,17 @@ Found:
 Repositories: DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer; ReactiveMP for
 U7a. Split into three, after the brief of November 2026:
 
-#### U7a. Cavity methods: Laplace propagation and EP (on hold)
+#### U7a. Cavity methods: Laplace propagation and EP (design B chosen, prototype next)
 
-On hold, the user's call: rules that read the message on their own edge need more thought before
-any design. Every method that needs a cavity waits with them. What the brief found, for when it
-resumes:
+The user chose design B: sites computed at the variables, not by the nodes. Each raw inbound
+message `m_k` becomes a site `proj_Q(m_k · c_k) / c_k`, where the cavity `c_k` is the variable's
+outbound message on that edge. Every belief is then a product of sites. Any exponential family
+`Q` works this way, and rules and rule matching stay as they are. ReactiveMP gets a site stage
+in `RandomVariable`. The design, the changes per package, the prototype and the open questions
+O1–O5 are in [design/cavity_propagation.md](design/cavity_propagation.md). Next is the
+prototype on the hub (its section 10).
+
+What the first brief found, written for design A (rules that read their own edge):
 - **The target.** A node without rules would send a Gaussian site,
   `proj(cavity · f) / cavity`. Laplace's method gives Laplace propagation, whose fixed point on
   a chain like stochastic volatility is the global Laplace approximation, means and covariances.
@@ -1211,7 +1217,7 @@ Every repository follows the ReactiveBayes
 | U4 | DeltaMessagePassingRules, EA, MessagePassingRulesBase, ReactiveMP, RxInfer | drafts on the pushed `universal-inference` branches; DeltaMessagePassingRules takes EA by its SSH URL while EA is private (see "What U4 delivered and found") | [DeltaMessagePassingRules.jl#2](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl/pull/2), and the U3 pull requests updated |
 | U5 | RxInfer, EA, DeltaMessagePassingRules | done on the pushed `universal-inference` branches (see "What U5 delivered and found") | the U3 and U4 pull requests updated |
 | U6 | RxInferExamples | partly done: five Universal Inference notebooks on the switch, with the report and hidden checks (see "The notebooks on the switch"); in progress: a pendulum, a hierarchical model and a Poisson count series, each under Laplace and CVI, and a better story for "Simple Nonlinear Node" | [RxInferExamples.jl#109](https://github.com/ReactiveBayes/RxInferExamples.jl/pull/109) |
-| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer, RxInferExamples | U7a (cavity methods) on hold; U7b (CVI, deterministic EFP) done on the pushed `universal-inference` branches (see "What U7b delivered and found"); U7c moved to P | [ExponentialFamilyProjection.jl#120](https://github.com/ReactiveBayes/ExponentialFamilyProjection.jl/pull/120), and the open pull requests updated |
+| U7 | DeltaMessagePassingRules, EA, ExponentialFamilyProjection, RxInfer, RxInferExamples | U7a (cavity methods): design B chosen, prototype next ([design/cavity_propagation.md](design/cavity_propagation.md)); U7b (CVI, deterministic EFP) done on the pushed `universal-inference` branches (see "What U7b delivered and found"); U7c moved to P | [ExponentialFamilyProjection.jl#120](https://github.com/ReactiveBayes/ExponentialFamilyProjection.jl/pull/120), and the open pull requests updated |
 | U8 | RxInfer, ReactiveMP, MessagePassingRulesBase, DeltaMessagePassingRules, BayesBase, RxInferExamples | done on the pushed `universal-inference` branches (see "What U8 delivered and found") | the open pull requests updated |
 | P | CFE (with U7c), MPRA, rule packages | not started | |
 
