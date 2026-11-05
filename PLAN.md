@@ -677,8 +677,8 @@ U7a. Split into three, after the brief of November 2026:
 The user chose design B: sites computed at the variables, not by the nodes. Each raw inbound
 message `m_k` becomes a site `proj_Q(m_k · c_k) / c_k`, where the cavity `c_k` is the variable's
 outbound message on that edge. Every belief is then a product of sites. Any exponential family
-`Q` works this way, and rules and rule matching stay as they are. ReactiveMP gets a site stage
-in `RandomVariable`. The design, the changes per package, the prototype and the open questions
+`Q` works this way, and rules and rule matching stay as they are. In ReactiveMP the sites become
+the inputs of each `RandomVariable`'s equality chain. The design, the changes per package, the prototype and the open questions
 O1–O5 are in [design/cavity_propagation.md](design/cavity_propagation.md).
 
 **The prototype** (`prototype/cavity/`, results in its `RESULTS.md`) met every criterion:
@@ -699,7 +699,7 @@ It also answered O1–O3.
 - EA's `moment_matching`;
 - natural-parameter Gaussian rules in StandardMessagePassingRules, a new repository of the work;
 - DMPR's `site`, `MomentForm`, `PushforwardMessage` and `cavity_energy`;
-- ReactiveMP's site stage and cavity free energy;
+- ReactiveMP's sites, as the equality chain's inputs, and cavity free energy;
 - RxInfer's `LaplacePropagation()` and `ExpectationPropagation()`.
 
 Through `infer`, the results match the prototype:
@@ -708,13 +708,16 @@ Through `infer`, the results match the prototype:
 - the pendulum smooths: EP's RMSE is 0.140, free energy 37.276, and LP's RMSE 0.139.
 
 The code changed the design in four places:
-- the site stage replaces the equality chain;
+- a site is triggered by its inbound message alone and reads its cavity from the equality
+  chain's cached products (a first build's separate stage grew as d³: 117 s against 0.34 s for
+  one EP iteration on 1000 connections);
 - sites are always sent, and memoised;
 - forward sites are the default;
 - the free energy is lazy.
 
-Next: the hub's acceptance script and the notebooks (plan Step 7), and the cost of the
-within-iteration updates on the pendulum (O6).
+Through the chain the pendulum's EP takes 6.8 s (O6, decided), and a logistic regression with
+1000 observations 1.8 s. Next: the free energy in streaming inference, then the hub's acceptance
+script and the notebooks (plan Step 7).
 
 What the first brief found, written for design A (rules that read their own edge):
 - **The target.** A node without rules would send a Gaussian site,

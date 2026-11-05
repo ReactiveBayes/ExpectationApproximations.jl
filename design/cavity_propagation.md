@@ -233,6 +233,9 @@ B passes as closed. A node that needs joint sites can get an A-style rule later,
 
 ### ReactiveMP: the site stage of a random variable
 
+*As built, the sites are the equality chain's inputs, each triggered by its inbound message alone
+(section 9b).*
+
 - **The place.**
   - `activate!(::RandomVariable, ::RandomVariableActivationOptions)` (`src/variables/random.jl`)
     feeds `input_messages` into the `EqualityChain` (the outbound messages) and into
@@ -353,18 +356,28 @@ marginals, under a propagation scheme. Nothing else in the scores changes.
 - ExpectationApproximations: `moment_matching`;
 - StandardMessagePassingRules: the Gaussian nodes' rules in natural parameters;
 - DeltaMessagePassingRules: `site`, `MomentForm`, `PushforwardMessage`, `cavity_energy`;
-- ReactiveMP: the site stage, and `FactorBoundFreeEnergy(cavity = true)`;
+- ReactiveMP: sites as the equality chain's inputs, and `FactorBoundFreeEnergy(cavity = true)`;
 - RxInfer: `LaplacePropagation()`, `ExpectationPropagation()`, the free energy and the report.
 
 **Where it differs from the design.**
-- **The site stage replaces the equality chain.** The chain and the marginal's `collectLatest`
-  take each inbound message once per iteration. Sites depend on each other's cavities in cycles,
-  so the chain waited for updates that never came. The stage keeps the sites and computes the
-  outbound messages and the marginal as their products, at each inbound message:
-  - a site is computed as its message arrives, against the latest sites, and RxInfer gives the data
-    in order, so each iteration is a sweep;
-  - an outbound message goes out when another edge's site changed, and the marginal at every
-    inbound message.
+- **A site is triggered by its inbound message alone, and reads its cavity from the chain.**
+  The stream of the design, `combineLatestUpdates((input_k, output_k), PushNew())`, deadlocks:
+  site k waits for a new outbound message k, which waits for new sites on the other edges, which
+  wait for theirs. No Rocket strategy helps: `PushEachBut{1}` fires on the inbound message, but the
+  outbound message it samples is sent only once every other site is new, a cavity about an
+  iteration old, the parallel schedule (264–524 iterations instead of 4–12, section 10). So the
+  site is a `map` of the inbound message, `SiteMapping` (`src/variables/sites.jl`), which reads the
+  cavity from the equality chain's cached partial products and invalidates those that hold its
+  edge. The sites are the chain's inputs and the marginal's; the streams have no cycle, and the
+  chain sends the outbound messages and the marginal once each has new inputs, as without sites.
+  - each site is against the latest others, and RxInfer gives the data in order, so each iteration
+    is a sweep;
+  - the cost is the chain's: with the messages in order, a cavity reuses the cached products, and
+    an iteration is linear in the number of connections.
+  - A first build, a separate stage that kept the sites and sent each product as a site changed,
+    gave the same numbers but grew as d³ per iteration: one EP iteration of a logistic regression
+    with 1000 observations took 117 s, against 0.34 s through the chain; the pendulum took 74 s
+    against 6.8 s.
 - **Sites are always sent.** Holding back a site that had not changed froze ReactiveMP's
   consumers: a rule with two inputs, or a cluster's joint, fires only once each input is sent
   again. Instead, a raw message that arrives again unchanged against the same cavity, to `tol`,
@@ -392,12 +405,13 @@ marginals, under a propagation scheme. Nothing else in the scores changes.
 
 On the pendulum both schemes follow the particle smoother; Laplace's method on its own lost it.
 
-**Cost** (compiled), on the pendulum, T = 100, 15 iterations:
-- EP: 74 s with 20 points per dimension, 25 s with 10;
-- LP: 9 s.
-
-An observation's arrival updates the sites back along the chain within the iteration. Making that
-cheaper is open (O6).
+**Cost** (compiled):
+- the pendulum, T = 100, 15 iterations: EP 6.8 s with 20 points per dimension, 2.0 s with 10; LP
+  0.3 s;
+- Bayesian logistic regression, β ∈ R², one variable with N + 1 connections, 5 iterations: EP
+  1.8 s at N = 1000, 7e-6 from the exact grid; LP the global Laplace approximation. Without sites
+  `LaplaceApproximation()` takes 30 s, projecting the product of every other raw message for
+  each edge.
 
 ## 10. The prototype (done)
 
@@ -460,9 +474,10 @@ The prototype runs three models, each with a criterion it must meet:
     on the pendulum, sent to Gaussian and Delta nodes, and nothing broke.
   - Proper-ness is needed only where a projection needs a proper tilted density.
 - **O4.** What does `@initialization` call an initial site?
-- **O6.** The cost of the updates within an iteration: an observation's arrival projects the
-  sites back along the chain; a schedule that defers them to the iteration's end, or a cheaper
-  quadrature in two or more dimensions, would cut it.
+- **O6.** The cost of the updates within an iteration.
+  - *Decided:* it was the first build's stage, which sent every product as a site changed. With
+    the sites as the chain's inputs (section 9b) the pendulum's EP takes 6.8 s, from 74 s. A
+    cheaper quadrature in two or more dimensions remains possible.
 - **O5.** Which projections does `ExpectationPropagation()` offer, besides moment matching (the
   variational Gaussian for the CVI variant; Laplace being `LaplacePropagation()`)?
 
