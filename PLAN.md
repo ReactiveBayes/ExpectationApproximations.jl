@@ -713,11 +713,11 @@ The code changed the design in four places:
   one EP iteration on 1000 connections);
 - sites are always sent, and memoised;
 - forward sites are the default;
-- the free energy is lazy.
+- the free energy needs only the new term of a node without rules; through the chain it is
+  emitted once per iteration, in batch and in streaming inference.
 
 Through the chain the pendulum's EP takes 6.8 s (O6, decided), and a logistic regression with
-1000 observations 1.8 s. Next: the free energy in streaming inference, then the hub's acceptance
-script and the notebooks (plan Step 7).
+1000 observations 1.8 s. Next: the hub's acceptance script and the notebooks (plan Step 7).
 
 What the first brief found, written for design A (rules that read their own edge):
 - **The target.** A node without rules would send a Gaussian site,

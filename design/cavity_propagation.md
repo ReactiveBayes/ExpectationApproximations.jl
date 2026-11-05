@@ -386,9 +386,16 @@ marginals, under a propagation scheme. Nothing else in the scores changes.
   moment-matched pushforward of an improper cavity is undefined: it went through FastCholesky's
   silent correction and the pendulum diverged. The pushforward's site against the output's cavity
   uses a tilted density that is proper.
-- **The free energy is lazy.** A fallback node's term and the sums are computed when read, once
-  per iteration; computed at each update they cost a projection each, 86 s against 2 s on the
-  count series.
+- **The free energy goes through Bethe's plumbing unchanged.** Only the term of a node without
+  rules is new, chosen when the model is built; the sums, the stream and every way of reading it
+  are as without sites. Each term's inputs, the variables' outbound messages and marginals, are
+  sent once per iteration through the chain, so a `PushNew` term is computed once per iteration
+  and the free energy is emitted once, in batch and in streaming inference: the stream, the
+  histories, `OnFreeEnergyUpdateEvent` and `StopEarlyIterationStrategy` all work. (The first
+  build's stage sent those inputs at each site change, about 1200 times an iteration on the count
+  series; it needed lazy terms read once per iteration, in batch inference only.) Streaming is
+  checked on a filter observed through a raw likelihood: each event's free energy is the Kalman
+  filter's predictive evidence to 1e-10.
 - **The Gaussian rules' mixed forms needed natural parameters too.** RxInfer gives a constant noise
   as a marginal, `q[:Σ]`, which selects rules the first change had missed.
 
