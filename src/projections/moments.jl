@@ -51,12 +51,14 @@ function tilted_mean_cov(backend, logf::L, q) where {L}
 end
 
 function tilted_mean_cov(prepared::Union{ExpectationPointSet, ExpectationProductPointSet}, logf::L) where {L}
-    points = eachpoint(prepared)
-    shift = maximum(((x, _),) -> logf(x), points)
-    tilt(x, w) = w * exp(logf(x) - shift)
-    total = weightedsum(((x, w),) -> tilt(x, w), points)
-    m = weightedsum(((x, w),) -> scaled(tilt(x, w) / total, x), points)
-    V = weightedsum(((x, w),) -> scaled(tilt(x, w) / total, outer(minus(x, m))), points)
+    # `logf` once per point: it is the costly part, a projection's whole tilted density
+    points = collect(eachpoint(prepared))
+    logs = map(((x, _),) -> logf(x), points)
+    shift = maximum(logs)
+    tilted = map(((x, w), l) -> (x, w * exp(l - shift)), points, logs)
+    total = weightedsum(last, tilted)
+    m = weightedsum(((x, t),) -> scaled(t / total, x), tilted)
+    V = weightedsum(((x, t),) -> scaled(t / total, outer(minus(x, m))), tilted)
     return shift + log(total), m, V
 end
 

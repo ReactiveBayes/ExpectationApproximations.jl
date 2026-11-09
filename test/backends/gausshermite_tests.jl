@@ -1,6 +1,7 @@
 @testitem "GaussHermite: construction" tags = [:backends] setup = [EAHelpers] begin
     @test_throws ArgumentError EA.GaussHermite(0)
     @test length(EA.GaussHermite(7)) == 7
+    @test repr(EA.GaussHermite(7)) == "GaussHermite(7)"
     @test sum(EA.GaussHermite(7).weights) ≈ 1
 end
 
