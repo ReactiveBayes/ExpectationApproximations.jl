@@ -757,6 +757,10 @@ iteration 10, against 0.301 with ten). EP and LP move by 1e-13 and 5e-8.
   site waiting for a cavity for ever. Its site is now projected again each round.
 - StandardMessagePassingRules is taken from its branch in RxInfer's and ReactiveMP's
   `[sources]`, so CI gets the natural-parameter rules.
+- With all of it, the eight Universal Inference notebooks build with their hidden checks in
+  3 min 30 s (`FILTER=laplace`, two workers), and "Simple Nonlinear Node" in 25 s. The suites
+  pass: EA 1075, DMPR 549, ReactiveMP 15528 (17 errors, test-only rule packages missing from
+  `universal-dev`), RxInfer 15311.
 
 What the first brief found, written for design A (rules that read their own edge):
 - **The target.** A node without rules would send a Gaussian site,
