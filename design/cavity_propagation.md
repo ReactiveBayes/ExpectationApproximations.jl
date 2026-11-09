@@ -434,11 +434,31 @@ its own lost it.
 
 **Cost** (compiled):
 - the pendulum, T = 100, 15 iterations: EP 6.8 s with 20 points per dimension, 2.0 s with 10; LP
-  0.3 s;
+  0.3 s (3.1 s and 1.1 s after O6's changes, and 0.42 s with `SphericalRadialCubature()`);
 - Bayesian logistic regression, β ∈ R², one variable with N + 1 connections, 5 iterations: EP
-  1.8 s at N = 1000, 7e-6 from the exact grid; LP the global Laplace approximation. Without sites
-  `LaplaceApproximation()` takes 30 s, projecting the product of every other raw message for
-  each edge.
+  1.8 s at N = 1000 (0.85 s after O6), 7e-6 from the exact grid; LP the global Laplace
+  approximation. Without sites `LaplaceApproximation()` takes 30 s, projecting the product of
+  every other raw message for each edge.
+
+**Follow-ups** (November 2026, after the acceptance):
+- **Nodes with several random inputs.** Such a node still sent `E_{m_y}[log f]`, the variational
+  message, under the cavity schemes (sections 6 and 9 asked for BP's). Now DMPR's
+  `TiltedJointMessage` is the factor integrated against the other edges' messages, their
+  cavities, and its site is the target's block of the joint tilted density's projection, less
+  the target's cavity: EP's update for a factor with several inputs. It covers a stochastic node
+  whose other edges are Gaussian messages or point masses (data comes as a marginal), and a
+  Delta node's pull-back to one of several inputs. On an unknown mean and log-precision with 20
+  observations, EP is now the grid's posterior to 3e-3 and its free energy within 0.02 of
+  −log p(y); with `E[log f]` the log-precision was 0.10 off. *Limit:* an input whose message is
+  not a Gaussian (a Gamma precision), or that comes as a marginal of another cluster (mean
+  field), keeps `E[log f]`.
+- **A raw message from constants.** A node without rules whose inputs are all constants, such as
+  a prior `x ~ WidePrior(0.5)`, sends its message once, clamped, and the stream completes. Its
+  site was computed once, before any other edge had one, waited, and the prior was dropped:
+  EP and LP gave the likelihood's posterior (2.25 against the exact 2.003). Now such a static
+  site is projected again each round, as the last edge with an unclamped message receives one,
+  and the marginal reads each site's latest, as the chain does. EP is then exact for that model,
+  and LP equals the global Laplace approximation.
 
 ## 10. The prototype (done)
 
@@ -496,17 +516,38 @@ The prototype runs three models, each with a criterion it must meet:
   - *Decided:* neither. Nothing checks proper-ness, and improper messages are passed as
     computed. In the prototype, improper marginals never arose with tilted-centred EP, and
     clipping changed nothing.
-- **O3.** May an outbound message be improper, for nodes whose rules accept it? (section 8)
-  - *Prototype:* yes, it must be allowed. Under EP, outbound messages were indefinite 44 times
-    on the pendulum, sent to Gaussian and Delta nodes, and nothing broke.
+- ~~**O3.**~~ May an outbound message be improper, for nodes whose rules accept it? (section 8)
+  - *Decided:* yes. An outbound message is sent as computed, improper or not. The Gaussian
+    nodes' rules take it in natural parameters (StandardMessagePassingRules), a Delta node pulls
+    it back as a log-kernel, and a pushforward's site projects a tilted density that is proper.
+  - *Prototype:* under EP, outbound messages were indefinite 44 times on the pendulum, sent to
+    Gaussian and Delta nodes, and nothing broke.
   - Proper-ness is needed only where a projection needs a proper tilted density.
-- **O4.** What does `@initialization` call an initial site?
-- **O6.** The cost of the updates within an iteration.
+- ~~**O4.**~~ What does `@initialization` call an initial site?
+  - *Decided:* `μ(x)` seeds the cavities. While some of a variable's other edges have no site,
+    the cavity counts each of them as `μ(x)^{1/(d−1)}`, so that every edge's first cavity is
+    `μ(x)` itself, whatever the degree (ReactiveMP's `seeded_cavity`; a site equal to `μ(x)`
+    would make the cavity `μ^{d−1}`, sharp with a thousand edges).
+  - The seed enters the cavities only, never the outbound messages or the marginal, so nothing
+    fires before the first iteration, and it fades as the edges' own sites arrive. The fixed
+    point does not depend on it: two seeds, and none, agree to 1e-11 on the count chain.
+  - A variable whose edges are all raw needs one to start, as does a loop through nodes with
+    several random inputs, as in loopy BP. `q(x)` stays the marginal of mean-field rules.
+- ~~**O6.**~~ The cost of the updates within an iteration.
   - *Decided:* it was the first build's stage, which sent every product as a site changed. With
-    the sites as the chain's inputs (section 9b) the pendulum's EP takes 6.8 s, from 74 s. A
-    cheaper quadrature in two or more dimensions remains possible.
-- **O5.** Which projections does `ExpectationPropagation()` offer, besides moment matching (the
+    the sites as the chain's inputs (section 9b) the pendulum's EP takes 6.8 s, from 74 s.
+  - Then two cheap wins and an option (November 2026): EA's `tilted_mean_cov` evaluates the
+    tilted density once per point instead of four times, and `MomentForm` builds its
+    Gauss–Hermite rule once instead of at every projection. The pendulum's EP takes 3.1 s and the
+    logistic regression with N = 1000 0.85 s (from 1.8 s), with the same posteriors.
+  - `ExpectationPropagation(; backend)` takes any quadrature with a point set:
+    `SphericalRadialCubature()` (2d points) gives the pendulum in 0.42 s, 0.018 from the particle
+    smoother against 0.016 with 20² points; `GenUnscented()` 0.35 s, 0.019.
+- ~~**O5.**~~ Which projections does `ExpectationPropagation()` offer, besides moment matching (the
   variational Gaussian for the CVI variant; Laplace being `LaplacePropagation()`)?
+  - *Decided:* moment matching only; Laplace is `LaplacePropagation()`. Another projection plugs
+    in through DMPR's `cavity_projection(form, logp, x0)` and `pushforward_projection` (and
+    `MomentForm`'s backend chooses the quadrature). A CVI variant waits for the decision on CVI.
 
 ## References
 
