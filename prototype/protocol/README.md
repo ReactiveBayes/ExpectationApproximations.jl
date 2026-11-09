@@ -20,4 +20,12 @@ energy through the rule fallback's average energy and an expectation backend, `E
 julia --project=~/Projects/Julia/universal-dev acceptance/free_energy.jl
 ```
 
+`acceptance/propagation.jl` checks U7a: the three models of the cavity design (stochastic
+volatility, the count series, the pendulum) through `infer` with `LaplacePropagation()` and
+`ExpectationPropagation()`, against the prototype in `prototype/cavity/` and the references:
+
+```sh
+julia --project=~/Projects/Julia/universal-dev acceptance/propagation.jl
+```
+
 They move into the universal rules package with U4.
