@@ -408,9 +408,29 @@ marginals, under a propagation scheme. Nothing else in the scores changes.
 | Count series, T = 150 | `ExpectationPropagation()` | the grid to 5e-5, free energy 206.686 |
 | Count series, T = 150 | `LaplacePropagation()` | free energy 206.684 |
 | The pendulum, smoothed | `ExpectationPropagation()` | RMSE 0.140, free energy 37.276 (particle filter: 37.32) |
-| The pendulum, smoothed | `LaplacePropagation()` | RMSE 0.139 |
+| The pendulum, smoothed | `LaplacePropagation()` | RMSE 0.139, free energy 37.312 |
 
-On the pendulum both schemes follow the particle smoother; Laplace's method on its own lost it.
+On the pendulum both schemes follow the particle smoother, 0.016 RMS from it; Laplace's method on
+its own lost it.
+
+**The acceptance** (`prototype/protocol/acceptance/propagation.jl`) runs the three models through
+`infer` under both schemes.
+- **The count series and stochastic volatility** agree with the prototype's sweeps, posteriors
+  and free energy, to 1e-9, and meet the grid, the global Laplace and the sampler.
+- **The pendulum is compared with its references only:** the particle smoother and the particle
+  filter's −log p(y), 37.32 ± 0.02. The prototype's sweeps do not settle there:
+  - under LP they oscillate, lost at the turn (4.3 RMS from the particle smoother, free energy
+    102), where RxInfer's LP, with forward sites and messages in the streams' order, follows the
+    smoother;
+  - under EP they stall at a change of about 1e-6 per sweep, 0.014–0.016 from the particle
+    smoother with or without forward sites, while RxInfer's free energy is constant to 1e-12
+    after 10 iterations. The two differ by up to 0.03–0.06 in a mean, inside the smoother's own
+    Monte Carlo error (500 trajectories, about 0.3 / √500 ≈ 0.013 per mean).
+  - The EP free energy is no bound, so a lower one is not a better fit: the prototype's EP gives
+    37.268 and RxInfer's 37.276, against the particle filter's 37.32.
+- **The notebooks** "Laplace Pendulum", "Laplace Poisson Count Series" and "Laplace Stochastic
+  Volatility" of RxInferExamples have a section each with these schemes, with hidden checks of
+  every number they state.
 
 **Cost** (compiled):
 - the pendulum, T = 100, 15 iterations: EP 6.8 s with 20 points per dimension, 2.0 s with 10; LP
