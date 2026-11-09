@@ -1,10 +1,11 @@
 # Acceptance test of U7a (PLAN.md): the three models of design/cavity_propagation.md, section 10,
-# inferred with RxInfer's `fallback = ExpectationPropagation()` and `LaplacePropagation()`. The
-# posteriors and the free energy must be the prototype engine's (`prototype/cavity`), which
-# computes the same sites by sweeps, where its sweeps converge (the count series and stochastic
-# volatility), and they must meet the references: the count series' exact grid, the global
-# Laplace approximation and a slice sampler for stochastic volatility, and a particle smoother
-# and filter for the pendulum. Run in the universal-dev environment:
+# and a node with two random inputs, inferred with RxInfer's `fallback = ExpectationPropagation()`
+# and `LaplacePropagation()`. The posteriors and the free energy must be the prototype engine's
+# (`prototype/cavity`), which computes the same sites by sweeps, where its sweeps converge (the
+# count series and stochastic volatility), and they must meet the references: the count series'
+# exact grid, the global Laplace approximation and a slice sampler for stochastic volatility, a
+# particle smoother and filter for the pendulum, and a grid for the node with two inputs. Run in
+# the universal-dev environment:
 #
 #     julia --project=~/Projects/Julia/universal-dev propagation.jl
 
@@ -351,6 +352,57 @@ let qc = 0.5, r = 0.1, T = 100
         check("$name: the free energy settles", δF < 1.0e-6, @sprintf("|F₃₀ - F₂₀| %.1e", δF))
         check("$name: close to the particle smoother", rms(rx.m - m_ps) < 0.05, @sprintf("RMS difference %.3f", rms(rx.m - m_ps)))
         check("$name: the free energy close to the particle filter's -log p(y)", abs(last(rx.F) - F_pf) < 0.2, @sprintf("|%.4f - %.4f|", last(rx.F), F_pf))
+    end
+end
+
+## 4. A node with two random inputs, an unknown mean and log-precision, against a grid
+
+struct LogPrecisionNormal{M, Z} <: ContinuousUnivariateDistribution
+    μ::M
+    z::Z
+end
+BayesBase.logpdf(d::LogPrecisionNormal, y::Real) = (d.z - log(2π) - exp(d.z) * (y - d.μ)^2) / 2
+BayesBase.insupport(::LogPrecisionNormal, y) = true
+@define_factor_node(node = LogPrecisionNormal, type = Stochastic, interfaces = [:out, :μ, :z])
+
+@model function unknown_mean_precision(y)
+    μ ~ NormalMeanVariance(0.0, 4.0)
+    z ~ NormalMeanVariance(0.0, 1.0)
+    for i in eachindex(y)
+        y[i] ~ LogPrecisionNormal(μ, z)
+    end
+end
+
+let N = 20
+    rng = StableRNG(5)
+    y = 1.0 .+ randn(rng, N) ./ sqrt(exp(0.7))
+    μs, zs = range(-3, 5; length = 801), range(-4, 4; length = 801)
+    logp = [logpdf(Normal(0, 2), μ) + logpdf(Normal(0, 1), z) + sum(yi -> logpdf(LogPrecisionNormal(μ, z), yi), y) for μ in μs, z in zs]
+    top = maximum(logp)
+    w = exp.(logp .- top)
+    F_exact = -(top + log(sum(w) * step(μs) * step(zs)))
+    w ./= sum(w)
+    mμ, mz = sum(w .* μs), sum(w .* zs')
+    sμ, sz = sqrt(sum(w .* (μs .- mμ) .^ 2)), sqrt(sum(w .* (zs' .- mz) .^ 2))
+
+    println("an unknown mean and log-precision, N = $N")
+    @printf("    the grid: μ %.4f ± %.4f, z %.4f ± %.4f, -log p(y) %.4f\n", mμ, sμ, mz, sz, F_exact)
+    for (name, scheme, _) in SCHEMES
+        time = @elapsed result = infer(
+            model = unknown_mean_precision(), data = (y = y,), iterations = 20, fallback = scheme,
+            initialization = @initialization(begin
+                μ(z) = NormalMeanVariance(0.0, 1.0)
+            end), free_energy = true, returnvars = (μ = KeepLast(), z = KeepLast()),
+        )
+        qμ, qz, F = result.posteriors[:μ], result.posteriors[:z], last(result.free_energy)
+        @printf("    %s: μ %.4f ± %.4f, z %.4f ± %.4f, free energy %.4f, %.1f s\n", name, mean(qμ), std(qμ), mean(qz), std(qz), F, time)
+        δF = abs(result.free_energy[end] - result.free_energy[end - 10])
+        check("$name: the free energy settles", δF < 1.0e-6, @sprintf("|F₂₀ - F₁₀| %.1e", δF))
+        if name == "EP"
+            δ = max(abs(mean(qμ) - mμ), abs(mean(qz) - mz))
+            check("EP: the grid's means", δ < 0.01, @sprintf("max |Δmean| %.4f", δ))
+            check("EP: the free energy close to -log p(y)", abs(F - F_exact) < 0.05, @sprintf("|%.4f - %.4f|", F, F_exact))
+        end
     end
 end
 
