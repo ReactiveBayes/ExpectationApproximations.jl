@@ -11,11 +11,27 @@ Julia function, an expectation of a log-density included.
   the domain of `logp`, where it is `-Inf`, or that does not increase it enough is shortened.
 - Where the negative Hessian is not positive definite, at a start where `logp` is not concave,
   its eigenvalues are reflected and floored, so that Newton's method still climbs.
-- `logZ = logp(x̂) + d/2 log(2π) - 1/2 log det(-H)` is Laplace's approximation of
-  `log ∫ exp(logp(x)) dx`: zero for a normalised Gaussian.
+- `logZ` is Laplace's approximation of the log-normaliser, with `x̂` the mode and `H` the
+  Hessian of `logp` there:
+
+  ```math
+  \\log \\int e^{\\log p(x)}\\,dx \\approx \\log p(\\hat x) + \\frac{d}{2}\\log 2\\pi - \\frac{1}{2}\\log\\det(-H),
+  ```
+
+  zero for a normalised Gaussian.
 
 `distribution` is a `Normal` or an `MvNormal`. `converged` is false when `maxiters` Newton steps
 did not settle, or the line search could not increase `logp`.
+
+```jldoctest
+julia> result = EA.laplace(x -> logpdf(Gamma(3.0, 0.5), x), 1.0);
+
+julia> result.mode ≈ 1.0  # (shape - 1) * scale
+true
+
+julia> result.converged
+true
+```
 """
 function laplace(logp::L, x0::Real; tol::Real = 1.0e-10, maxiters::Integer = 100) where {L}
     x = float(x0)
@@ -75,8 +91,12 @@ end
 
 The Laplace approximation in the unconstrained coordinates of `domain`: of
 `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
-pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line. `logZ` approximates the same
-integral as in the original coordinates, and `mode` is the point of the approximation in them.
+pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line.
+
+- `logZ` approximates the same integral as in the original coordinates: the log-Jacobian accounts
+  for the change of variables.
+- `mode` is `forward(domain, û)`, the image of the mode in unconstrained coordinates. It is not
+  the mode of `distribution`, nor of `logp`: a change of variables moves a mode.
 """
 function laplace(logp::L, x0, domain::Domain; kwargs...) where {L}
     result = laplace(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)

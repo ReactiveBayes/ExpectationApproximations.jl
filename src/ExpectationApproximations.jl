@@ -3,9 +3,10 @@
 
 Numerical backends for the expectation protocol of BayesBase: quadrature, cubature, sigma points
 and sampling compute `E_q[f]` through `BayesBase.expectation` and
-`BayesBase.prepare_expectation`, alongside the local Gaussian projections that approximate
-inference builds on (Laplace, moment matching, linearisation) and transforms to unconstrained
-coordinates.
+`BayesBase.prepare_expectation`. On top of them, the Gaussian approximations of a density that
+approximate inference builds on (Laplace, moment matching, the variational Gaussian,
+linearisation), and transforms to unconstrained coordinates for variables with a constrained
+domain.
 
 Nothing is exported: the names are public and used qualified, such as
 `ExpectationApproximations.GaussHermite`.

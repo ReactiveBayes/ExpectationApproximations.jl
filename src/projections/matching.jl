@@ -3,7 +3,16 @@
         -> (; distribution, logZ, mean, iterations, converged)
 
 The Gaussian with the mean and covariance of the density proportional to `exp(logp(x))`: the
-projection of expectation propagation, by quadrature. `x0` is a number or a vector.
+projection of expectation propagation, by quadrature. `x0` is a number or a vector. With `q` the
+density's Laplace approximation and `xᵢ`, `wᵢ` the points and weights of `backend` for `q`,
+
+```math
+Z \\approx \\sum_i w_i \\frac{p(x_i)}{q(x_i)}, \\qquad
+m \\approx \\frac{1}{Z} \\sum_i w_i \\frac{p(x_i)}{q(x_i)}\\, x_i, \\qquad
+\\Sigma \\approx \\frac{1}{Z} \\sum_i w_i \\frac{p(x_i)}{q(x_i)}\\, (x_i - m)(x_i - m)^\\top,
+```
+
+computed in log space.
 
 The points are put where the density is, not where a start or a cavity is: on the density's
 Laplace approximation, from [`laplace`](@ref) started at `x0`, and weighted by the density
@@ -47,8 +56,9 @@ end
 The moment-matched Gaussian in the unconstrained coordinates of `domain`: of
 `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
 pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line. `logZ`
-approximates the same integral as in the original coordinates, and `mean` is the Gaussian's mean
-pushed forward, a point in them.
+approximates the same integral as in the original coordinates, and `mean` is
+`forward(domain, m)`, the image of the Gaussian's mean `m`: a point in the domain, not the mean of
+`distribution`, which a nonlinear transform moves.
 """
 function moment_matching(logp::F, x0, domain::Domain; kwargs...) where {F}
     result = moment_matching(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)

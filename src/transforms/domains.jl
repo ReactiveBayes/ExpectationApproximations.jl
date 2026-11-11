@@ -7,26 +7,55 @@ in the unconstrained coordinates, pushed forward, approximates a density on the 
 """
 abstract type Domain end
 
-"The whole real line, or `ℝᵈ` for a vector; the transform is the identity."
+"""
+    RealLine()
+
+The whole real line, or `ℝᵈ` for a vector: the domain of a Gaussian. The transform is the
+identity, so a projection in this domain is the projection itself.
+"""
 struct RealLine <: Domain end
 
-"The positive half-line, through `x = exp(u)`."
+"""
+    Positive()
+
+The positive half-line, `x > 0`, through `x = exp(u)`: the domain of a Gamma, an inverse Gamma or
+a log-normal variable, such as a rate, a precision or a scale. A Gaussian in `u` is a log-normal
+distribution in `x`.
+"""
 struct Positive <: Domain end
 
-"The open unit interval, through `x = logistic(u)`."
+"""
+    UnitInterval()
+
+The open unit interval, `0 < x < 1`, through `x = logistic(u)`: the domain of a Beta variable,
+such as a probability. A Gaussian in `u` is a logit-normal distribution in `x`.
+"""
 struct UnitInterval <: Domain end
 
-"The half-line above `lower`, through `x = lower + exp(u)`."
+"""
+    LowerBounded(lower)
+
+The half-line `x > lower`, through `x = lower + exp(u)`.
+"""
 struct LowerBounded{T <: Real} <: Domain
     lower::T
 end
 
-"The half-line below `upper`, through `x = upper - exp(u)`."
+"""
+    UpperBounded(upper)
+
+The half-line `x < upper`, through `x = upper - exp(u)`.
+"""
 struct UpperBounded{T <: Real} <: Domain
     upper::T
 end
 
-"The interval between `lower` and `upper`, through `x = lower + (upper - lower) logistic(u)`."
+"""
+    Bounded(lower, upper)
+
+The interval `lower < x < upper`, through `x = lower + (upper - lower) logistic(u)`: a
+[`UnitInterval`](@ref) scaled and shifted.
+"""
 struct Bounded{T <: Real} <: Domain
     lower::T
     upper::T
@@ -59,22 +88,47 @@ Componentwise(domains::Domain...) = Componentwise(domains)
 """
     forward(domain, u)
 
-The value in `domain` of the unconstrained coordinates `u`.
+The value in `domain` of the unconstrained coordinates `u`: `exp(u)` for [`Positive`](@ref),
+`logistic(u)` for [`UnitInterval`](@ref), and so on. A smooth bijection from the real line (or
+`ℝᵈ`) onto the domain, so `forward(domain, u)` is in the domain for every finite `u`.
+
+```jldoctest
+julia> EA.forward(EA.Positive(), 0.0)
+1.0
+
+julia> EA.forward(EA.Simplex(3), [0.0, 0.0]) ≈ [1, 1, 1] / 3
+true
+```
 """
 function forward end
 
 """
     inverse(domain, x)
 
-The unconstrained coordinates of the value `x` in `domain`.
+The unconstrained coordinates of the value `x` in `domain`, so that
+`forward(domain, inverse(domain, x)) ≈ x`: `log(x)` for [`Positive`](@ref), `logit(x)` for
+[`UnitInterval`](@ref), and so on. For a [`Simplex`](@ref) of `K` components, a vector of
+`K - 1`.
+
+```jldoctest
+julia> EA.inverse(EA.UnitInterval(), 0.5)
+0.0
+```
 """
 function inverse end
 
 """
     logjacobian(domain, u)
 
-`log |det ∂forward(domain, u) / ∂u|`, the term a log-density gains in unconstrained coordinates.
-For a [`Simplex`](@ref), the Jacobian of the first `K - 1` components, which are free.
+`log |det ∂forward(domain, u) / ∂u|`, the term a log-density gains in unconstrained coordinates:
+a density `p(x)` on the domain is the density `p(forward(domain, u)) |det ∂forward/∂u|` of `u`.
+For [`Positive`](@ref), `logjacobian(Positive(), u) = u`, since `d exp(u) / du = exp(u)`. For a
+[`Simplex`](@ref), the Jacobian of the first `K - 1` components, which are free.
+
+```jldoctest
+julia> EA.logjacobian(EA.Positive(), 0.7)
+0.7
+```
 """
 function logjacobian end
 

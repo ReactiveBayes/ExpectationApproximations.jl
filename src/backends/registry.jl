@@ -1,19 +1,22 @@
 """
-    register_backends!(; registry)
+    register_backends!(; kwargs...)
 
-Offer the rules of [`EADefault`](@ref) to automatic choice: BayesBase's
-`ExpectationDynamicRouter`, and so the default backend of a fallback scheme such as RxInfer's
-`LocalLaplace`. `ExpectationFirstOf(ExpectationDynamicRouter())` then chooses as
-`EADefault()` does, and a backend registered by another package, exact for a pair or of a higher
-priority, comes before these rules.
+Add the rules of [`EADefault`](@ref), with 16 points, to a registry of backends for automatic
+choice, BayesBase's global one by default. A `BayesBase.ExpectationDynamicRouter` chooses among
+the registered backends when it is called; `BayesBase.ExpectationFirstOf(ExpectationDynamicRouter())`
+freezes that choice into a router the compiler resolves. With only these rules registered, both
+choose as `EADefault()` does. A backend registered by another package comes before them where it
+is exact for a pair or has a higher priority. This is how a model that names no backend, such as
+RxInfer's `fallback = LocalLaplace()`, finds one.
 
-`QuantileLegendre`, which takes any continuous distribution, has the lowest priority, so that it is
-chosen only where no other rule applies. The stochastic backends, `MonteCarlo` and `SNIS`, are
-not registered: they need a random number generator, and an automatic choice stays
-deterministic.
+- `QuantileLegendre`, which takes any continuous univariate distribution, is registered with the
+  lowest priority, `-100`, so that it is chosen only where no other rule applies.
+- The stochastic backends, `MonteCarlo` and `SNIS`, are not registered: they need a random
+  number generator, and an automatic choice stays deterministic.
 
-Called when the package loads, on BayesBase's global registry; registering again changes nothing.
-`registry` is any other `BayesBase.ExpectationBackendRegistry`.
+Called when the package loads; registering again changes nothing. The keywords are passed on to
+`BayesBase.register_expectation_backend!`: `registry` names another
+`BayesBase.ExpectationBackendRegistry`.
 """
 function register_backends!(; kwargs...)
     for backend in (ExactSum(), GaussHermite(16), GaussLaguerre(16), GaussJacobi(16))

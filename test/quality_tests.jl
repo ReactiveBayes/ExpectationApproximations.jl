@@ -14,8 +14,13 @@ end
 
 @testitem "quality:doctests" tags = [:quality] begin
     using Documenter
+    # The docstrings' examples use the names as a user would: Distributions' families, BayesBase's
+    # protocol, and this package as `EA`
     DocMeta.setdocmeta!(
-        ExpectationApproximations, :DocTestSetup, :(using ExpectationApproximations); recursive = true
+        ExpectationApproximations,
+        :DocTestSetup,
+        :(using Distributions; import BayesBase; import ExpectationApproximations as EA);
+        recursive = true,
     )
     doctest(ExpectationApproximations; manual = false)
 end

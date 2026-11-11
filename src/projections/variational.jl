@@ -10,13 +10,18 @@ The bound is maximised over the Gaussian's mean `m` and the Cholesky factor `L` 
 the diagonal of `L` on a log scale. The expectation is a quadrature from `backend` in standard
 coordinates: the points `zᵢ` and weights `wᵢ` of a standard Gaussian, so that
 
-    E_q[logp] + H[q] = Σᵢ wᵢ logp(m + L zᵢ) + log det L + d/2 log(2πe)
+```math
+\\mathbb{E}_q[\\log p] + H[q] = \\sum_i w_i \\log p(m + L z_i) + \\log\\det L + \\frac{d}{2}\\log(2\\pi e)
+```
 
-is a smooth function of `(m, L)`. Newton's method, as in [`laplace`](@ref), with gradients and
-Hessians from ForwardDiff, finds its maximum, starting at Laplace's approximation of `logp`. At the
-maximum, `E_q[∇ logp] = 0` and `E_q[∇² logp] = -Σ⁻¹`, up to the quadrature's error: the fixed point
-of conjugate-computation variational inference (Khan and Rue), the natural-gradient iteration in
-the Gaussian's mean parameters.
+is a smooth function of `(m, L)`, with the same points at every step. Newton's method, as in
+[`laplace`](@ref), with gradients and Hessians from ForwardDiff, finds its maximum, starting at
+Laplace's approximation of `logp`. At the maximum, `E_q[∇ logp] = 0` and
+`E_q[∇² logp] = -Σ⁻¹`, up to the quadrature's error: the fixed point of conjugate-computation
+variational inference (Khan and Rue), the natural-gradient iteration in the Gaussian's mean
+parameters. That iteration itself is not used: on a two-dimensional logistic regression it fell
+into a two-cycle at full step and took hundreds of iterations at shorter ones, where Newton's
+method on the bound takes six.
 
 - `logZ` is the bound at `q`, a lower bound on `log ∫ exp(logp(x)) dx`, equal to it where the
   density is Gaussian;
@@ -57,8 +62,9 @@ end
 The variational Gaussian in the unconstrained coordinates of `domain`: of
 `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
 pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line. `logZ` is
-the same lower bound as in the original coordinates, and `mean` is the Gaussian's mean pushed
-forward, a point in them.
+the same lower bound as in the original coordinates, and `mean` is `forward(domain, m)`, the image
+of the Gaussian's mean `m`: a point in the domain, not the mean of `distribution`, which a
+nonlinear transform moves.
 """
 function gaussian_variational(logp::F, x0, domain::Domain; kwargs...) where {F}
     result = gaussian_variational(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)

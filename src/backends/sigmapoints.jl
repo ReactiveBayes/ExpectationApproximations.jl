@@ -23,6 +23,11 @@ Unscented(; α::Real = 1.0e-3, β::Real = 2.0, κ::Real = 0.0) = Unscented(α, �
 
 A prepared expectation over sigma points: a weighted sum with `weights`, the mean weights, whose
 first point, the centre, has a covariance weight larger by `centre`.
+
+It is what `BayesBase.prepare_expectation(Unscented(), q)` returns, in place of a
+`BayesBase.ExpectationPointSet`: the unscented transform weighs the centre differently for
+means and for covariances, which a single set of weights cannot express. `BayesBase.expectation`
+uses the mean weights, and [`mean_cov`](@ref) and [`mean_cov_cross`](@ref) add the correction.
 """
 struct SigmaPointSet{P, W, T}
     points::P

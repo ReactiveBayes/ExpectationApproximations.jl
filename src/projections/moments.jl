@@ -6,6 +6,13 @@ The mean and covariance of the pushforward of `q` through `f`: `m = E[f(x)]` and
 `V = E[(f(x) - m)(f(x) - m)ᵀ]`, a variance for a scalar `f`, for `x ~ q`. Unlike
 `BayesBase.mean_cov(q)`, the moments of a distribution, these are the moments of a function of
 it, computed by `backend` or by an expectation prepared once for many functions.
+
+```jldoctest
+julia> m, V = EA.mean_cov(EA.GaussHermite(8), x -> 2x + 1, Normal(1.0, 3.0));
+
+julia> m ≈ 3.0 && V ≈ 36.0
+true
+```
 """
 function mean_cov(prepared, f::F) where {F}
     m = expectation(prepared, f)
@@ -34,10 +41,12 @@ mean_cov_cross(backend, f::F, q) where {F} = mean_cov_cross(prepare_expectation(
 
 """
     tilted_mean_cov(backend, logf, q) -> (logZ, m, V)
+    tilted_mean_cov(prepared, logf) -> (logZ, m, V)
 
 The moments of the tilted distribution `q(x) exp(logf(x)) / Z`, the step of moment matching in
 expectation propagation: the log-normaliser `logZ = log E_q[exp(logf)]`, the mean and the
-covariance. Computed in log space, shifted by the largest log-density at a point, so extreme
+covariance. The second form takes a point set prepared once for `q`, an
+`BayesBase.ExpectationPointSet` or `BayesBase.ExpectationProductPointSet`. Computed in log space, shifted by the largest log-density at a point, so extreme
 log-densities neither overflow nor underflow. For a product of distributions of mixed kinds the
 mean and covariance are tuples, one entry per component.
 
