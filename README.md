@@ -11,8 +11,8 @@ Numerical backends for the expectation protocol of
 [BayesBase](https://github.com/ReactiveBayes/BayesBase.jl): quadrature, cubature, sigma points
 and sampling compute `E_q[f]` through `BayesBase.expectation`, alongside the local Gaussian
 projections that approximate inference builds on (Laplace, moment matching, linearisation) and
-transforms to unconstrained coordinates. It is being rewritten as version 1.0; see
-[PLAN.md](PLAN.md), milestone U2.
+transforms to unconstrained coordinates. Version 1.0 is a rewrite; see the
+[CHANGELOG](CHANGELOG.md).
 
 - Tests: `make test` runs the suite as CI does; `make test test_args="tag:quality"` selects
   items by tag, by name or by file. `make help` lists the other targets.
