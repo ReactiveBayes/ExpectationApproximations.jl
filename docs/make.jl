@@ -3,6 +3,9 @@
 using Documenter
 using ExpectationApproximations
 
+# Plots draws without a display on CI and in `make docs`
+ENV["GKSwstype"] = "100"
+
 # The docstrings' examples use the names as a user would: Distributions' families, BayesBase's
 # protocol, and this package as `EA`
 DocMeta.setdocmeta!(
@@ -18,7 +21,18 @@ makedocs(
     checkdocs = :all,
     authors = "Bagaev Dmitry <bvdmitri@gmail.com> and contributors",
     sitename = "ExpectationApproximations.jl",
-    pages = ["Home" => "index.md", "Backends" => "backends.md", "Projections" => "projections.md", "Domain transforms" => "transforms.md", "Quadrature rules" => "rules.md", "Conformance suite" => "testing.md", "MessagePassingRulesApproximations 1.0" => "compat.md"],
+    pages = [
+        "Home" => "index.md",
+        "Computing expectations" => "tutorial.md",
+        "How a backend is chosen" => "routing.md",
+        "Choosing a backend" => "backends.md",
+        "Gaussian approximations of a density" => "projections.md",
+        "Moments through functions" => "moments.md",
+        "Constrained variables" => "transforms.md",
+        "Quadrature rules" => "rules.md",
+        "Writing a backend" => "writing.md",
+        "Migrating" => "migrating.md",
+    ],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
         canonical = "https://reactivebayes.github.io/ExpectationApproximations.jl",
