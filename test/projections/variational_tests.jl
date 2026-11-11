@@ -51,7 +51,7 @@ end
 @testitem "gaussian_variational: two dimensions, a logistic regression" tags = [:projections] setup = [EAHelpers] begin
     using Distributions, ForwardDiff, LinearAlgebra, StatsFuns
     import BayesBase
-    x = [-0.86, -0.30, -0.05, 0.73]
+    x = [-0.86, -0.3, -0.05, 0.73]
     n = [5, 5, 5, 5]
     y = [0, 1, 3, 5]
     logp(θ) = logpdf(MvNormal(zeros(2), Diagonal([16.0, 400.0])), θ) +
