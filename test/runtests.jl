@@ -21,8 +21,6 @@ for arg in ARGS
 end
 
 function is_selected(ti)
-    # `prototype/` holds separate packages, with their own environments and test suites
-    occursin("/prototype/", ti.filename) && return false
     isempty(SELECTED_PATHS) ||
         any(p -> occursin(p, ti.filename), SELECTED_PATHS) ||
         return false
