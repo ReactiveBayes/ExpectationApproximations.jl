@@ -73,7 +73,7 @@ ecosystem:
 | [BayesBase](https://github.com/ReactiveBayes/BayesBase.jl) | defines the *expectation protocol*: `expectation`, `prepare_expectation`, and how a backend says what it supports |
 | **ExpectationApproximations** | implements backends for the protocol, and the Gaussian approximations built on them |
 | [DeltaMessagePassingRules](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl) | turns these approximations into message passing rules for nodes that have no hand-written ones |
-| [RxInfer](https://github.com/ReactiveBayes/RxInfer.jl) | runs inference on models without hand-written rules with `infer(...; fallback = LocalLaplace())`, `CVI()`, `LaplacePropagation()` or `ExpectationPropagation()` |
+| [RxInfer](https://github.com/ReactiveBayes/RxInfer.jl) | runs inference on models without hand-written rules with `infer(...; fallback = LocalLaplace())`, `LaplacePropagation()`, `ExpectationPropagation()` or `NaturalGradientPropagation()` |
 
 Nothing in this package depends on message passing: the backends and the approximations work on
 any distribution and any Julia function.

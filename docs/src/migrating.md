@@ -14,7 +14,7 @@ What replaces it:
 |:-------|:----|
 | `approximate(method, f, q)` for an expectation | `BayesBase.expectation(backend, f, q)` with a backend from [Choosing a backend](@ref) |
 | Gauss–Hermite and other kernels | [`GaussHermite`](@ref ExpectationApproximations.GaussHermite), [`GaussLaguerre`](@ref ExpectationApproximations.GaussLaguerre), …, chosen by [`EADefault`](@ref ExpectationApproximations.EADefault) |
-| CVI and Laplace projections | [`gaussian_variational`](@ref ExpectationApproximations.gaussian_variational) and [`laplace`](@ref ExpectationApproximations.laplace), or RxInfer's `fallback = CVI()` and `LocalLaplace()` |
+| CVI and Laplace projections | [`gaussian_variational`](@ref ExpectationApproximations.gaussian_variational) and [`laplace`](@ref ExpectationApproximations.laplace), or RxInfer's `fallback = NaturalGradientPropagation()` and `LocalLaplace()` |
 | constrained transforms | the domains of [Constrained variables](@ref) |
 
 ## From MessagePassingRulesApproximations 1.0

@@ -46,7 +46,7 @@ BayesBase 1.7, and the Gaussian approximations of a density that approximate inf
     its cavity is resolved where points on the cavity miss it;
   - `gaussian_variational`, the Gaussian minimising `KL(q ‖ p)` with its evidence lower bound,
     maximised by Newton's method over the mean and the Cholesky factor: the fixed point of
-    conjugate-computation variational inference.
+    conjugate-computation variational inference and of natural-gradient message passing.
 - Domains for constrained variables: `RealLine`, `Positive`, `UnitInterval`, `LowerBounded`,
   `UpperBounded`, `Bounded`, `Simplex` and `Componentwise`, with `forward`, `inverse`,
   `logjacobian`, `domain`, read from a distribution's support, and `pushforward`, a

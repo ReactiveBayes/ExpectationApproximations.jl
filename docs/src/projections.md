@@ -12,7 +12,7 @@ three that inference schemes use, each as a function of a log-density given as p
 |:---------|:-------------|:--------|
 | [`laplace`](@ref) | centred at the mode, with the curvature there | the Laplace approximation, Laplace propagation |
 | [`moment_matching`](@ref) | with the density's mean and covariance | expectation propagation |
-| [`gaussian_variational`](@ref) | closest in ``\mathrm{KL}(q \,\|\, p)`` | variational inference, CVI |
+| [`gaussian_variational`](@ref) | closest in ``\mathrm{KL}(q \,\|\, p)`` | variational inference, natural-gradient message passing |
 
 Each takes `logp`, the log of an unnormalised density, and a starting point `x0`, a number or a
 vector. Each returns a named tuple with the Gaussian `distribution`, an approximation `logZ` of
@@ -149,7 +149,8 @@ For higher dimensions, pass a cheaper `backend`, such as
   fixed points, ``\sum_i w_i \log p(m + L z_i) + \log\det L + \text{const}``. That is a smooth
   function of the mean ``m`` and the Cholesky factor ``L``, which Newton's method maximises,
   starting from Laplace's approximation. At the maximum it satisfies the fixed-point conditions of
-  conjugate-computation variational inference.
+  conjugate-computation variational inference, which natural-gradient message passing reaches one
+  damped step at a time.
 
 All three also work in a constrained domain: see [Constrained variables](@ref).
 
