@@ -3,7 +3,7 @@
 
 Offer the rules of [`EADefault`](@ref) to automatic choice: BayesBase's
 `ExpectationDynamicRouter`, and so the default backend of a fallback scheme such as RxInfer's
-`LaplaceApproximation`. `ExpectationFirstOf(ExpectationDynamicRouter())` then chooses as
+`LocalLaplace`. `ExpectationFirstOf(ExpectationDynamicRouter())` then chooses as
 `EADefault()` does, and a backend registered by another package, exact for a pair or of a higher
 priority, comes before these rules.
 
