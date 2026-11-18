@@ -3,9 +3,9 @@
     mean_cov(prepared, f) -> (m, V)
 
 The mean and covariance of the pushforward of `q` through `f`: `m = E[f(x)]` and
-`V = E[(f(x) - m)(f(x) - m)ᵀ]`, a variance for a scalar `f`, for `x ~ q`. Unlike
-`BayesBase.mean_cov(q)`, the moments of a distribution, these are the moments of a function of
-it, computed by `backend` or by an expectation prepared once for many functions.
+`V = E[(f(x) - m)(f(x) - m)ᵀ]` for `x ~ q`; `V` is a variance for a scalar `f`. These are the
+moments of a function of `x`, whereas `BayesBase.mean_cov(q)` returns the moments of `q` itself.
+They are computed by `backend`, or by an expectation prepared once and used for many functions.
 
 ```jldoctest
 julia> m, V = EA.mean_cov(EA.GaussHermite(8), x -> 2x + 1, Normal(1.0, 3.0));
@@ -43,15 +43,16 @@ mean_cov_cross(backend, f::F, q) where {F} = mean_cov_cross(prepare_expectation(
     tilted_mean_cov(backend, logf, q) -> (logZ, m, V)
     tilted_mean_cov(prepared, logf) -> (logZ, m, V)
 
-The moments of the tilted distribution `q(x) exp(logf(x)) / Z`, the step of moment matching in
-expectation propagation: the log-normaliser `logZ = log E_q[exp(logf)]`, the mean and the
-covariance. The second form takes a point set prepared once for `q`, an
-`BayesBase.ExpectationPointSet` or `BayesBase.ExpectationProductPointSet`. Computed in log space, shifted by the largest log-density at a point, so extreme
-log-densities neither overflow nor underflow. For a product of distributions of mixed kinds the
-mean and covariance are tuples, one entry per component.
+The moments of the tilted distribution `q(x) exp(logf(x)) / Z`, as in the moment-matching step
+of expectation propagation: the log-normaliser `logZ = log E_q[exp(logf)]`, the mean and the
+covariance. The second form takes a point set prepared once for `q`, a
+`BayesBase.ExpectationPointSet` or a `BayesBase.ExpectationProductPointSet`. The computation is
+in log space, shifted by the largest log-density at a point, so extreme log-densities do not
+overflow or underflow. For a product of distributions of mixed kinds, the mean and covariance are
+tuples with one entry per component.
 
-The backend must prepare a point set for `q`: every quadrature, sampling and exact-sum backend
-does, and a router uses the one it chooses for `q`.
+The backend must prepare a point set for `q`. The quadrature, sampling and exact-sum backends do,
+and a router uses the backend it chooses for `q`.
 """
 function tilted_mean_cov(backend, logf::L, q) where {L}
     chosen = which_expectation_backend(backend, Any, typeof(q))

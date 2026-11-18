@@ -3,7 +3,8 @@
 
 The set of values of a random variable, with a smooth bijection `forward` from unconstrained
 coordinates onto it, its `inverse`, and the log-Jacobian `logjacobian` of `forward`. A Gaussian
-in the unconstrained coordinates, pushed forward, approximates a density on the domain.
+in the unconstrained coordinates, pushed forward through `forward`, approximates a density on the
+domain.
 """
 abstract type Domain end
 
@@ -11,7 +12,7 @@ abstract type Domain end
     RealLine()
 
 The whole real line, or `ℝᵈ` for a vector: the domain of a Gaussian. The transform is the
-identity, so a projection in this domain is the projection itself.
+identity, so an approximation in this domain is the same as one without a domain.
 """
 struct RealLine <: Domain end
 
@@ -76,8 +77,8 @@ end
 """
     Componentwise(domains...)
 
-A vector whose components lie in different domains, each transformed on its own: a block of
-correlated parameters such as a probability and a rate.
+A vector whose components lie in different domains, each transformed separately, such as a
+block of correlated parameters made of a probability and a rate.
 """
 struct Componentwise{D <: Tuple} <: Domain
     domains::D
@@ -89,8 +90,8 @@ Componentwise(domains::Domain...) = Componentwise(domains)
     forward(domain, u)
 
 The value in `domain` of the unconstrained coordinates `u`: `exp(u)` for [`Positive`](@ref),
-`logistic(u)` for [`UnitInterval`](@ref), and so on. A smooth bijection from the real line (or
-`ℝᵈ`) onto the domain, so `forward(domain, u)` is in the domain for every finite `u`.
+`logistic(u)` for [`UnitInterval`](@ref), and so on. It is a smooth bijection from the real line
+(or `ℝᵈ`) onto the domain, so `forward(domain, u)` is in the domain for every finite `u`.
 
 ```jldoctest
 julia> EA.forward(EA.Positive(), 0.0)
@@ -120,10 +121,10 @@ function inverse end
 """
     logjacobian(domain, u)
 
-`log |det ∂forward(domain, u) / ∂u|`, the term a log-density gains in unconstrained coordinates:
-a density `p(x)` on the domain is the density `p(forward(domain, u)) |det ∂forward/∂u|` of `u`.
-For [`Positive`](@ref), `logjacobian(Positive(), u) = u`, since `d exp(u) / du = exp(u)`. For a
-[`Simplex`](@ref), the Jacobian of the first `K - 1` components, which are free.
+`log |det ∂forward(domain, u) / ∂u|`, the term that a log-density gains in unconstrained
+coordinates: a density `p(x)` on the domain is the density `p(forward(domain, u)) |det ∂forward/∂u|`
+of `u`. For [`Positive`](@ref), `logjacobian(Positive(), u) = u`, since `d exp(u) / du = exp(u)`.
+For a [`Simplex`](@ref), it is the log-Jacobian of the first `K - 1` components, which are free.
 
 ```jldoctest
 julia> EA.logjacobian(EA.Positive(), 0.7)
@@ -174,11 +175,11 @@ logjacobian(D::Componentwise, u::AbstractVector) = sum(logjacobian(d, ui) for (d
 """
     domain(q)
 
-The [`Domain`](@ref) of the distribution `q`, read from its support, or `nothing` when it has
-none that a transform covers (a discrete distribution, for one). For BayesBase's log-densities,
-`ContinuousUnivariateLogPdf` and `ContinuousMultivariateLogPdf`, it is read from their domain;
-an unspecified one says nothing. For a product of densities, as the product of a prior and
-messages, the domain of the first factor that has one.
+The [`Domain`](@ref) of the distribution `q`, read from its support, or `nothing` when no
+domain of this package matches the support, as for a discrete distribution. For the BayesBase
+log-densities `ContinuousUnivariateLogPdf` and `ContinuousMultivariateLogPdf`, the domain is read
+from their own domain, and is `nothing` when that is unspecified. For a product of densities, such
+as the product of a prior and messages, it is the domain of the first factor that has one.
 """
 domain(::AbstractMvNormal) = RealLine()
 function domain(q::ContinuousUnivariateDistribution)
@@ -224,11 +225,12 @@ end
 """
     pushforward(domain, gaussian)
 
-The distribution of `forward(domain, u)` for `u ~ gaussian`: the `gaussian` itself on the real
-line, and a [`TransformedGaussian`](@ref) otherwise, a log-normal distribution on the positive
-half-line and a logit-normal one on the unit interval among them. Distributions' `LogNormal` and
-`LogitNormal` have no `mean(log, q)` in the ecosystem, which conjugate rules take, and
-`LogitNormal` no mean, variance or entropy either; a `TransformedGaussian` has them all.
+The distribution of `forward(domain, u)` for `u ~ gaussian`. On the real line this is `gaussian`
+itself. On any other domain it is a [`TransformedGaussian`](@ref), including the log-normal
+distribution on the positive half-line and the logit-normal distribution on the unit interval.
+Distributions' `LogNormal` and `LogitNormal` are not used, because they have no `mean(log, q)` in
+the ecosystem, which conjugate rules use, and `LogitNormal` also has no mean, variance or entropy.
+A `TransformedGaussian` has all of them.
 """
 pushforward(::RealLine, gaussian) = gaussian
 pushforward(D::Domain, gaussian) = TransformedGaussian(gaussian, D)

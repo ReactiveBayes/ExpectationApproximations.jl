@@ -31,7 +31,8 @@ function approximation_short_name end
 
 The mean and variance (or covariance) of the density proportional to `g(x) N(x | m, v)`,
 computed by the cubature `method` over the points of `N(m, v)`. This is the projection of a
-normal reweighted by a likelihood onto a normal, the core of an expectation-propagation update.
+normal reweighted by a likelihood onto a normal, the main step of an expectation-propagation
+update.
 
 # Arguments
 

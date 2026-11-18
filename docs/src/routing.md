@@ -4,9 +4,9 @@ CurrentModule = ExpectationApproximations
 
 # How a backend is chosen
 
-No single rule is best for every distribution: Gauss–Hermite suits a Gaussian, Gauss–Laguerre a
-Gamma, an exact sum a categorical. A model mixes them, so it needs a backend that chooses. This
-page explains how that choice is made, from the most explicit way to the most automatic.
+Each quadrature rule is made for one family of distributions: Gauss–Hermite for Gaussians,
+Gauss–Laguerre for Gammas, an exact sum for categorical distributions. A model usually contains
+several families, so it needs a backend that chooses a rule for each distribution.
 
 ```@example routing
 using ExpectationApproximations, Distributions
@@ -17,10 +17,10 @@ nothing # hide
 
 ## What a backend supports
 
-A backend declares, on types, which distributions and integrands it handles:
+A backend declares, on types, which integrands and distributions it handles:
 `BayesBase.supports_expectation(backend, F, Q)` is `true` when it computes ``\mathbb{E}_q[f]``
-for `f::F` and `q::Q`. Integrand type `Any` means "every integrand", which is what a quadrature
-declares, since a quadrature does not care what the function is.
+for `f::F` and `q::Q`. The integrand type `Any` means any integrand. A quadrature supports it,
+because a quadrature works the same way for every function.
 
 ```@example routing
 (
@@ -29,13 +29,14 @@ declares, since a quadrature does not care what the function is.
 )
 ```
 
-Because the declaration is on types, the compiler decides it: choosing a backend costs nothing at
-run time.
+Because support is declared on types, the compiler resolves the choice of a backend, and the
+choice has no run-time cost.
 
-## Routers: the first backend that supports it
+## Routers
 
-`BayesBase.ExpectationFirstOf(backends...)` tries its backends in order and uses the first that
-supports the pair. [`EADefault`](@ref) is such a router, with one rule per family:
+`BayesBase.ExpectationFirstOf(backends...)` tries its backends in order and uses the first one
+that supports the integrand and the distribution. [`EADefault`](@ref) is such a router, with one
+rule per family:
 
 ```julia
 EADefault(n = 16) = ExpectationFirstOf(ExactSum(), GaussHermite(n), GaussLaguerre(n), GaussJacobi(n), QuantileLegendre(n))
@@ -50,40 +51,40 @@ distributions = (Normal(0.0, 1.0), Gamma(2.0, 1.0), Beta(2.0, 3.0), Categorical(
 ```
 
 The Weibull distribution has no rule of its own, so it goes to [`QuantileLegendre`](@ref), the
-fallback for any continuous univariate distribution. A distribution none of them covers, a
-`Poisson` for one, has no backend, and an expectation under it throws
+fallback for continuous univariate distributions. A distribution that none of the rules supports,
+such as `Poisson`, has no backend, and an expectation under it throws
 `BayesBase.UnsupportedExpectationError`:
 
 ```@example routing
 BayesBase.which_expectation_backend(backend, sin, Poisson(3.0)) === nothing
 ```
 
-To change the choice, build your own router: put a more accurate rule first, or a closed form
-from another package before the quadratures.
+To change the choice, build another router. For example, put a more accurate rule first, or a
+closed form from another package before the quadratures:
 
 ```@example routing
 accurate = BayesBase.ExpectationFirstOf(EA.GaussHermite(40), EA.EADefault())
 BayesBase.which_expectation_backend(accurate, sin, Normal(0.0, 1.0))
 ```
 
-## The registry: a choice the session makes
+## The registry
 
-A library that runs inference does not know which backends the user's session has loaded.
-BayesBase keeps a registry of backends, and `BayesBase.ExpectationDynamicRouter()` chooses among
-the registered ones when it is called. Loading this package registers the rules of
-[`EADefault`](@ref), through [`register_backends!`](@ref); a package with closed forms registers
-its own, and they come first where they are exact.
+A library that runs inference does not know which backend packages the user has loaded.
+BayesBase therefore keeps a registry of backends, and `BayesBase.ExpectationDynamicRouter()` chooses
+among the registered backends when it is called. Loading this package registers the rules of
+[`EADefault`](@ref) through [`register_backends!`](@ref). A package with closed forms registers
+its own backends, and they are chosen first where they are exact.
 
-Choosing at run time costs microseconds per call and allocates. Wrapping the dynamic router in
-`ExpectationFirstOf` freezes the choice the registry makes now into a router the compiler
-resolves, as fast as `EADefault()`:
+The dynamic router chooses at run time, which takes microseconds per call and allocates. Wrapping
+it in `ExpectationFirstOf` fixes the current choice of the registry in a router that the compiler
+resolves, which is as fast as `EADefault()`:
 
 ```@example routing
 frozen = BayesBase.ExpectationFirstOf(BayesBase.ExpectationDynamicRouter())
 BayesBase.which_expectation_backend(frozen, sin, Gamma(2.0, 1.0))
 ```
 
-This is how RxInfer's fallback schemes find a backend when the model names none.
+RxInfer's fallback schemes use this to find a backend when the model does not specify one.
 
 ```@docs
 EADefault

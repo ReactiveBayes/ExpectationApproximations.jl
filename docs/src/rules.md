@@ -5,8 +5,8 @@ CurrentModule = ExpectationApproximations
 # Quadrature rules
 
 The quadrature backends are built on four classical Gaussian rules. Each approximates an integral
-against a weight function by a weighted sum over ``n`` nodes, exactly for polynomials up to degree
-``2n - 1``:
+against a weight function by a weighted sum over ``n`` nodes, and is exact for polynomials up to
+degree ``2n - 1``:
 
 | Rule | Integral | Used by |
 |:-----|:---------|:--------|
@@ -25,15 +25,15 @@ sum(weights .* nodes .^ 4), 3 * sqrt(π) / 4   # ∫ x⁴ e^{-x²} dx
 ## How they are computed
 
 The rules are computed with the Golub–Welsch algorithm. The nodes are the eigenvalues of the
-Jacobi matrix, the symmetric tridiagonal matrix of the orthogonal polynomials' three-term
-recurrence, polished by Newton's method on that recurrence. The weights are the Christoffel
+Jacobi matrix, the symmetric tridiagonal matrix of the three-term recurrence of the orthogonal
+polynomials, refined by Newton's method on that recurrence. The weights are the Christoffel
 numbers ``1 / \sum_k p_k(x_i)^2`` of the orthonormal polynomials.
 
-Computing the weights this way, rather than from the first components of the eigenvectors, keeps
-the smallest weights accurate to about ``10^{-13}`` of their size against 256-bit arithmetic, out
-in the tails where the eigenvectors lose relative precision. The rules are computed in `Float64`
-when a backend is constructed or, for Gauss–Laguerre and Gauss–Jacobi, whose weight depends on
-the shape, when an expectation is prepared.
+The usual alternative computes the weights from the first components of the eigenvectors, which
+lose relative precision in the tails. With the Christoffel numbers, the smallest weights are
+accurate to about ``10^{-13}`` of their size, measured against 256-bit arithmetic. The rules are
+computed in `Float64` when a backend is constructed. For Gauss–Laguerre and Gauss–Jacobi, whose
+weight function depends on the shape, they are computed when an expectation is prepared.
 
 ```@docs
 gausshermite

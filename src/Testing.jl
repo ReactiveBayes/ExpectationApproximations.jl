@@ -1,8 +1,8 @@
 """
     ExpectationApproximations.Testing
 
-The conformance suite for backends of the expectation protocol: every backend of this package
-passes it, and a backend in another package can run it from its own tests.
+The conformance suite for backends of the expectation protocol. The backends of this package
+pass it, and a backend in another package can run it from its own tests.
 
 ```julia
 using ExpectationApproximations.Testing: Case, test_backend
@@ -59,13 +59,13 @@ Checks `backend` on every [`Case`](@ref), without recording tests:
   deterministic backend;
 - `reproducible`: the same random number generator gives the same result, for a stochastic one;
 - `inferred`: evaluating a prepared expectation is type-stable;
-- `allocation-free`: and allocates nothing;
+- `allocation-free`: evaluating a prepared expectation allocates nothing;
 - `duals pass`: ForwardDiff differentiates through the integrand of a prepared expectation;
 - `product`: the expectation of `f₁(x) f₂(y)` under the product of the first two cases'
   distributions is the product of their expectations, for a deterministic backend that supports
   products.
 
-Stochastic backends get `rng` from above with `with_expectation_rng`.
+Stochastic backends receive `rng` through `with_expectation_rng`.
 """
 function conformance(backend, cases; rng::AbstractRNG = Xoshiro(1234))
     checks = Check[]
@@ -81,8 +81,8 @@ end
 """
     test_backend(backend, cases; rng = Xoshiro(1234))
 
-Runs [`conformance`](@ref) and records every check as a test, in a test set named after the
-backend; a failed check also logs its detail.
+Runs [`conformance`](@ref) and records each check as a test, in a test set named after the
+backend. A failed check also logs its detail.
 """
 function test_backend(backend, cases; kwargs...)
     @testset "conformance of $(nameof(typeof(backend)))" begin

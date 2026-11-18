@@ -8,17 +8,19 @@
 
 Numerical expectations and Gaussian approximations for approximate Bayesian inference in Julia.
 
-- **Expectations** `E_q[f(x)]` by quadrature, cubature, sigma points, exact sums or sampling, as
-  backends of the expectation protocol of [BayesBase](https://github.com/ReactiveBayes/BayesBase.jl).
-  [`EADefault()`](https://reactivebayes.github.io/ExpectationApproximations.jl/stable/routing/)
-  picks the rule made for each family: Gauss–Hermite for a Gaussian, Gauss–Laguerre for a Gamma,
-  Gauss–Jacobi for a Beta, an exact sum for a categorical. Prepared expectations allocate nothing
-  and pass ForwardDiff's dual numbers through.
-- **Gaussian approximations** of a density given as a Julia function: Laplace's, the
-  moment-matched Gaussian of expectation propagation, and the variational Gaussian, each with an
-  approximation of the log-normaliser.
-- **Constrained variables**: positive, bounded, probability or simplex-valued variables are
-  approximated by a Gaussian in unconstrained coordinates, read from their prior's support.
+The package computes expectations `E_q[f(x)]` by quadrature, cubature, sigma points, exact sums
+or sampling. Each method is a backend of the expectation protocol of
+[BayesBase](https://github.com/ReactiveBayes/BayesBase.jl).
+[`EADefault()`](https://reactivebayes.github.io/ExpectationApproximations.jl/stable/routing/)
+picks a rule for each family of distributions: Gauss–Hermite for a Gaussian, Gauss–Laguerre for a
+Gamma, Gauss–Jacobi for a Beta and an exact sum for a categorical distribution. Prepared
+expectations do not allocate and accept ForwardDiff's dual numbers.
+
+The package also approximates a density, given as a Julia function, by a Gaussian: the Laplace
+approximation, the moment-matched Gaussian of expectation propagation, or the variational
+Gaussian. Each comes with an approximation of the log-normaliser. Positive, bounded, probability
+and simplex-valued variables are approximated by a Gaussian in unconstrained coordinates, with the
+domain read from the support of the prior.
 
 ```julia
 using ExpectationApproximations, Distributions
@@ -31,14 +33,14 @@ EA.laplace(x -> logpdf(Gamma(3.0, 2.0), x), 1.0, EA.Positive()) # a log-normal a
 EA.moment_matching(x -> x - exp(x) / 2, 0.0)                     # a Gaussian with its moments
 ```
 
-The [documentation](https://reactivebayes.github.io/ExpectationApproximations.jl/stable) explains
-the protocol, how to choose a backend and when each approximation fits.
+The [documentation](https://reactivebayes.github.io/ExpectationApproximations.jl/stable) covers
+the protocol, the choice of a backend and the differences between the approximations.
 
 ExpectationApproximations is part of the [ReactiveBayes](https://github.com/ReactiveBayes)
 ecosystem. [RxInfer](https://github.com/ReactiveBayes/RxInfer.jl) uses it, through
 [DeltaMessagePassingRules](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl), to run
-inference on models without hand-written message passing rules. Nothing in this package depends
-on message passing, though: it works on any distribution and any Julia function.
+inference on models without hand-written message passing rules. The package itself does not
+depend on message passing and can be used on its own.
 
 ## Installation
 

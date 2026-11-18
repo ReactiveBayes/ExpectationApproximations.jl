@@ -4,31 +4,24 @@ CurrentModule = ExpectationApproximations
 
 # ExpectationApproximations
 
-Approximate inference spends most of its time on two questions:
+ExpectationApproximations computes expectations ``\mathbb{E}_q[f(x)]`` of a function ``f``
+under a distribution ``q`` numerically. Examples are ``\mathbb{E}[\log x]`` under a Gamma
+distribution, ``\mathbb{E}[\sigma(a + b x)]`` under a Gaussian, and the expected log-likelihood of
+a factor in a model. The package implements quadrature, cubature, sigma points, exact sums and
+sampling as backends of the expectation protocol of
+[BayesBase](https://github.com/ReactiveBayes/BayesBase.jl).
 
-- **What is the expectation of a function?** For example ``\mathbb{E}_q[f(x)]`` under a
-  distribution ``q`` that has no closed form for it: ``\mathbb{E}[\log x]`` under a Gamma,
-  ``\mathbb{E}[\sigma(a + b x)]`` under a Gaussian, the expected log-likelihood of a model's
-  factor.
-- **Which Gaussian best represents a density?** Approximate inference often has to replace an
-  intractable density by a Gaussian: at its mode (Laplace), with its moments (expectation
-  propagation) or as the Gaussian closest to it (variational inference).
-
-ExpectationApproximations answers both, numerically. It provides:
-
-- **backends** that compute expectations by quadrature, cubature, sigma points, exact sums or
-  sampling, through the expectation protocol of
-  [BayesBase](https://github.com/ReactiveBayes/BayesBase.jl);
-- **Gaussian approximations** of a density given as a Julia function: [`laplace`](@ref),
-  [`moment_matching`](@ref), [`gaussian_variational`](@ref), and the moments of functions of
-  random variables;
-- **domains and transforms**, so a variable that must be positive, a probability or a
-  probability vector is approximated by a Gaussian in unconstrained coordinates.
+The package also approximates a density, given as a Julia function, by a Gaussian. Approximate
+inference uses three such Gaussians: the Laplace approximation at the mode ([`laplace`](@ref)),
+the Gaussian with the moments of the density, as in expectation propagation
+([`moment_matching`](@ref)), and the Gaussian closest to the density, as in variational inference
+([`gaussian_variational`](@ref)). Related functions compute the moments of functions of random
+variables. For a variable that must be positive, a probability or a probability vector, the
+Gaussian approximation is made in unconstrained coordinates and transformed back.
 
 ## A first example
 
-The expected logarithm of a Gamma variable has no elementary closed form in most libraries, but
-Gauss–Laguerre quadrature computes it accurately with a handful of points:
+Gauss–Laguerre quadrature with 32 points computes the expected logarithm of a Gamma variable:
 
 ```@example index
 using ExpectationApproximations, Distributions
@@ -46,16 +39,16 @@ using SpecialFunctions: digamma
 digamma(3.0) + log(2.0)
 ```
 
-Most of the time one does not pick the rule by hand. [`EADefault`](@ref) sends each distribution
-to the rule made for its family, and a backend can be *prepared* once for a distribution and then
-evaluated for many functions, without allocating:
+Usually the rule is not picked by hand: [`EADefault`](@ref) chooses the rule for the family of
+each distribution. A backend can also be *prepared* once for a distribution and then evaluated
+for many functions without allocating:
 
 ```@example index
 prepared = BayesBase.prepare_expectation(EA.EADefault(), q)
 BayesBase.expectation(prepared, x -> x^2), BayesBase.expectation(prepared, sqrt)
 ```
 
-And a Gaussian approximation of a density is one call. Here, the Laplace approximation of a
+[`laplace`](@ref) takes the logarithm of an unnormalised density and a starting point. For a
 skewed density on the real line:
 
 ```@example index
@@ -63,20 +56,20 @@ result = EA.laplace(x -> x - exp(x) / 2, 0.0)
 result.distribution, result.converged
 ```
 
-## Where it fits
+## Related packages
 
-ExpectationApproximations is one layer of the [ReactiveBayes](https://github.com/ReactiveBayes)
+ExpectationApproximations is part of the [ReactiveBayes](https://github.com/ReactiveBayes)
 ecosystem:
 
 | Package | Role |
 |:--------|:-----|
 | [BayesBase](https://github.com/ReactiveBayes/BayesBase.jl) | defines the *expectation protocol*: `expectation`, `prepare_expectation`, and how a backend says what it supports |
-| **ExpectationApproximations** | implements backends for the protocol, and the Gaussian approximations built on them |
+| ExpectationApproximations | implements backends for the protocol, and the Gaussian approximations built on them |
 | [DeltaMessagePassingRules](https://github.com/ReactiveBayes/DeltaMessagePassingRules.jl) | turns these approximations into message passing rules for nodes that have no hand-written ones |
 | [RxInfer](https://github.com/ReactiveBayes/RxInfer.jl) | runs inference on models without hand-written rules with `infer(...; fallback = LocalLaplace())`, `LaplacePropagation()`, `ExpectationPropagation()` or `NaturalGradientPropagation()` |
 
-Nothing in this package depends on message passing: the backends and the approximations work on
-any distribution and any Julia function.
+The package does not depend on message passing, and its backends and approximations can be used
+on their own.
 
 ## Installation
 
@@ -85,9 +78,9 @@ import Pkg
 Pkg.add("ExpectationApproximations")
 ```
 
-Nothing is exported: every name is public and used qualified, as in the examples above, usually
-with `const EA = ExpectationApproximations`. The functions of the expectation protocol,
-`expectation` and `prepare_expectation`, are BayesBase's.
+The package exports no names. Its public names are used qualified, as in the examples above,
+usually through `const EA = ExpectationApproximations`. The protocol functions `expectation` and
+`prepare_expectation` belong to BayesBase and are called as `BayesBase.expectation`.
 
 ## Where to go next
 
@@ -100,7 +93,10 @@ with `const EA = ExpectationApproximations`. The functions of the expectation pr
 - [Moments through functions](@ref) covers the moments of ``f(x)``, tilted distributions and
   linearisation.
 - [Constrained variables](@ref) explains domains and transforms.
-- [Quadrature rules](@ref), [Writing a backend](@ref) and [Migrating](@ref) complete the manual.
+- [Quadrature rules](@ref) describes the classical rules behind the quadrature backends.
+- [Writing a backend](@ref) shows how to implement and test a new backend.
+- [Migrating](@ref) maps the API of earlier versions and of MessagePassingRulesApproximations to
+  the protocol.
 
 ```@docs
 ExpectationApproximations

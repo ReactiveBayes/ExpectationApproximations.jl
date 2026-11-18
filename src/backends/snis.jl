@@ -2,11 +2,11 @@
     SNIS(proposal, n, rng = nothing)
 
 Self-normalised importance sampling: `n` samples from `proposal`, weighted by the ratio of the
-target's density to the proposal's and normalised, for a target that can be evaluated but not
-sampled, such as an unnormalised product of a prior and messages. Labelled `ExpectationStochastic`;
-the random number generator comes from `BayesBase.with_expectation_rng` unless set here. The weights
-are computed in log space, and [`effective_sample_size`](@ref) tells how many samples they are
-worth.
+target density to the proposal density and normalised. It is for a target that can be evaluated
+but not sampled, such as the unnormalised product of a prior and messages. Labelled
+`ExpectationStochastic`. Unless `rng` is given here, the random number generator comes from
+`BayesBase.with_expectation_rng`. The weights are computed in log space, and
+[`effective_sample_size`](@ref) estimates how many samples they are worth.
 """
 struct SNIS{P, R}
     proposal::P
@@ -42,6 +42,7 @@ end
     effective_sample_size(prepared::ExpectationPointSet)
 
 `1 / Σᵢ wᵢ²` for normalised weights: the number of equally weighted samples that the weighted
-ones are worth, `n` when the proposal is the target and far fewer when it fits poorly.
+ones are worth. It is `n` when the proposal is the target, and much smaller when the proposal
+fits the target poorly.
 """
 effective_sample_size(prepared::ExpectationPointSet) = sum(prepared.weights)^2 / sum(abs2, prepared.weights)

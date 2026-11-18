@@ -3,31 +3,32 @@
         -> (; distribution, logZ, mean, iterations, converged)
 
 The Gaussian closest to the density proportional to `exp(logp(x))` in the sense of variational
-inference: the `q` that minimises `KL(q ‖ p)`, or maximises the evidence lower bound
+inference: the `q` that minimises `KL(q ‖ p)`, or equivalently maximises the evidence lower bound
 `E_q[logp] + H[q]`. `x0` is a number or a vector.
 
-The bound is maximised over the Gaussian's mean `m` and the Cholesky factor `L` of its covariance,
-the diagonal of `L` on a log scale. The expectation is a quadrature from `backend` in standard
-coordinates: the points `zᵢ` and weights `wᵢ` of a standard Gaussian, so that
+The bound is maximised over the mean `m` of the Gaussian and the Cholesky factor `L` of its
+covariance, with the diagonal of `L` on a log scale. The expectation is a quadrature from
+`backend` in standard coordinates, with the points `zᵢ` and weights `wᵢ` of a standard Gaussian,
+so that
 
 ```math
 \\mathbb{E}_q[\\log p] + H[q] = \\sum_i w_i \\log p(m + L z_i) + \\log\\det L + \\frac{d}{2}\\log(2\\pi e)
 ```
 
 is a smooth function of `(m, L)`, with the same points at every step. Newton's method, as in
-[`laplace`](@ref), with gradients and Hessians from ForwardDiff, finds its maximum, starting at
-Laplace's approximation of `logp`. At the maximum, `E_q[∇ logp] = 0` and
-`E_q[∇² logp] = -Σ⁻¹`, up to the quadrature's error: the fixed point of conjugate-computation
-variational inference (Khan and Rue), the natural-gradient iteration in the Gaussian's mean
-parameters. That iteration itself is not used: on a two-dimensional logistic regression it fell
-into a two-cycle at full step and took hundreds of iterations at shorter ones, where Newton's
+[`laplace`](@ref), with gradients and Hessians from ForwardDiff, finds the maximum, starting at the
+Laplace approximation of `logp`. At the maximum, `E_q[∇ logp] = 0` and `E_q[∇² logp] = -Σ⁻¹` up
+to the quadrature error. This is the fixed point of conjugate-computation variational inference
+(Khan and Rue), the natural-gradient iteration in the mean parameters of the Gaussian. That
+iteration itself is not used: on a two-dimensional logistic regression it alternated between two
+points at full step size and took hundreds of iterations with shorter steps, while Newton's
 method on the bound takes six.
 
-- `logZ` is the bound at `q`, a lower bound on `log ∫ exp(logp(x)) dx`, equal to it where the
+- `logZ` is the bound at `q`, a lower bound on `log ∫ exp(logp(x)) dx`, and equal to it where the
   density is Gaussian;
-- `mean` is the Gaussian's mean;
-- `converged` is false when `maxiters` Newton steps did not settle to `tol`, or no step length
-  raised the bound.
+- `mean` is the mean of the Gaussian;
+- `converged` is false when the iteration did not settle to `tol` within `maxiters` Newton steps,
+  or no step length increased the bound.
 
 `distribution` is a `Normal` or an `MvNormal`. `logp` must accept ForwardDiff's numbers, as for
 [`laplace`](@ref).
@@ -59,12 +60,13 @@ end
 """
     gaussian_variational(logp, x0, domain::Domain; kwargs...)
 
-The variational Gaussian in the unconstrained coordinates of `domain`: of
-`u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
-pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line. `logZ` is
-the same lower bound as in the original coordinates, and `mean` is `forward(domain, m)`, the image
-of the Gaussian's mean `m`: a point in the domain, not the mean of `distribution`, which a
-nonlinear transform moves.
+The variational Gaussian in the unconstrained coordinates of `domain`. It approximates the
+log-density `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, starting at
+`inverse(domain, x0)`, and pushes the Gaussian forward onto the domain. The result is a
+[`TransformedGaussian`](@ref) on every domain except the real line. `logZ` is the same lower
+bound as in the original coordinates. `mean` is `forward(domain, m)`, the image of the mean `m` of
+the Gaussian. It is a point in the domain but not the mean of `distribution`, because a nonlinear
+transform moves the mean.
 """
 function gaussian_variational(logp::F, x0, domain::Domain; kwargs...) where {F}
     result = gaussian_variational(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)

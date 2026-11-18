@@ -6,15 +6,15 @@ CurrentModule = ExpectationApproximations
 
 A backend is any value for which two methods of BayesBase are defined:
 
-- `BayesBase.supports_expectation(backend, ::Type{F}, ::Type{Q})`, which says, on types, that it
-  handles integrands of type `F` under distributions of type `Q`;
+- `BayesBase.supports_expectation(backend, ::Type{F}, ::Type{Q})`, which declares that the
+  backend handles integrands of type `F` under distributions of type `Q`;
 - either `BayesBase.prepare_expectation(backend, q)`, which returns something
   `BayesBase.expectation(prepared, f)` can evaluate, or `BayesBase.expectation(backend, f, q)`
   directly, for a closed form.
 
-Returning a `BayesBase.ExpectationPointSet(points, weights)` from the preparation is the simplest
-way. Products of distributions, routers and the projections of this package then work with the
-new backend. Here is a two-point rule for Gaussians, exact up to degree 3:
+The simplest way is to return a `BayesBase.ExpectationPointSet(points, weights)` from
+`prepare_expectation`. Products of distributions, routers and the projections of this package then
+work with the new backend. For example, a two-point rule for Gaussians, exact up to degree 3:
 
 ```@example writing
 using ExpectationApproximations, Distributions
@@ -32,7 +32,7 @@ BayesBase.expectation(TwoPoint(), x -> x^2, Normal(1.0, 2.0))
 ## The conformance suite
 
 [`ExpectationApproximations.Testing`](@ref) checks a backend against expectations with known
-values. It runs the checks every backend of this package passes:
+values. The backends of this package pass the same checks:
 
 - the backend supports each case and computes it correctly;
 - a backend labelled exact is exact;
@@ -41,8 +41,8 @@ values. It runs the checks every backend of this package passes:
 - dual numbers pass through;
 - a product of two cases is supported and correct.
 
-[`Testing.conformance`](@ref) returns the checks; [`Testing.test_backend`](@ref) records them as
-tests, for a backend's own test suite.
+[`Testing.conformance`](@ref) returns the checks, and [`Testing.test_backend`](@ref) records them
+as tests in the test suite of the backend's package.
 
 ```@example writing
 using ExpectationApproximations.Testing: Case, conformance
@@ -51,8 +51,8 @@ checks = conformance(TwoPoint(), cases)
 unique(check.name for check in checks), all(check -> check.passed, checks)
 ```
 
-A case the rule cannot compute exactly, ``\mathbb{E}[x^4] = 3`` under a standard Gaussian, fails
-the "correct" check:
+A case that the rule cannot compute exactly, ``\mathbb{E}[x^4] = 3`` under a standard Gaussian,
+fails the "correct" check:
 
 ```@example writing
 checks = conformance(TwoPoint(), [Case(Normal(0.0, 1.0), x -> x^4, 3.0)])

@@ -4,13 +4,14 @@
 
 The Laplace approximation of the density proportional to `exp(logp(x))`: a Gaussian at its mode,
 with the inverse of the negative Hessian there as covariance. `x0` is a number or a vector,
-static vectors included; gradients and Hessians come from ForwardDiff, so `logp` can be any
-Julia function, an expectation of a log-density included.
+including a static vector. Gradients and Hessians come from ForwardDiff, so `logp` can be any
+Julia function that accepts dual numbers, including an expectation of a log-density.
 
-- The mode is found by Newton's method with a backtracking line search, so a step that leaves
-  the domain of `logp`, where it is `-Inf`, or that does not increase it enough is shortened.
-- Where the negative Hessian is not positive definite, at a start where `logp` is not concave,
-  its eigenvalues are reflected and floored, so that Newton's method still climbs.
+- The mode is found by Newton's method with a backtracking line search. A step is shortened when
+  it leaves the domain of `logp`, where `logp` is `-Inf`, or does not increase `logp` enough.
+- Where the negative Hessian is not positive definite, for example at a starting point where
+  `logp` is not concave, its eigenvalues are reflected and floored, so that the Newton step still
+  points uphill.
 - `logZ` is Laplace's approximation of the log-normaliser, with `x̂` the mode and `H` the
   Hessian of `logp` there:
 
@@ -20,8 +21,8 @@ Julia function, an expectation of a log-density included.
 
   zero for a normalised Gaussian.
 
-`distribution` is a `Normal` or an `MvNormal`. `converged` is false when `maxiters` Newton steps
-did not settle, or the line search could not increase `logp`.
+`distribution` is a `Normal` or an `MvNormal`. `converged` is false when the iteration did not
+settle within `maxiters` Newton steps, or the line search could not increase `logp`.
 
 ```jldoctest
 julia> result = EA.laplace(x -> logpdf(Gamma(3.0, 0.5), x), 1.0);
@@ -89,14 +90,15 @@ end
 """
     laplace(logp, x0, domain::Domain; tol = 1e-10, maxiters = 100)
 
-The Laplace approximation in the unconstrained coordinates of `domain`: of
-`u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, started at `inverse(domain, x0)`, and
-pushed forward onto the domain, a [`TransformedGaussian`](@ref) on any but the real line.
+The Laplace approximation in the unconstrained coordinates of `domain`. It approximates the
+log-density `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, starting at
+`inverse(domain, x0)`, and pushes the Gaussian forward onto the domain. The result is a
+[`TransformedGaussian`](@ref) on every domain except the real line.
 
-- `logZ` approximates the same integral as in the original coordinates: the log-Jacobian accounts
-  for the change of variables.
+- `logZ` approximates the same integral as in the original coordinates, because the log-Jacobian
+  accounts for the change of variables.
 - `mode` is `forward(domain, û)`, the image of the mode in unconstrained coordinates. It is not
-  the mode of `distribution`, nor of `logp`: a change of variables moves a mode.
+  the mode of `distribution` or of `logp`, because a change of variables moves a mode.
 """
 function laplace(logp::L, x0, domain::Domain; kwargs...) where {L}
     result = laplace(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)

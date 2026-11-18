@@ -1,9 +1,10 @@
 """
     ExactSum()
 
-The exact expectation over a finite support: a sum over every value, weighted by its
-probability. For `Categorical` and other `DiscreteNonParametric` distributions, `Bernoulli`,
-`Binomial`, `DiscreteUniform`, `Dirac` and `PointMass`. Labelled `ExpectationExact`.
+The exact expectation over a finite support: the sum over all values, weighted by their
+probabilities. It supports `Categorical` and other `DiscreteNonParametric` distributions,
+`Bernoulli`, `Binomial`, `DiscreteUniform`, `Dirac` and `PointMass`, and is labelled
+`ExpectationExact`.
 """
 struct ExactSum end
 

@@ -3,8 +3,8 @@
 
 Generalised Gauss–Laguerre quadrature with `n` points for a `Gamma` or an `Exponential`
 distribution: for a shape `a`, the rule of weight `t^(a - 1) exp(-t)`, so the result is exact
-for polynomials up to degree `2n - 1` whatever the shape, below one included. The weights are
-normalised to one, so very large shapes work too.
+for polynomials up to degree `2n - 1` for every shape, including shapes below one. The weights
+are normalised to one, so very large shapes work too.
 
 The rule depends on the shape, so it is computed when the expectation is prepared, and dual
 numbers pass through the scale and the integrand but not through the shape.
@@ -62,9 +62,9 @@ end
     QuantileLegendre(n)
 
 Gauss–Legendre quadrature with `n` points in probability space, `E_q[f] = ∫₀¹ f(Q(u)) du` with
-`Q` the quantile function of `q`, for any continuous univariate distribution. A fallback for
-the distributions no other rule covers: a quantile function is rarely smooth at both ends, so
-the error decreases algebraically with `n` rather than exponentially.
+`Q` the quantile function of `q`, for any continuous univariate distribution. It is a fallback
+for distributions that no other rule supports. A quantile function is rarely smooth at both ends,
+so the error decreases algebraically with `n`, not exponentially.
 """
 struct QuantileLegendre
     nodes::Vector{Float64}   # in (0, 1)

@@ -4,12 +4,13 @@ CurrentModule = ExpectationApproximations
 
 # Constrained variables
 
-A Gaussian lives on the whole real line. Many variables do not: a precision is positive, a
-probability lies between zero and one, mixture weights sum to one. A Gaussian placed directly on
-such a variable puts mass where it cannot be. Its Laplace approximation can even sit at a mode on
-the boundary, as for a Beta density that is infinite at zero.
+A Gaussian has the whole real line as its support, but many variables are constrained: a
+precision is positive, a probability lies between zero and one, and mixture weights sum to one. A
+Gaussian placed directly on such a variable puts mass on values the variable cannot take. Its
+Laplace approximation can even be centred at a mode on the boundary, as for a Beta density that is
+infinite at zero.
 
-The standard remedy is to approximate in *unconstrained coordinates*. Write ``x = g(u)`` for a
+The usual remedy is to approximate in *unconstrained coordinates*. Write ``x = g(u)`` for a
 smooth bijection ``g`` from the real line onto the domain, approximate the density of ``u`` by a
 Gaussian, and push it forward through ``g``. The density of ``u`` gains the log-Jacobian of
 ``g``:
@@ -36,16 +37,16 @@ nothing # hide
 | [`UpperBounded`](@ref)`(b)` | ``x < b`` | ``b - e^u`` | a reflected log-normal |
 | [`Bounded`](@ref)`(a, b)` | ``a < x < b`` | ``a + (b - a)\,\sigma(u)`` | a scaled logit-normal |
 | [`Simplex`](@ref)`(K)` | probability vectors of length ``K`` | additive log-ratio from ``K - 1`` coordinates | a logistic-normal |
-| [`Componentwise`](@ref)`(d₁, d₂, …)` | a vector with one domain per component | each on its own | a joint over the block |
+| [`Componentwise`](@ref)`(d₁, d₂, …)` | a vector with one domain per component | each component separately | a joint distribution over the block |
 
 [`forward`](@ref), [`inverse`](@ref) and [`logjacobian`](@ref) compute ``g``, ``g^{-1}`` and the
 log-Jacobian.
 
 ## The domain of a distribution
 
-[`domain`](@ref) reads the domain from a distribution's support, usually the variable's prior. A
-model can then keep its natural priors, a Gamma, a Beta, a Dirichlet, while the transform lives
-in the approximation:
+[`domain`](@ref) reads the domain from the support of a distribution, usually the prior of the
+variable. A model can then keep priors such as a Gamma, a Beta or a Dirichlet, and the transform is
+used only in the approximation:
 
 ```@example transforms
 EA.domain(Gamma(2.0, 1.0)), EA.domain(Beta(1.0, 1.0)), EA.domain(Uniform(-1.0, 3.0)), EA.domain(Dirichlet(3, 1.0))
@@ -63,27 +64,25 @@ result.distribution
 ```
 
 The result is a [`TransformedGaussian`](@ref): a Gaussian in ``u = \log x``, here
-``\mathcal{N}(\log(a/b), 1/a)``, pushed forward onto the positive half-line. It has a `logpdf`,
-can be sampled, and has a mean, a variance and an entropy, computed by quadrature through its
-Gaussian:
+``\mathcal{N}(\log(a/b), 1/a)``, pushed forward onto the positive half-line. It has a `logpdf`
+and can be sampled. Its mean, variance and entropy are computed by quadrature over its Gaussian:
 
 ```@example transforms
 mean(result.distribution), mean(Gamma(a, 1 / b))
 ```
 
-Expectations under it go through its Gaussian, so every Gaussian backend supports it:
+[`GaussHermite`](@ref), and so [`EADefault`](@ref), computes expectations under it through its
+Gaussian:
 
 ```@example transforms
 BayesBase.expectation(EA.GaussHermite(16), log, result.distribution)
 ```
 
-Two details are easy to get wrong:
-
-- `logZ` approximates the log-normaliser in the *original* coordinates: the log-Jacobian accounts
-  for the change of variables, so for a normalised density it is close to zero.
-- `mode` (for `laplace`) and `mean` (for the other two) are the images ``g(\hat u)`` of the
-  unconstrained mode or mean. They are not the mode or mean of the returned distribution, since
-  a nonlinear transform moves both.
+In a domain, `logZ` approximates the log-normaliser in the *original* coordinates. The
+log-Jacobian accounts for the change of variables, so for a normalised density `logZ` is close to
+zero. The `mode` field of `laplace` and the `mean` field of the other two are the images
+``g(\hat u)`` of the unconstrained mode or mean. They are not the mode or mean of the returned
+distribution, because a nonlinear transform moves both:
 
 ```@example transforms
 result.logZ, result.mode, a / b
@@ -98,8 +97,8 @@ beta.converged, mean(beta.distribution)
 ```
 
 A block of parameters in different domains, such as a probability and a rate that are correlated
-in the posterior, is a [`Componentwise`](@ref) domain, approximated jointly by one Gaussian in
-two unconstrained coordinates.
+in the posterior, has a [`Componentwise`](@ref) domain. It is approximated jointly by one Gaussian
+in two unconstrained coordinates.
 
 ```@docs
 Domain

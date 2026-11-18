@@ -1,8 +1,8 @@
 """
     ExpectationApproximations.MPRACompat
 
-The API of MessagePassingRulesApproximations 1.0, ported here so that its 1.1 can re-export it:
-numerics for propagating Gaussian moments through a function, and for expectations under a
+The API of MessagePassingRulesApproximations 1.0, ported here so that its version 1.1 can
+re-export it. It propagates Gaussian moments through a function and computes expectations under a
 normal, taking and returning means and covariances.
 
 - `Unscented`: the unscented transform, the mean and covariance of `f(x)` from `2d + 1` sigma
@@ -15,7 +15,8 @@ normal, taking and returning means and covariances.
 
 The results equal those of MessagePassingRulesApproximations 1.0, which the tests check, except
 that the Gauss–Hermite weights come from this package's Golub–Welsch rule, which is more
-accurate. New code uses the expectation protocol of BayesBase and this package's backends.
+accurate. New code should use the expectation protocol of BayesBase and the backends of this
+package.
 
 ```jldoctest; setup = :(using ExpectationApproximations.MPRACompat)
 julia> m, V = approximate(Unscented(), x -> 2x + 1, (1.0,), (0.5,));

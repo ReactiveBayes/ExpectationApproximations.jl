@@ -4,8 +4,9 @@ CurrentModule = ExpectationApproximations
 
 # Choosing a backend
 
-Every backend trades accuracy, cost and generality. This page compares them, so that you can
-pick one when [`EADefault`](@ref) is not what you need.
+The backends differ in accuracy, in cost and in the distributions they support.
+[`EADefault`](@ref) chooses among some of them automatically. The others, such as sampling and
+sigma points, are chosen explicitly.
 
 ```@example backends
 using ExpectationApproximations, Distributions
@@ -31,15 +32,16 @@ nothing # hide
 | [`GenUnscented`](@ref)`()` | univariate with a skewness and kurtosis; Gaussian vectors | ``2d + 1`` | polynomials of degree ``\le 4`` | none |
 | [`SphericalRadialCubature`](@ref)`()` | Gaussians | ``2d`` | polynomials of degree ``\le 3`` | none |
 
-All of them prepare a point set, allocate nothing when evaluated, and pass dual numbers through
-the integrand. Two limits matter in practice:
+All of them prepare a point set, do not allocate when evaluated, and pass dual numbers through
+the integrand.
 
-- **Dimension.** Gauss–Hermite on a ``d``-dimensional Gaussian is a tensor grid of ``n^d``
-  points: 20 points per dimension is 400 points in two dimensions and 8000 in three. Sigma
-  points grow linearly in ``d``, at the price of exactness only up to degree 3 or 4.
-- **Derivatives through shapes.** The nodes of Gauss–Laguerre and Gauss–Jacobi depend on the
-  shape of the Gamma or Beta, so ForwardDiff cannot differentiate through a shape parameter. It
-  can differentiate through the scale of a Gamma.
+Gauss–Hermite quadrature on a ``d``-dimensional Gaussian is a tensor grid of ``n^d`` points: with
+20 points per dimension, that is 400 points in two dimensions and 8000 in three. The number of
+sigma points grows linearly in ``d``, but sigma points are exact only up to degree 3 or 4.
+
+The nodes of Gauss–Laguerre and Gauss–Jacobi quadrature depend on the shape of the Gamma or Beta,
+so ForwardDiff cannot differentiate through a shape parameter. It can differentiate through the
+scale of a Gamma.
 
 ## Accuracy: an example
 
@@ -63,16 +65,15 @@ for (name, backend) in (
 end
 ```
 
-Three lessons:
+For the smooth integrand, Gauss–Laguerre quadrature, the rule for the Gamma family, converges
+much faster than the quantile rule, whose error decreases only algebraically.
 
-- for a smooth integrand, the rule matched to the family, Gauss–Laguerre for a Gamma, converges
-  far faster than the generic quantile rule, whose error decreases only algebraically;
-- a singularity, such as the logarithm's at zero, slows every rule down, matched or not, to an
-  error near ``10^{-3}`` at 16 points: where a closed form exists, it should win. A router can put
-  a closed-form backend first, and an integrand that has one is then never integrated
-  numerically;
-- every quadrature beats sampling by orders of magnitude at a fraction of the points, but sampling
-  is the only one that works for any distribution in any dimension.
+The singularity of the logarithm at zero slows both rules down, to an error near ``10^{-3}`` at
+16 points. Where a closed form exists, it is the better choice: a router can put a closed-form
+backend first, and an integrand that has a closed form is then not integrated numerically.
+
+Both quadratures are more accurate than sampling by orders of magnitude, with far fewer points.
+Sampling, however, works for any distribution that can be sampled, in any dimension.
 
 ## Quadrature for families
 
@@ -87,8 +88,8 @@ ExactSum
 ## Sampling
 
 Sampling makes no assumption about smoothness and works in any dimension, but its error
-decreases only as ``1/\sqrt{n}`` and its results are random. Use it for a distribution no
-quadrature covers, or as a reference.
+decreases only as ``1/\sqrt{n}`` and its results are random. Use it for a distribution that no
+quadrature supports, or as a reference.
 
 ```@docs
 MonteCarlo
@@ -98,8 +99,8 @@ effective_sample_size
 
 ## Sigma points
 
-Sigma points are few and deterministic: they match the first moments of a distribution rather than
-integrate it, so they suit smooth functions of Gaussians in several dimensions, as in nonlinear
+Sigma-point rules use a few deterministic points, chosen to match the first moments of the
+distribution. They suit smooth functions of Gaussians in several dimensions, as in nonlinear
 filtering. For a linear function they are exact:
 
 ```@example backends
@@ -108,10 +109,11 @@ m, V = EA.mean_cov(EA.Unscented(), x -> A * x + b, MvNormal([1.0, 2.0], [1.0 0.3
 m ≈ A * [1.0, 2.0] + b, V ≈ A * [1.0 0.3; 0.3 2.0] * A'
 ```
 
-The unscented transform's centre point has a covariance weight that differs from its mean weight.
-Its prepared form is therefore a [`SigmaPointSet`](@ref) rather than a plain point set, and its
-negative centre weight rules out products of distributions and tilted moments. The spherical-radial
-cubature has equal positive weights and none of these limits.
+The centre point of the unscented transform has a covariance weight that differs from its mean
+weight, so its prepared form is a [`SigmaPointSet`](@ref), which stores both. The centre weight
+can be negative, and it is with the default parameters, so the unscented transform does not
+support products of distributions or tilted moments. The spherical-radial cubature has equal
+positive weights and neither restriction.
 
 ```@docs
 Unscented
@@ -123,12 +125,13 @@ SphericalRadialCubature
 ## ExponentialFamily's distributions
 
 When [ExponentialFamily](https://github.com/ReactiveBayes/ExponentialFamily.jl) is loaded, an
-extension adds its own types:
+extension adds support for its distribution types:
 
 - its univariate Gaussians, `NormalMeanVariance`, `NormalMeanPrecision` and
   `NormalWeightedMeanPrecision`, to [`GaussHermite`](@ref), [`Unscented`](@ref),
   [`GenUnscented`](@ref) and [`SphericalRadialCubature`](@ref);
 - `GammaShapeRate` to [`GaussLaguerre`](@ref).
 
-Its multivariate Gaussians are Distributions' `AbstractMvNormal`s, which the package covers
-without the extension. So [`EADefault`](@ref) handles the distributions RxInfer's rules produce.
+Its multivariate Gaussians are subtypes of Distributions' `AbstractMvNormal`, which the package
+supports without the extension. With the extension, [`EADefault`](@ref) handles the distributions
+that the rules of RxInfer produce.

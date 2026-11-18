@@ -2,21 +2,22 @@
     register_backends!(; kwargs...)
 
 Add the rules of [`EADefault`](@ref), with 16 points, to a registry of backends for automatic
-choice, BayesBase's global one by default. A `BayesBase.ExpectationDynamicRouter` chooses among
-the registered backends when it is called; `BayesBase.ExpectationFirstOf(ExpectationDynamicRouter())`
-freezes that choice into a router the compiler resolves. With only these rules registered, both
-choose as `EADefault()` does. A backend registered by another package comes before them where it
-is exact for a pair or has a higher priority. This is how a model that names no backend, such as
-RxInfer's `fallback = LocalLaplace()`, finds one.
+choice, by default the global registry of BayesBase. A `BayesBase.ExpectationDynamicRouter`
+chooses among the registered backends when it is called, and
+`BayesBase.ExpectationFirstOf(ExpectationDynamicRouter())` fixes that choice in a router that the
+compiler resolves. With only these rules registered, both choose as `EADefault()` does. A backend
+registered by another package is chosen before them where it is exact for the integrand and the
+distribution, or where it has a higher priority. A model that specifies no backend, such as one
+run with RxInfer's `fallback = LocalLaplace()`, finds one this way.
 
-- `QuantileLegendre`, which takes any continuous univariate distribution, is registered with the
-  lowest priority, `-100`, so that it is chosen only where no other rule applies.
-- The stochastic backends, `MonteCarlo` and `SNIS`, are not registered: they need a random
-  number generator, and an automatic choice stays deterministic.
+`QuantileLegendre`, which supports any continuous univariate distribution, is registered with the
+lowest priority, `-100`, so that it is chosen only where no other rule applies. The stochastic
+backends, `MonteCarlo` and `SNIS`, are not registered: they need a random number generator, and
+the automatic choice is kept deterministic.
 
-Called when the package loads; registering again changes nothing. The keywords are passed on to
-`BayesBase.register_expectation_backend!`: `registry` names another
-`BayesBase.ExpectationBackendRegistry`.
+The package calls this function when it loads; registering again changes nothing. The keywords
+are passed on to `BayesBase.register_expectation_backend!`; for example, `registry` selects
+another `BayesBase.ExpectationBackendRegistry`.
 """
 function register_backends!(; kwargs...)
     for backend in (ExactSum(), GaussHermite(16), GaussLaguerre(16), GaussJacobi(16))

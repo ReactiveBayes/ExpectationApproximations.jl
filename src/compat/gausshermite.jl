@@ -3,11 +3,11 @@
 
 Gauss–Hermite cubature with `p` points per dimension, for expectations under a normal given by
 its mean and variance, or mean vector and covariance. It is exact for polynomials of degree up to
-`2p - 1` in each coordinate. In `d` dimensions it evaluates `p^d` points, a tensor product, so
-it suits a handful of dimensions only.
+`2p - 1` in each coordinate. In `d` dimensions it evaluates a tensor product of `p^d` points,
+so it is practical only in a few dimensions.
 
-It provides [`getpoints`](@ref) and [`getweights`](@ref), and through them
-[`approximate_meancov`](@ref). [`ghcubature`](@ref)`(p)` builds the same.
+It implements [`getpoints`](@ref) and [`getweights`](@ref), and through them
+[`approximate_meancov`](@ref). [`ghcubature`](@ref)`(p)` constructs the same method.
 
 # Examples
 

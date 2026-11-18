@@ -3,8 +3,8 @@
 
 The average over `n` samples, drawn with `rng` when the expectation is prepared, for any
 distribution that can be sampled. Labelled `ExpectationStochastic`. Without a random number
-generator it refuses to run; `BayesBase.with_expectation_rng` provides one from above and never
-replaces one set here.
+generator, preparing an expectation throws an `ArgumentError`. `BayesBase.with_expectation_rng`
+sets a generator, but does not replace one given here.
 """
 struct MonteCarlo{R}
     n::Int

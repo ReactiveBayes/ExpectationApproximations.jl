@@ -21,13 +21,14 @@ Unscented(; α::Real = 1.0e-3, β::Real = 2.0, κ::Real = 0.0) = Unscented(α, �
 """
     SigmaPointSet(points, weights, centre)
 
-A prepared expectation over sigma points: a weighted sum with `weights`, the mean weights, whose
-first point, the centre, has a covariance weight larger by `centre`.
+A prepared expectation over sigma points: a weighted sum with the mean weights `weights`. The
+first point, the centre, has a covariance weight that is larger by `centre`.
 
-It is what `BayesBase.prepare_expectation(Unscented(), q)` returns, in place of a
-`BayesBase.ExpectationPointSet`: the unscented transform weighs the centre differently for
-means and for covariances, which a single set of weights cannot express. `BayesBase.expectation`
-uses the mean weights, and [`mean_cov`](@ref) and [`mean_cov_cross`](@ref) add the correction.
+`BayesBase.prepare_expectation(Unscented(), q)` returns a `SigmaPointSet` instead of a
+`BayesBase.ExpectationPointSet`, because the unscented transform weights the centre differently
+for means and for covariances, and one set of weights cannot express that.
+`BayesBase.expectation` uses the mean weights, and [`mean_cov`](@ref) and
+[`mean_cov_cross`](@ref) add the correction.
 """
 struct SigmaPointSet{P, W, T}
     points::P
@@ -88,9 +89,9 @@ axis_points(m, S) = vcat([m], [m + S[:, i] for i in axes(S, 2)], [m - S[:, i] fo
 
 The generalised unscented transform: three points per dimension, with weights that match the
 mean, variance, skewness and kurtosis of the distribution, so that expectations are exact for
-polynomials up to degree 4. For any univariate distribution with a skewness and a kurtosis
-(a Gamma, a Beta, a Poisson), and for Gaussian vectors, along each axis of the Cholesky factor of
-the covariance.
+polynomials up to degree 4. It supports univariate distributions with a skewness and a kurtosis,
+such as a Gamma, a Beta or a Poisson, and Gaussian vectors, for which the points lie along the
+columns of the Cholesky factor of the covariance.
 """
 struct GenUnscented end
 
@@ -123,8 +124,8 @@ end
     SphericalRadialCubature()
 
 The third-degree spherical-radial cubature rule for Gaussian distributions: `2d` points, the
-mean plus and minus the columns of `√d L`, with equal positive weights; exact for polynomials up
-to degree 3.
+mean plus and minus the columns of `√d L`, with equal positive weights. It is exact for
+polynomials up to degree 3.
 """
 struct SphericalRadialCubature end
 

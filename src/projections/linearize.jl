@@ -2,10 +2,10 @@
     linearize(f, x) -> (A, b)
     linearize(f, x₁, x₂, ...) -> (A, b)
 
-The first-order expansion `f(x) ≈ A x + b` at the point `x`, with derivatives from ForwardDiff:
-`A` is a derivative, a gradient as a row, a column or a Jacobian, as the shapes of the input and
-the output require, and `b = f(x) - A x`. Several inputs, numbers or vectors, are linearised
-jointly, `A` acting on their concatenation.
+The first-order expansion `f(x) ≈ A x + b` at the point `x`, with derivatives from ForwardDiff,
+and `b = f(x) - A x`. Depending on the shapes of the input and the output, `A` is a derivative, a
+column, a gradient as a row, or a Jacobian. Several inputs, numbers or vectors, are linearised
+jointly, and `A` then acts on their concatenation.
 """
 function linearize(f::F, x) where {F}
     A = jacobian(f, x)

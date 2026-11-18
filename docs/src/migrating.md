@@ -6,9 +6,9 @@ CurrentModule = ExpectationApproximations.MPRACompat
 
 ## From ExpectationApproximations 0.x
 
-Version 1.0 is a rewrite. The previous API, `approximate`, its kernels, CVI, CVMP, sampling with
-AdvancedHMC and the constrained unscented transform, is removed, and with it most dependencies.
-What replaces it:
+Version 1.0 is a rewrite. The previous API is removed: `approximate` and its kernels, CVI, CVMP,
+sampling with AdvancedHMC and the constrained unscented transform. Most dependencies are removed
+with it. The replacements are:
 
 | Before | Now |
 |:-------|:----|
@@ -19,10 +19,10 @@ What replaces it:
 
 ## From MessagePassingRulesApproximations 1.0
 
-The API of MessagePassingRulesApproximations 1.0 lives on in `ExpectationApproximations.MPRACompat`.
-Its 1.1 re-exports it, so the rule packages built on it keep working while they move to the
-expectation protocol. The results are those of 1.0, except that the Gauss–Hermite weights come
-from this package's more accurate rule.
+`ExpectationApproximations.MPRACompat` contains the API of MessagePassingRulesApproximations 1.0,
+and MessagePassingRulesApproximations 1.1 re-exports it. Rule packages built on that API keep
+working while they move to the expectation protocol. The results are those of 1.0, except that
+the Gauss–Hermite weights come from the more accurate rule of this package.
 
 | MessagePassingRulesApproximations 1.0 | The protocol |
 |:--------------------------------------|:-------------|

@@ -2,9 +2,9 @@
     TransformedGaussian(gaussian, domain)
 
 The distribution of `forward(domain, u)` for `u ~ gaussian`: a Gaussian in unconstrained
-coordinates, pushed forward onto a [`Domain`](@ref) that has no named family of its own, such
-as an interval, a simplex or a block of components in different domains. It has a `logpdf`, it
-can be sampled, and the backends compute its expectations through its Gaussian.
+coordinates, pushed forward onto a [`Domain`](@ref) such as the positive half-line, an interval, a
+simplex or a block of components in different domains. It has a `logpdf` and can be sampled.
+[`GaussHermite`](@ref) computes its expectations through its Gaussian.
 """
 struct TransformedGaussian{V <: VariateForm, G <: Distribution, D <: Domain} <: Distribution{V, Continuous}
     gaussian::G

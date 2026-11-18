@@ -119,7 +119,8 @@ getWc(extra::UnscentedExtra) = extra.Wc
 The scaling `λ` and the weights of the mean, `Wm`, and of the covariance, `Wc`, of the `2 dim + 1`
 sigma points `method` places for an input of dimension `dim`: those `method` carries when it was
 built for `dim`, `Unscented(dim; …)`, and computed from its `alpha`, `beta` and `kappa` when it was
-built without a dimension, `Unscented(; …)`. For a caller that places the sigma points itself.
+built without a dimension, `Unscented(; …)`. It is for a caller that places the sigma points
+itself.
 
 # Throws
 

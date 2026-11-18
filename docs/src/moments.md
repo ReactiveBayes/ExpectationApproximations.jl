@@ -4,10 +4,11 @@ CurrentModule = ExpectationApproximations
 
 # Moments through functions
 
-Message passing with Gaussians keeps asking one question: if ``x`` is Gaussian and ``y = f(x)``,
-what are the mean and covariance of ``y``, and how does ``y`` covary with ``x``? The answers give a
+For a Gaussian ``x`` and a nonlinear function ``y = f(x)``, Gaussian message passing needs the
+mean and covariance of ``y`` and the cross-covariance of ``x`` and ``y``. These moments define a
 Gaussian message through a nonlinear node, as in the extended, unscented and cubature Kalman
-filters. This page covers the functions that compute them through any backend.
+filters. [`mean_cov`](@ref) and [`mean_cov_cross`](@ref) compute them with any backend, and
+[`linearize`](@ref) computes the first-order expansion of ``f``.
 
 ```@example moments
 using ExpectationApproximations, Distributions
@@ -19,9 +20,9 @@ nothing # hide
 ## The moments of ``f(x)``
 
 [`mean_cov`](@ref)`(backend, f, q)` returns ``m = \mathbb{E}[f(x)]`` and
-``V = \mathbb{E}[(f(x) - m)(f(x) - m)^\top]`` for ``x \sim q``. Unlike `BayesBase.mean_cov(q)`, the
-moments of the distribution, these are the moments of a function of it. For a polar-to-Cartesian
-map, a classic test of nonlinear filters:
+``V = \mathbb{E}[(f(x) - m)(f(x) - m)^\top]`` for ``x \sim q``. These are the moments of a
+function of ``x``; `BayesBase.mean_cov(q)` returns the moments of ``q`` itself. For example, for
+the polar-to-Cartesian map, a common test case for nonlinear filters:
 
 ```@example moments
 polar = MvNormal([1.0, π / 4], [0.01 0.0; 0.0 0.2])
@@ -48,9 +49,9 @@ C
 
 Expectation propagation needs the moments of a Gaussian *tilted* by a factor,
 ``q(x) e^{\log f(x)} / Z``. [`tilted_mean_cov`](@ref)`(backend, logf, q)` returns
-``\log Z``, the mean and the covariance, computed in log space so that very small or very large
-factors neither underflow nor overflow. For a Gaussian likelihood the result is close to the
-conjugate posterior; not exact, since the factor is not a polynomial in ``x``:
+``\log Z``, the mean and the covariance. It works in log space, so that very small or very large
+factors do not underflow or overflow. For a Gaussian likelihood the result is close to the
+conjugate posterior. It is not exact, because the factor is not a polynomial in ``x``:
 
 ```@example moments
 prior = Normal(0.0, 2.0)
@@ -59,22 +60,23 @@ logZ, m, v = EA.tilted_mean_cov(EA.GaussHermite(20), loglikelihood, prior)
 (logZ = logZ, m = m, v = v, exact_m = 1.5 * 4 / 5, exact_v = 4 / 5)
 ```
 
-Its points come from ``q``, so it suits a factor no sharper than ``q``. For a sharp factor, use
-[`moment_matching`](@ref), which places the points on the tilted density itself. See
-[Gaussian approximations of a density](@ref).
+The points come from ``q``, so the result is accurate only for a factor that is not much sharper
+than ``q``. For a sharp factor, use [`moment_matching`](@ref), which places the points on the
+tilted density itself; see [Gaussian approximations of a density](@ref).
 
 ## Linearisation
 
 [`linearize`](@ref)`(f, x)` returns ``A`` and ``b`` with ``f(x') \approx A x' + b`` near ``x``, the
-first-order expansion behind the extended Kalman filter. It takes several inputs too, and stacks
-them:
+first-order expansion used by the extended Kalman filter. It also takes several inputs and
+stacks them:
 
 ```@example moments
 A, b = EA.linearize((x, y) -> x * y + sin(x), 1.0, 2.0)
 ```
 
 Linearisation needs no quadrature and is exact for linear functions, but it ignores the curvature
-of ``f`` across the spread of ``x``. The moment-based functions above take it into account.
+of ``f`` over the spread of ``x``. [`mean_cov`](@ref) and [`mean_cov_cross`](@ref) take the
+curvature into account.
 
 ```@docs
 mean_cov

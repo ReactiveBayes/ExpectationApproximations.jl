@@ -4,9 +4,9 @@ CurrentModule = ExpectationApproximations
 
 # Gaussian approximations of a density
 
-Much of approximate inference replaces a density it cannot handle by a Gaussian it can. There is
-more than one way to choose that Gaussian, and the choice matters. This package implements the
-three that inference schemes use, each as a function of a log-density given as plain Julia code:
+Approximate inference often replaces an intractable density by a Gaussian. There are several ways
+to choose the Gaussian, and they give different results. The package implements the three that
+inference algorithms use, each as a function of a log-density written as Julia code:
 
 | Function | The Gaussian | Used by |
 |:---------|:-------------|:--------|
@@ -17,8 +17,8 @@ three that inference schemes use, each as a function of a log-density given as p
 Each takes `logp`, the log of an unnormalised density, and a starting point `x0`, a number or a
 vector. Each returns a named tuple with the Gaussian `distribution`, an approximation `logZ` of
 the log-normaliser ``\log \int e^{\log p(x)} dx``, whether it `converged`, and the number of
-`iterations`. Gradients and Hessians come from ForwardDiff, so `logp` must accept its dual
-numbers, which ordinary Julia code does.
+`iterations`. Gradients and Hessians come from ForwardDiff, so `logp` must accept ForwardDiff's
+dual numbers, which generic Julia code does.
 
 ```@example projections
 using ExpectationApproximations, Distributions
@@ -67,21 +67,20 @@ plot!(xs, pdf.(matching.distribution, xs); label = "moment_matching")
 plot!(xs, pdf.(variational.distribution, xs); label = "gaussian_variational", linestyle = :dot, linewidth = 2)
 ```
 
-The three answer different questions:
+The Laplace approximation uses only the mode and the curvature there. It is cheap, needs no
+quadrature, and is exact for a Gaussian. Here it is centred at the mode ``\log 2``, well to the
+right of the mean, and its variance, ``1``, misses the heavy left tail. Its `logZ` is an estimate
+of ``\log Z``, neither a lower nor an upper bound.
 
-- **Laplace** looks only at the mode and the curvature there. It is cheap, needs no quadrature,
-  and is exact for a Gaussian. Here it sits at the mode ``\log 2``, well to the right of the mean,
-  and its variance, ``1``, misses the heavy left tail. Its `logZ` is an estimate of
-  ``\log Z``, neither a lower nor an upper bound.
-- **Moment matching** reproduces the mean and the variance, which is what expectation propagation
-  needs, and its `logZ` is ``\log Z`` itself, up to the quadrature's error. To cover the left
-  tail it spreads out: it is lower than ``p`` at the peak and puts mass on the right, where ``p``
-  has little.
-- **The variational Gaussian** maximises the evidence lower bound
-  ``\mathbb{E}_q[\log p] + H[q]``, so its `logZ` is a lower bound on ``\log Z``. Penalised for
-  mass where ``p`` has little, it keeps the narrow width of the peak but moves toward the mean.
-  On this density its bound happens to equal Laplace's estimate of ``\log Z``; the bound of
-  Laplace's Gaussian itself is lower:
+Moment matching reproduces the mean and the variance, as expectation propagation requires, and its
+`logZ` is ``\log Z`` up to the quadrature error. To cover the left tail, the Gaussian is wider: it
+is lower than ``p`` at the peak and puts mass on the right, where ``p`` has little.
+
+The variational Gaussian maximises the evidence lower bound ``\mathbb{E}_q[\log p] + H[q]``, so
+its `logZ` is a lower bound on ``\log Z``. The bound penalises mass where ``p`` has little, so
+this Gaussian keeps the narrow width of the peak but moves toward the mean. On this density its
+bound happens to equal Laplace's estimate of ``\log Z``. The bound evaluated at the Laplace
+approximation is lower:
 
 ```@example projections
 elbo(q) = BayesBase.expectation(EA.GaussHermite(40), logp, q) + entropy(q)
@@ -91,9 +90,9 @@ elbo(q) = BayesBase.expectation(EA.GaussHermite(40), logp, q) + entropy(q)
 ## Why moment matching places its points on the density
 
 Expectation propagation computes the moments of a *tilted* density: a factor ``f`` times a
-Gaussian cavity ``c``. A natural way is quadrature on the cavity, ``\sum_i w_i f(x_i)`` with points
-from ``c``, which is what [`tilted_mean_cov`](@ref) does. It fails when the factor is much sharper
-than the cavity: all the points fall where the factor is negligible.
+Gaussian cavity ``c``. The direct way is quadrature on the cavity, ``\sum_i w_i f(x_i)`` with
+points from ``c``, as in [`tilted_mean_cov`](@ref). It fails when the factor is much sharper than
+the cavity, because all the points fall where the factor is negligible:
 
 ```@example projections
 cavity, y, r = Normal(0.0, 10.0), 3.0, 1.0e-4           # a wide cavity, a sharp observation
@@ -105,9 +104,10 @@ result = EA.moment_matching(x -> logf(x) + logpdf(cavity, x), 0.0)
 (exact = v_exact, points_on_cavity = v_cavity, moment_matching = var(result.distribution))
 ```
 
-[`moment_matching`](@ref) first finds the density's Laplace approximation, places the points on
-it, and weighs each point by the density against that Gaussian. The points then sit where the
-mass is, whatever the cavity, and a Gaussian density is matched exactly.
+[`moment_matching`](@ref) first computes the Laplace approximation of the density, places the
+points on it, and weights each point by the ratio of the density to that Gaussian. The points then
+lie where the density has its mass, wherever the cavity is, and a Gaussian density is matched
+exactly.
 
 ## A posterior in two dimensions
 
@@ -133,26 +133,28 @@ end
 
 The posterior of the slope is skewed to the right, so the moment-matched and variational means lie
 above Laplace's mode. Moment matching in two dimensions uses ``20^2 = 400`` points by default.
-For higher dimensions, pass a cheaper `backend`, such as
+In higher dimensions, pass a cheaper `backend`, such as
 [`SphericalRadialCubature`](@ref)`()` with ``2d`` points.
 
 ## How each one is computed
 
-- [`laplace`](@ref) runs Newton's method with a backtracking line search from `x0`. A step that
-  leaves the region where `logp` is finite is shortened. Where the Hessian is not negative
-  definite, at a start where `logp` is not concave, its eigenvalues are reflected and floored, so
-  the iteration still climbs.
-- [`moment_matching`](@ref) runs `laplace`, then one weighted quadrature, as above. Where Laplace's
-  method fails, or the weights are degenerate, it returns the Gaussian the points were placed on
-  with `converged = false`.
-- [`gaussian_variational`](@ref) writes the bound as a quadrature over a standard Gaussian at
-  fixed points, ``\sum_i w_i \log p(m + L z_i) + \log\det L + \text{const}``. That is a smooth
-  function of the mean ``m`` and the Cholesky factor ``L``, which Newton's method maximises,
-  starting from Laplace's approximation. At the maximum it satisfies the fixed-point conditions of
-  conjugate-computation variational inference, which natural-gradient message passing reaches one
-  damped step at a time.
+[`laplace`](@ref) runs Newton's method with a backtracking line search from `x0`. A step that
+leaves the region where `logp` is finite is shortened. Where the Hessian is not negative definite,
+for example at a starting point where `logp` is not concave, its eigenvalues are reflected and
+floored so that the Newton step still points uphill.
 
-All three also work in a constrained domain: see [Constrained variables](@ref).
+[`moment_matching`](@ref) runs `laplace` and then one weighted quadrature, as described above.
+When Laplace's method fails or the weights are degenerate, it returns the Gaussian that the points
+were placed on, with `converged = false`.
+
+[`gaussian_variational`](@ref) writes the bound as a quadrature over a standard Gaussian with fixed
+points, ``\sum_i w_i \log p(m + L z_i) + \log\det L + \text{const}``. This is a smooth function
+of the mean ``m`` and the Cholesky factor ``L``, and Newton's method maximises it, starting from
+the Laplace approximation. The maximum satisfies the fixed-point conditions of
+conjugate-computation variational inference, which natural-gradient message passing approaches
+one damped step at a time.
+
+All three also work in a constrained domain; see [Constrained variables](@ref).
 
 ```@docs
 laplace
