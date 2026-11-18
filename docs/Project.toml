@@ -12,8 +12,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [sources]
-# BayesBase 1.7 is in review as ReactiveBayes/BayesBase.jl#69; removed once it is registered
-BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"}
 ExpectationApproximations = {path = ".."}
 
 [compat]

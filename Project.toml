@@ -22,11 +22,6 @@ ExponentialFamily = "62312e5e-252a-4322-ace9-a5f4bf9b357b"
 [extensions]
 ExpectationApproximationsExponentialFamilyExt = "ExponentialFamily"
 
-[sources]
-# The expectation protocol of BayesBase 1.7, in review as ReactiveBayes/BayesBase.jl#69; removed
-# once 1.7 is registered
-BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"}
-
 [compat]
 Aqua = "0.8"
 BayesBase = "1.7"

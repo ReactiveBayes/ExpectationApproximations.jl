@@ -8,6 +8,4 @@ ExpectationApproximations = "9cdca625-6a81-42ba-9f59-d0fb182fc17f"
 PkgBenchmark = "32113eaa-f34f-5b0d-bd6c-c81e245fc73d"
 
 [sources]
-# BayesBase 1.7 is in review as ReactiveBayes/BayesBase.jl#69; removed once it is registered
-BayesBase = {url = "https://github.com/ReactiveBayes/BayesBase.jl", rev = "universal-inference"}
 ExpectationApproximations = {path = ".."}
