@@ -135,7 +135,8 @@ julia> p.λ, length(p.Wm), sum(p.Wm) ≈ 1
 ```
 """
 function sigma_point_parameters(method::Unscented, dim::Integer)
-    extra = getextra(method) === nothing ? getextra(Unscented(dim; alpha = getα(method), beta = getβ(method), kappa = getκ(method))) : getextra(method)
+    extra = getextra(method)
+    extra = isnothing(extra) ? getextra(Unscented(dim; alpha = getα(method), beta = getβ(method), kappa = getκ(method))) : extra
     check_unscented_dimension(extra, dim)
     return (λ = getλ(extra), Wm = getWm(extra), Wc = getWc(extra))
 end
