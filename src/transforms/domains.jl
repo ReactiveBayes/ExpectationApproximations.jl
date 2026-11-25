@@ -179,7 +179,9 @@ The [`Domain`](@ref) of the distribution `q`, read from its support, or `nothing
 domain of this package matches the support, as for a discrete distribution. For the BayesBase
 log-densities `ContinuousUnivariateLogPdf` and `ContinuousMultivariateLogPdf`, the domain is read
 from their own domain, and is `nothing` when that is unspecified. For a product of densities, such
-as the product of a prior and messages, it is the domain of the first factor that has one.
+as the product of a prior and messages, it is the narrowest of its factors' domains: the
+intersection of their intervals, where the real line of a Gaussian factor, such as a message
+moment-matched through a function, does not hide the support of another factor.
 """
 domain(::AbstractMvNormal) = RealLine()
 function domain(q::ContinuousUnivariateDistribution)
@@ -195,8 +197,8 @@ end
 domain(q::Dirichlet) = Simplex(length(q))
 domain(q::ContinuousUnivariateLogPdf) = setdomain(support(q))
 domain(q::ContinuousMultivariateLogPdf) = setdomain(support(q))
-domain(q::ProductOf) = firstdomain((getleft(q), getright(q)))
-domain(q::LinearizedProductOf) = firstdomain(view(q.vector, 1:min(q.length, length(q.vector))))
+domain(q::ProductOf) = productdomain((getleft(q), getright(q)))
+domain(q::LinearizedProductOf) = productdomain(view(q.vector, 1:min(q.length, length(q.vector))))
 domain(q) = nothing
 
 # the domain of a DomainSets set: an interval, or the whole space in any dimension
@@ -214,13 +216,33 @@ function interval(lower::Real, upper::Real)
     return Bounded(lower, upper)
 end
 
-function firstdomain(factors)
+# The narrowest domain of the factors of a product, or `nothing` where none has one
+function productdomain(factors)
+    found = nothing
     for factor in factors
         D = domain(factor)
-        isnothing(D) || return D
+        isnothing(D) && continue
+        found = isnothing(found) ? D : narrower(found, D)
     end
-    return nothing
+    return found
 end
+
+# The intersection of two domains: of two intervals, the interval between the larger lower
+# bound and the smaller upper one; where one is not an interval, as a simplex, the first
+narrower(a::Domain, b::Domain) = a == b ? a : narrower(endpoints(a), endpoints(b), a)
+narrower(::RealLine, b::Domain) = b
+narrower(a::Domain, ::RealLine) = a
+narrower(a::RealLine, ::RealLine) = a
+narrower(a::Tuple, b::Tuple, first) = interval(max(a[1], b[1]), min(a[2], b[2]))
+narrower(a, b, first) = first
+
+endpoints(::RealLine) = (-Inf, Inf)
+endpoints(::Positive) = (0.0, Inf)
+endpoints(::UnitInterval) = (0.0, 1.0)
+endpoints(D::LowerBounded) = (D.lower, Inf)
+endpoints(D::UpperBounded) = (-Inf, D.upper)
+endpoints(D::Bounded) = (D.lower, D.upper)
+endpoints(::Domain) = nothing
 
 """
     pushforward(domain, gaussian)

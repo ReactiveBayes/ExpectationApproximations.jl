@@ -45,8 +45,14 @@ end
     # a distribution that does not say its support: Distributions has no default
     struct Unsaid <: ContinuousUnivariateDistribution end
     @test EA.domain(Unsaid()) === nothing
-    # a product: the first factor that has a support, as a prior times messages
+    # a product: the narrowest domain of its factors, as a prior times messages; a Gaussian
+    # factor, such as a message moment-matched through a function, does not hide the others'
     @test EA.domain(P.ProductOf(Gamma(2.0, 1.0), Normal(0.0, 1.0))) === EA.Positive()
+    @test EA.domain(P.ProductOf(Normal(0.0, 1.0), Gamma(2.0, 1.0))) === EA.Positive()
+    @test EA.domain(P.ProductOf(Normal(0.3, 1.0), Beta(2.0, 1.0))) === EA.UnitInterval()
+    @test EA.domain(P.ProductOf(Uniform(-1.0, 2.0), Gamma(2.0, 1.0))) == EA.Bounded(0.0, 2.0)
+    @test EA.domain(P.ProductOf(Exponential(1.0), Uniform(-1.0, 0.5))) == EA.Bounded(0.0, 0.5)
+    @test EA.domain(P.ProductOf(MvNormal(zeros(2), [1.0 0.0; 0.0 1.0]), Dirichlet([1.0, 1.0]))) == EA.Simplex(2)
     @test EA.domain(P.LinearizedProductOf([Beta(1.0, 1.0), Beta(2.0, 2.0)], 2)) === EA.UnitInterval()
     # a linearised product holds its factors in the first `length` entries of its vector only
     @test EA.domain(P.LinearizedProductOf([Normal(0.0, 1.0), Gamma(2.0, 1.0)], 1)) === EA.RealLine()
