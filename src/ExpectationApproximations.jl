@@ -18,18 +18,19 @@ using BayesBase: BayesBase, ExpectationPointSet, ExpectationProductPointSet, Fac
 using Compat: @compat
 using Distributions: Distributions, Distribution, UnivariateDistribution, VariateForm, Univariate, Multivariate,
     Continuous, Dirichlet, insupport, logpdf, ContinuousUnivariateDistribution, Normal, MvNormal, AbstractMvNormal, LogNormal,
-    LogitNormal, Gamma, Exponential, Beta, DiscreteNonParametric, Bernoulli, Binomial, DiscreteUniform, Dirac,
-    mean, std, cov, params, scale, support, probs, pdf, quantile, failprob, succprob, skewness, kurtosis, entropy
+    LogitNormal, Gamma, Exponential, Beta, Chisq, Erlang, InverseGamma, Weibull, Uniform, Laplace, Logistic, Gumbel, Poisson, Geometric,
+    NegativeBinomial, VonMises, DiscreteNonParametric, Bernoulli, Binomial, DiscreteUniform, Dirac,
+    mean, std, cov, params, scale, shape, support, probs, pdf, quantile, failprob, succprob, skewness, kurtosis, entropy
 using DomainSets: DomainSets
 using ForwardDiff: ForwardDiff
-using LinearAlgebra: Diagonal, I, SymTridiagonal, Symmetric, cholesky, dot, eigen, eigvals, isposdef, logdet, norm
+using LinearAlgebra: Diagonal, I, SymTridiagonal, Symmetric, cholesky, dot, eigen, eigvals, isposdef, issuccess, logdet, norm
 using SpecialFunctions: gamma, loggamma
 using StaticArrays: StaticVector, SVector
 using Random: AbstractRNG
 using StatsFuns: log1pexp, log2π, logistic, logit
 
 @compat public gausshermite, gausslaguerre, gaussjacobi, gausslegendre
-@compat public GaussHermite, GaussLaguerre, GaussJacobi, QuantileLegendre, ExactSum, MonteCarlo, EADefault, register_backends!
+@compat public GaussHermite, GaussLaguerre, GaussJacobi, UnconstrainedLegendre, QuantileLegendre, ExactSum, MonteCarlo, EADefault, register_backends!
 @compat public Unscented, SigmaPointSet, GenUnscented, SphericalRadialCubature, SNIS, effective_sample_size
 @compat public mean_cov, mean_cov_cross, tilted_mean_cov, laplace, gaussian_variational, moment_matching, linearize
 @compat public Domain, RealLine, Positive, UnitInterval, LowerBounded, UpperBounded, Bounded, Simplex, Componentwise
@@ -39,6 +40,7 @@ using StatsFuns: log1pexp, log2π, logistic, logit
 include("rules/golubwelsch.jl")
 include("backends/gausshermite.jl")
 include("backends/orthogonal.jl")
+include("backends/unconstrained.jl")
 include("backends/exactsum.jl")
 include("backends/montecarlo.jl")
 include("backends/snis.jl")

@@ -13,11 +13,13 @@ module Testing
 
 using BayesBase: BayesBase, FactorizedJoint, expectation, prepare_expectation, supports_expectation, is_expectation_exact, is_expectation_stochastic, with_expectation_rng
 using Compat: @compat
+using Distributions: Gamma, Exponential, Beta, Poisson, logpdf
 using ForwardDiff: ForwardDiff
+using SpecialFunctions: digamma, loggamma
 using Random: AbstractRNG, Xoshiro
 using Test: @test, @testset
 
-@compat public Case, Check, conformance, test_backend
+@compat public Case, Check, conformance, test_backend, boundary_cases
 
 """
     Case(q, f, expected; rtol = 1e-10)
@@ -146,6 +148,35 @@ function check_product(backend, a::Case, b::Case)
     expected = a.expected * b.expected
     rtol = 2 * max(a.rtol, b.rtol)
     return Check("product", 0, agrees(value, expected, rtol), "got $value, expected $expected, rtol $rtol")
+end
+
+"""
+    boundary_cases(; rtol = 1e-10) -> Vector{Case}
+
+Cases whose integrands are singular at the boundary of a positive or unit-interval variable, at
+shapes of one and below, where the mass piles up at that boundary: `log x` under Gamma and
+Exponential distributions, `log x` and `log(1 - x)` under Beta distributions, and the
+log-density of a Poisson count under a Gamma rate. These are the integrands of inference, such as
+an average energy, and quadrature rules made for polynomials, such as Gauss–Laguerre and
+Gauss–Jacobi, converge slowly on them. A backend for these families should pass them.
+"""
+function boundary_cases(; rtol::Real = 1.0e-10)
+    cases = Case[]
+    for (a, θ) in ((0.05, 1.0), (0.3, 2.0), (1.0, 0.5))
+        push!(cases, Case(Gamma(a, θ), log, digamma(a) + log(θ); rtol))
+    end
+    push!(cases, Case(Exponential(3.0), log, digamma(1.0) + log(3.0); rtol))
+    poisson = x -> logpdf(Poisson(x), 3)
+    push!(cases, Case(Gamma(0.3, 2.0), poisson, 3 * (digamma(0.3) + log(2.0)) - 0.6 - loggamma(4.0); rtol))
+    for (a, b) in ((0.5, 0.5), (0.2, 3.0), (3.0, 0.7))
+        push!(cases, Case(Beta(a, b), log, digamma(a) - digamma(a + b); rtol))
+    end
+    # `1 - x` loses precision as `x` approaches one, so `log(1 - x)` is checked only where the
+    # mass near one is small enough for that not to show at `rtol`
+    for (a, b) in ((0.2, 3.0), (3.0, 0.7))
+        push!(cases, Case(Beta(a, b), x -> log1p(-x), digamma(b) - digamma(a + b); rtol))
+    end
+    return cases
 end
 
 agrees(value, expected, rtol) = isapprox(value, expected; rtol = rtol, atol = rtol)
