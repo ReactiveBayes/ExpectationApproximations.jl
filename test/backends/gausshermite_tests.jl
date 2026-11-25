@@ -51,3 +51,24 @@ end
     @test allocations(P.expectation, P.prepare_expectation(EA.GaussHermite(5), MvNormal([1.0, 2.0], [1.0 0.0; 0.0 2.0])), sum) == 0
     @test @inferred(P.prepare_expectation(EA.GaussHermite(4), Normal(0.0, 1.0))) isa P.ExpectationPointSet
 end
+
+@testitem "GaussHermite: at most maxpoints points in many dimensions" tags = [:backends] setup = [EAHelpers] begin
+    using Distributions, LinearAlgebra
+    rule = EA.GaussHermite(16)
+    @test rule == EA.GaussHermite(16; maxpoints = 10_000)
+    @test rule != EA.GaussHermite(16; maxpoints = 100)
+    @test_throws ArgumentError EA.GaussHermite(4; maxpoints = 0)
+    for d in (1, 2, 3, 4, 5, 6, 8, 9, 12)
+        m = [sin(i) for i in 1:d]
+        Σ = Matrix(Diagonal(fill(0.5, d))) + fill(0.1, d, d)
+        prepared = P.prepare_expectation(rule, MvNormal(m, Σ))
+        @test length(prepared.points) <= 10_000
+        @test d > 3 || length(prepared.points) == 16^d
+        # every rule here is exact for quadratics
+        @test P.expectation(prepared, x -> dot(x, x)) ≈ tr(Σ) + dot(m, m) rtol = 1.0e-10
+    end
+    # from d = 9, the spherical-radial rule
+    @test length(P.prepare_expectation(rule, MvNormal(zeros(9), I(9))).points) == 18
+    # a smaller cap
+    @test length(P.prepare_expectation(EA.GaussHermite(16; maxpoints = 100), MvNormal(zeros(2), I(2))).points) == 100
+end
