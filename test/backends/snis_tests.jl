@@ -57,3 +57,15 @@ end
     # half the samples of the proposal are negative, where InverseGamma's logpdf throws
     @test P.expectation(EA.SNIS(Normal(0.0, 3.0), 100_000, StableRNG(3)), identity, InverseGamma(3.0, 2.0)) ≈ 1.0 rtol = 5.0e-2
 end
+
+@testitem "SNIS: a target that defines no insupport" tags = [:backends] setup = [EAHelpers] begin
+    using BayesBase, Distributions, StableRNGs, LinearAlgebra
+    # a user's own target, with a log-density and nothing else, as a posterior written by hand
+    struct Shifted <: ContinuousMultivariateDistribution
+        μ::Vector{Float64}
+    end
+    Base.length(d::Shifted) = length(d.μ)
+    Distributions.logpdf(d::Shifted, x::AbstractVector) = logpdf(MvNormal(d.μ, Matrix(1.0I, 2, 2)), x)
+    sampler = BayesBase.with_expectation_rng(EA.SNIS(MvNormal(zeros(2), Matrix(4.0I, 2, 2)), 20_000), StableRNG(1))
+    @test BayesBase.expectation(sampler, identity, Shifted([0.7, -0.3])) ≈ [0.7, -0.3] atol = 0.05
+end

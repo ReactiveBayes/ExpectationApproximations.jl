@@ -33,8 +33,10 @@ BayesBase.get_expectation_rng(sampler::SNIS) = sampler.rng
 BayesBase.with_expectation_rng(sampler::SNIS{P, Nothing}, rng) where {P} = SNIS(sampler.proposal, sampler.n, rng)
 BayesBase.with_expectation_rng(sampler::SNIS, rng) = sampler
 
-# A sample outside the target's support has weight zero; a distribution may throw there
-target_logpdf(target::Distribution, x) = insupport(target, x) ? logpdf(target, x) : -Inf
+# A sample outside the target's support has weight zero; a distribution may throw there. A
+# target that defines no `insupport`, as a user's own distribution may not, is taken to be
+# supported everywhere its log-density is.
+target_logpdf(target::Distribution, x) = (!applicable(insupport, target, x) || insupport(target, x)) ? logpdf(target, x) : -Inf
 target_logpdf(target, x) = logpdf(target, x)
 
 function BayesBase.prepare_expectation(sampler::SNIS, target::Evaluable)
