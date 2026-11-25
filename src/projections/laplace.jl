@@ -22,7 +22,12 @@ Julia function that accepts dual numbers, including an expectation of a log-dens
   zero for a normalised Gaussian.
 
 `distribution` is a `Normal` or an `MvNormal`. `converged` is false when the iteration did not
-settle within `maxiters` Newton steps, or the line search could not increase `logp`.
+settle within `maxiters` Newton steps, when the line search could not increase `logp`, or when
+the point where it settled is not a maximum: the negative Hessian there is not positive definite,
+as at a minimum, a saddle point or on a flat or improper density. The returned Gaussian then uses
+the reflected and floored curvature and is not an approximation of the density, so a caller
+should check `converged`. A step at which `logp` throws a `DomainError` is shortened, as one where
+`logp` is `-Inf`.
 
 ```jldoctest
 julia> result = EA.laplace(x -> logpdf(Gamma(3.0, 0.5), x), 1.0);
@@ -42,6 +47,8 @@ function laplace(logp::L, x0::Real; tol::Real = 1.0e-10, maxiters::Integer = 100
         iterations = iteration
         g, h = derivatives(logp, x)
         step = g / curvature(-h)
+        # a Hessian or gradient that is not finite gives no step: stop, not converged
+        isfinite(step) || break
         # at the mode already: a step below the tolerance cannot raise `logp` measurably
         if abs(step) <= tol * (1 + abs(x))
             converged = true
@@ -56,7 +63,8 @@ function laplace(logp::L, x0::Real; tol::Real = 1.0e-10, maxiters::Integer = 100
         end
     end
     _, h = derivatives(logp, x)
-    precision = curvature(-h)
+    converged = converged && -h > 0
+    precision = isfinite(h) ? curvature(-h) : one(h)
     logZ = fx + (log2π - log(precision)) / 2
     return (; distribution = Normal(x, sqrt(inv(precision))), logZ, mode = x, iterations, converged)
 end
@@ -68,7 +76,9 @@ function laplace(logp::L, x0::AbstractVector; tol::Real = 1.0e-10, maxiters::Int
     for iteration in 1:maxiters
         iterations = iteration
         g, H = ForwardDiff.gradient(logp, x), ForwardDiff.hessian(logp, x)
-        step = curvature(-H) \ g
+        step = newton_step(-H, g)
+        # a curvature that cannot be solved, or is not finite, gives no step: stop, not converged
+        isnothing(step) && break
         if norm(step) <= tol * (1 + norm(x))
             converged = true
             break
@@ -81,7 +91,9 @@ function laplace(logp::L, x0::AbstractVector; tol::Real = 1.0e-10, maxiters::Int
             break
         end
     end
-    precision = curvature(-ForwardDiff.hessian(logp, x))
+    H = ForwardDiff.hessian(logp, x)
+    converged = converged && all(isfinite, H) && isposdef(Symmetric(-H))
+    precision = all(isfinite, H) ? curvature(-H) : Symmetric(Matrix{eltype(H)}(I, length(x), length(x)))
     covariance = Matrix(Symmetric(inv(precision)))
     logZ = fx + (length(x) * log2π - logdet(precision)) / 2
     return (; distribution = MvNormal(collect(x), covariance), logZ, mode = x, iterations, converged)
@@ -134,6 +146,27 @@ function curvature(C::AbstractMatrix)
     return Symmetric(V * Diagonal(max.(abs.(λ), floor)) * V')
 end
 
+# `logp` at a trial point, with a point outside its domain, where it throws a `DomainError`, as -Inf
+function trial(logp, x)
+    try
+        return logp(x)
+    catch error
+        error isa DomainError && return -Inf
+        rethrow()
+    end
+end
+
+# The Newton step `C⁻¹ g` for the curvature `C`, made positive definite, through its Cholesky
+# factor; `nothing` where `C` or `g` is not finite or the factorisation fails, as it can for a
+# matrix that is numerically singular
+function newton_step(C::AbstractMatrix, g)
+    (all(isfinite, C) && all(isfinite, g)) || return nothing
+    F = cholesky(curvature(C); check = false)
+    issuccess(F) || return nothing
+    step = F \ g
+    return all(isfinite, step) ? step : nothing
+end
+
 # Backtracking from `x` along `step` until `logp` increases by a fraction of the first-order
 # prediction `slope`; returns the new point, its log-density and the move, or `nothing` for the
 # move when no step length increases `logp`
@@ -141,7 +174,7 @@ function backtrack(logp, x, fx, step, slope)
     t = 1.0
     while t > 1.0e-12
         candidate = x + t * step
-        fcandidate = logp(candidate)
+        fcandidate = trial(logp, candidate)
         if isfinite(fcandidate) && fcandidate >= fx + 1.0e-4 * t * slope
             return candidate, fcandidate, t * step
         end

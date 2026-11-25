@@ -77,3 +77,36 @@ end
     result = EA.laplace(x -> -sum(abs2, x .- [1.0, 2.0]) / 2, [1.0, 2.0])
     @test result.converged && result.mode == [1.0, 2.0]
 end
+
+@testitem "laplace: not converged at a minimum, a saddle or on a flat density" tags = [:projections] setup = [EAHelpers] begin
+    using Distributions
+    # a bimodal density started at its central minimum, where the second derivative is positive
+    bimodal = x -> log(pdf(Normal(-2.0, 0.5), x) + pdf(Normal(2.0, 0.5), x))
+    @test EA.laplace(bimodal, 0.0).converged === false
+    @test EA.laplace(x -> x^2, 0.0).converged === false
+    @test EA.laplace(x -> 0.0, 0.0).converged === false
+    @test EA.laplace(x -> x[1]^2 - x[2]^2, [0.0, 0.0]).converged === false
+    # a proper maximum is still converged
+    @test EA.laplace(x -> -x^2, 0.0).converged === true
+    @test EA.laplace(x -> -x[1]^2 - x[2]^2, [0.0, 0.0]).converged === true
+end
+
+@testitem "laplace: a step where the log-density throws a DomainError is shortened" tags = [:projections] setup = [EAHelpers] begin
+    # the first Newton step from 2.0 lands at a negative x, where log throws
+    result = EA.laplace(x -> 2log(x) - 3x, 2.0)
+    @test result.converged
+    @test result.mode ≈ 2 / 3
+end
+
+@testitem "laplace and gaussian_variational: an improper density with no mode never throws" tags = [:projections] setup = [EAHelpers] begin
+    using StatsFuns: log1pexp
+    # the pull-back of Beta(1, 2) through logistic alone, log(1 - logistic(x)): flat as x → -∞
+    logp = x -> -log1pexp(x)
+    @test EA.laplace(logp, 0.0).converged === false
+    @test EA.laplace(x -> logp(x[1]), [0.0]).converged === false
+    @test EA.laplace(x -> logp(x[1]) + logp(x[2]), [0.0, 0.0]).converged === false
+    @test EA.gaussian_variational(logp, 0.0).converged === false
+    @test EA.gaussian_variational(x -> logp(x[1]), [0.0]).converged === false
+    # a Hessian that is not finite stops the iteration too
+    @test EA.laplace(x -> x[1] > 1 ? NaN * x[1] : -(x[1] - 2)^2, [0.0]).converged === false
+end
