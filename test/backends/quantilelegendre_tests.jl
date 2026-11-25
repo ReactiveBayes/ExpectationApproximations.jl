@@ -10,3 +10,11 @@
     @test P.supports_expectation(EA.QuantileLegendre(8), Any, Poisson{Float64}) === false
     @test allocations(P.expectation, P.prepare_expectation(EA.QuantileLegendre(16), Gamma(2.0, 2.0)), log) == 0
 end
+
+@testitem "QuantileLegendre: no support without a quantile function" tags = [:backends] setup = [EAHelpers] begin
+    using Distributions
+    @test P.supports_expectation(EA.QuantileLegendre(8), Any, VonMises{Float64}) === false
+    @test P.supports_expectation(EA.QuantileLegendre(8), Any, typeof(EA.TransformedGaussian(Normal(0.0, 1.0), EA.Positive()))) === false
+    # so the default router reports the pair unsupported instead of failing inside the rule
+    @test P.which_expectation_backend(EA.EADefault(), sin, VonMises(0.0, 1.0)) === nothing
+end

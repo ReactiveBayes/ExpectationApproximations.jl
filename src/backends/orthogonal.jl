@@ -64,7 +64,8 @@ end
 Gauss–Legendre quadrature with `n` points in probability space, `E_q[f] = ∫₀¹ f(Q(u)) du` with
 `Q` the quantile function of `q`, for any continuous univariate distribution. It is a fallback
 for distributions that no other rule supports. A quantile function is rarely smooth at both ends,
-so the error decreases algebraically with `n`, not exponentially.
+so the error decreases algebraically with `n`, not exponentially. A `VonMises` distribution and a
+[`TransformedGaussian`](@ref), which have no quantile function, are not supported.
 """
 struct QuantileLegendre
     nodes::Vector{Float64}   # in (0, 1)
@@ -80,6 +81,7 @@ Base.:(==)(a::QuantileLegendre, b::QuantileLegendre) = a.nodes == b.nodes && a.w
 Base.hash(rule::QuantileLegendre, h::UInt) = hash(rule.nodes, hash(:QuantileLegendre, h))
 
 BayesBase.supports_expectation(::QuantileLegendre, ::Type, ::Type{<:ContinuousUnivariateDistribution}) = true
+BayesBase.supports_expectation(::QuantileLegendre, ::Type, ::Type{<:VonMises}) = false
 
 function BayesBase.prepare_expectation(rule::QuantileLegendre, q::ContinuousUnivariateDistribution)
     return ExpectationPointSet(quantile.(q, rule.nodes), rule.weights)

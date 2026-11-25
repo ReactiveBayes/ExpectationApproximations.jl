@@ -65,6 +65,7 @@ function Distributions._rand!(rng::AbstractRNG, t::MultivariateTransformed, x::A
 end
 
 BayesBase.supports_expectation(::GaussHermite, ::Type, ::Type{<:TransformedGaussian}) = true
+BayesBase.supports_expectation(::QuantileLegendre, ::Type, ::Type{<:TransformedGaussian}) = false
 
 function BayesBase.prepare_expectation(rule::GaussHermite, t::TransformedGaussian)
     set = prepare_expectation(rule, t.gaussian)

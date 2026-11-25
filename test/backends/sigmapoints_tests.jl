@@ -96,3 +96,13 @@ end
     EA.Testing.test_backend(EA.SphericalRadialCubature(), cases)
     EA.Testing.test_backend(EA.GenUnscented(), [cases; EA.Testing.Case(Gamma(2.0, 3.0), abs2, 2 * 3 * 9.0)])
 end
+
+@testitem "GenUnscented: support only where the four moments are finite and computed" tags = [:backends] setup = [EAHelpers] begin
+    using Distributions
+    for Q in (Gamma{Float64}, Beta{Float64}, Normal{Float64}, Poisson{Float64}, LogNormal{Float64}, Weibull{Float64}, typeof(MvNormal(zeros(2), [1.0 0.0; 0.0 1.0])))
+        @test P.supports_expectation(EA.GenUnscented(), Any, Q) === true
+    end
+    for Q in (LogitNormal{Float64}, Cauchy{Float64}, TDist{Float64}, InverseGamma{Float64}, VonMises{Float64}, Dirac{Float64})
+        @test P.supports_expectation(EA.GenUnscented(), Any, Q) === false
+    end
+end

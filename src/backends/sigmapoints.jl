@@ -89,13 +89,27 @@ axis_points(m, S) = vcat([m], [m + S[:, i] for i in axes(S, 2)], [m - S[:, i] fo
 
 The generalised unscented transform: three points per dimension, with weights that match the
 mean, variance, skewness and kurtosis of the distribution, so that expectations are exact for
-polynomials up to degree 4. It supports univariate distributions with a skewness and a kurtosis,
-such as a Gamma, a Beta or a Poisson, and Gaussian vectors, for which the points lie along the
-columns of the Cholesky factor of the covariance.
+polynomials up to degree 4 of a univariate variable. It supports the univariate families listed
+below, whose four moments are finite and computed by Distributions, and Gaussian vectors, for
+which the points lie along the columns of the Cholesky factor of the covariance. For a Gaussian
+vector the rule matches the moments along each axis, so it is exact for polynomials up to degree 3
+and for the fourth powers of single coordinates, but not for products such as `x₁² x₂²`; for `d ≥ 4`
+its central weight `1 - d / 3` is not positive.
+
+The univariate families are `Normal`, `Gamma`, `Exponential`, `Chisq`, `Erlang`, `Beta`,
+`LogNormal`, `Weibull`, `Uniform`, `Laplace`, `Logistic`, `Gumbel`, `Poisson`, `Bernoulli`,
+`Binomial`, `Geometric` and `NegativeBinomial`. Others, such as a heavy-tailed distribution with
+an infinite kurtosis, are not supported, although `prepare_expectation` can still be called for
+any univariate distribution whose moments are finite.
 """
 struct GenUnscented end
 
-BayesBase.supports_expectation(::GenUnscented, ::Type, ::Type{<:Union{UnivariateDistribution, AbstractMvNormal}}) = true
+const GenUnscentedFamily = Union{
+    Normal, Gamma, Exponential, Chisq, Erlang, Beta, LogNormal, Weibull, Uniform, Laplace, Logistic, Gumbel,
+    Poisson, Bernoulli, Binomial, Geometric, NegativeBinomial,
+}
+
+BayesBase.supports_expectation(::GenUnscented, ::Type, ::Type{<:Union{GenUnscentedFamily, AbstractMvNormal}}) = true
 
 function BayesBase.prepare_expectation(::GenUnscented, q::UnivariateDistribution)
     return generalised_points(mean(q), std(q), skewness(q), kurtosis(q) + 3)

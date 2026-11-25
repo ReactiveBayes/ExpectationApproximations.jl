@@ -40,3 +40,20 @@ end
         ]
     )
 end
+
+@testitem "SNIS: support only for targets the proposal can weigh" tags = [:backends] setup = [EAHelpers] begin
+    using Distributions
+    univariate = EA.SNIS(Normal(0.0, 2.0), 10)
+    @test P.supports_expectation(univariate, Any, Gamma{Float64}) === true
+    @test P.supports_expectation(univariate, Any, Poisson{Float64}) === false
+    @test P.supports_expectation(univariate, Any, typeof(MvNormal(zeros(2), [1.0 0.0; 0.0 1.0]))) === false
+    multivariate = EA.SNIS(MvNormal(zeros(2), [1.0 0.0; 0.0 1.0]), 10)
+    @test P.supports_expectation(multivariate, Any, typeof(MvNormal(zeros(2), [1.0 0.0; 0.0 1.0]))) === true
+    @test P.supports_expectation(multivariate, Any, Normal{Float64}) === false
+end
+
+@testitem "SNIS: samples outside the target's support weigh nothing" tags = [:backends] setup = [EAHelpers] begin
+    using Distributions, StableRNGs
+    # half the samples of the proposal are negative, where InverseGamma's logpdf throws
+    @test P.expectation(EA.SNIS(Normal(0.0, 3.0), 100_000, StableRNG(3)), identity, InverseGamma(3.0, 2.0)) ≈ 1.0 rtol = 5.0e-2
+end

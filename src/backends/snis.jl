@@ -25,15 +25,22 @@ BayesBase.has_expectation_label(::SNIS, ::ExpectationStochastic) = true
 # Targets with a log-density; a product of independent distributions is not a density to evaluate
 const Evaluable = Union{Distribution, ProductOf, LinearizedProductOf}
 
-BayesBase.supports_expectation(::SNIS, ::Type, ::Type{<:Evaluable}) = true
+# A continuous target of the proposal's variate form; a discrete target has no density for the
+# continuous proposal's samples
+BayesBase.supports_expectation(::SNIS{<:Distribution{V, Continuous}}, ::Type, ::Type{<:Distribution{V, Continuous}}) where {V} = true
+BayesBase.supports_expectation(::SNIS{<:Distribution{V, Continuous}}, ::Type, ::Type{<:Union{ProductOf, LinearizedProductOf}}) where {V} = true
 BayesBase.get_expectation_rng(sampler::SNIS) = sampler.rng
 BayesBase.with_expectation_rng(sampler::SNIS{P, Nothing}, rng) where {P} = SNIS(sampler.proposal, sampler.n, rng)
 BayesBase.with_expectation_rng(sampler::SNIS, rng) = sampler
 
+# A sample outside the target's support has weight zero; a distribution may throw there
+target_logpdf(target::Distribution, x) = insupport(target, x) ? logpdf(target, x) : -Inf
+target_logpdf(target, x) = logpdf(target, x)
+
 function BayesBase.prepare_expectation(sampler::SNIS, target::Evaluable)
     isnothing(sampler.rng) && throw(ArgumentError("SNIS has no random number generator; provide one with `BayesBase.with_expectation_rng`"))
     samples = [rand(sampler.rng, sampler.proposal) for _ in 1:(sampler.n)]
-    logweights = [logpdf(target, x) - logpdf(sampler.proposal, x) for x in samples]
+    logweights = [target_logpdf(target, x) - logpdf(sampler.proposal, x) for x in samples]
     weights = exp.(logweights .- maximum(logweights))
     return ExpectationPointSet(samples, weights ./ sum(weights))
 end
