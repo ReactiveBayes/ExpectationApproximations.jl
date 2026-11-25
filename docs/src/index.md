@@ -21,7 +21,8 @@ Gaussian approximation is made in unconstrained coordinates and transformed back
 
 ## A first example
 
-Gauss–Laguerre quadrature with 32 points computes the expected logarithm of a Gamma variable:
+Gauss–Legendre quadrature in the logarithm of the variable computes the expected logarithm of a
+Gamma variable:
 
 ```@example index
 using ExpectationApproximations, Distributions
@@ -29,7 +30,7 @@ import BayesBase
 const EA = ExpectationApproximations
 
 q = Gamma(3.0, 2.0)
-BayesBase.expectation(EA.GaussLaguerre(32), log, q)
+BayesBase.expectation(EA.UnconstrainedLegendre(), log, q)
 ```
 
 The exact value is ``\psi(3) + \log 2``:

@@ -12,8 +12,8 @@ The package computes expectations `E_q[f(x)]` by quadrature, cubature, sigma poi
 or sampling. Each method is a backend of the expectation protocol of
 [BayesBase](https://github.com/ReactiveBayes/BayesBase.jl).
 [`EADefault()`](https://reactivebayes.github.io/ExpectationApproximations.jl/stable/routing/)
-picks a rule for each family of distributions: Gauss–Hermite for a Gaussian, Gauss–Laguerre for a
-Gamma, Gauss–Jacobi for a Beta and an exact sum for a categorical distribution. Prepared
+picks a rule for each family of distributions: Gauss–Hermite for a Gaussian, Gauss–Legendre in
+`log x` or `logit x` for a Gamma or a Beta, and an exact sum for a categorical distribution. Prepared
 expectations do not allocate and accept ForwardDiff's dual numbers.
 
 The package also approximates a density, given as a Julia function, by a Gaussian: the Laplace

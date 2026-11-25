@@ -42,7 +42,10 @@ values. The backends of this package pass the same checks:
 - a product of two cases is supported and correct.
 
 [`Testing.conformance`](@ref) returns the checks, and [`Testing.test_backend`](@ref) records them
-as tests in the test suite of the backend's package.
+as tests in the test suite of the backend's package. A backend for positive or unit-interval
+variables should also pass [`Testing.boundary_cases`](@ref): integrands singular at the boundary,
+such as `log x` under a Gamma with a shape below one, which are common in inference and where
+rules made for polynomials fall short.
 
 ```@example writing
 using ExpectationApproximations.Testing: Case, conformance
@@ -65,4 +68,5 @@ ExpectationApproximations.Testing.test_backend
 ExpectationApproximations.Testing.conformance
 ExpectationApproximations.Testing.Case
 ExpectationApproximations.Testing.Check
+ExpectationApproximations.Testing.boundary_cases
 ```

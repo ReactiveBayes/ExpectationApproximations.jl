@@ -13,9 +13,10 @@ normal, taking and returning means and covariances.
   a function, through `approximate_meancov`;
 - `smoothRTS`: the Rauch–Tung–Striebel correction of an input's marginal.
 
-The results equal those of MessagePassingRulesApproximations 1.0, which the tests check, except
-that the Gauss–Hermite weights come from this package's Golub–Welsch rule, which is more
-accurate. New code should use the expectation protocol of BayesBase and the backends of this
+The results equal those of MessagePassingRulesApproximations 1.0, which the tests check, with two
+exceptions. The Gauss–Hermite weights come from this package's Golub–Welsch rule, which is more
+accurate. And a covariance that is not positive definite throws a `PosDefException` from
+`cholesky`, where 1.0 factorised a nearby positive definite matrix and returned numbers. New code should use the expectation protocol of BayesBase and the backends of this
 package.
 
 ```jldoctest; setup = :(using ExpectationApproximations.MPRACompat)

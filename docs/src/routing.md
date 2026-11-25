@@ -5,7 +5,7 @@ CurrentModule = ExpectationApproximations
 # How a backend is chosen
 
 Each quadrature rule is made for one family of distributions: Gauss–Hermite for Gaussians,
-Gauss–Laguerre for Gammas, an exact sum for categorical distributions. A model usually contains
+Gauss–Legendre in the logarithm for Gammas, an exact sum for categorical distributions. A model usually contains
 several families, so it needs a backend that chooses a rule for each distribution.
 
 ```@example routing
@@ -39,7 +39,7 @@ that supports the integrand and the distribution. [`EADefault`](@ref) is such a 
 rule per family:
 
 ```julia
-EADefault(n = 16) = ExpectationFirstOf(ExactSum(), GaussHermite(n), GaussLaguerre(n), GaussJacobi(n), QuantileLegendre(n))
+EADefault(n = 16) = ExpectationFirstOf(ExactSum(), GaussHermite(n), UnconstrainedLegendre(), QuantileLegendre(n))
 ```
 
 `BayesBase.which_expectation_backend` shows the choice:
