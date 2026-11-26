@@ -133,6 +133,14 @@ end
     # `logistic(u)` is 1 beyond u ≈ 37 and `exp(u)` is 0 below u ≈ -745
     @test 0 < EA.inside(EA.UnitInterval(), -800.0) < EA.inside(EA.UnitInterval(), 40.0) < 1
     @test EA.inside(EA.Positive(), -800.0) > 0
+    # nor onto a subnormal number, where `logit` and `log` lose their finite values
+    @test EA.inside(EA.UnitInterval(), -720.0) >= floatmin(Float64)
+    @test EA.inside(EA.UnitInterval(), -200.0f0) >= floatmin(Float32)
+    @test EA.inside(EA.UnitInterval(), -200.0f0) isa Float32
+    @test EA.inside(EA.UnitInterval(), 40.0f0) < 1
+    @test EA.inside(EA.UpperBounded(0.0), -800.0) <= -floatmin(Float64)
+    # a dual number whose value rounds onto an end and whose derivative does not
+    @test isfinite(ForwardDiff.derivative(u -> logit(EA.inside(EA.UnitInterval(), u)), 40.0))
     @test EA.inside(EA.UnitInterval(), 0.3) == logistic(0.3)
     @test ForwardDiff.derivative(u -> EA.inside(EA.UnitInterval(), u), 0.3) ≈ logistic(0.3) * (1 - logistic(0.3))
 

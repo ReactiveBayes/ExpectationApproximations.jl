@@ -246,16 +246,21 @@ endpoints(::Domain) = nothing
 
 # `forward`, kept off the ends of the domain where it rounds onto one, as `logistic(u)` does to 1
 # beyond u ≈ 37 and `exp(u)` to 0 below u ≈ -745: a log-density finite inside the domain is then
-# finite at every point of a projection's quadrature, however far out
+# finite at every point of a projection's quadrature, however far out. A point stays a normal
+# number away from an end, since functions such as `logit` are not finite at a subnormal one, and
+# the ends are compared by order, which reads only the value of a dual number
 function inside(D::Domain, u::Real)
     x = forward(D, u)
     ends = endpoints(D)
     isnothing(ends) && return x
     a, b = ends
-    isfinite(a) && x == a && return x + (nextfloat(a) - a)
-    isfinite(b) && x == b && return x - (b - prevfloat(b))
+    T = typeof(x)
+    isfinite(a) && x - a < floatmin(T) && return x + oftype(x, offset(a, T))
+    isfinite(b) && b - x < floatmin(T) && return x - oftype(x, offset(b, T))
     return x
 end
+# the smallest step off an end that a number of type `T` resolves, kept out of the subnormals
+offset(e, ::Type{T}) where {T} = max(eps(T) * abs(e), floatmin(T))
 inside(D::Domain, u) = forward(D, u)
 inside(D::Componentwise, u::AbstractVector) = [inside(d, ui) for (d, ui) in zip(D.domains, u)]
 
