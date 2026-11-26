@@ -113,7 +113,7 @@ log-density `u ↦ logp(forward(domain, u)) + logjacobian(domain, u)`, starting 
   the mode of `distribution` or of `logp`, because a change of variables moves a mode.
 """
 function laplace(logp::L, x0, domain::Domain; kwargs...) where {L}
-    result = laplace(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)
+    result = laplace(u -> logp(inside(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)
     return (;
         distribution = pushforward(domain, result.distribution),
         result.logZ,

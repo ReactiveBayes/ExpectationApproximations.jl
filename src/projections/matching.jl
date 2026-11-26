@@ -63,7 +63,7 @@ of the Gaussian. It is a point in the domain but not the mean of `distribution`,
 nonlinear transform moves the mean.
 """
 function moment_matching(logp::F, x0, domain::Domain; kwargs...) where {F}
-    result = moment_matching(u -> logp(forward(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)
+    result = moment_matching(u -> logp(inside(domain, u)) + logjacobian(domain, u), inverse(domain, x0); kwargs...)
     return (;
         distribution = pushforward(domain, result.distribution),
         result.logZ,

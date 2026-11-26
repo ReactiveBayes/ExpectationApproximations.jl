@@ -127,3 +127,24 @@ end
     @test 0 < m[1] < 1
     @test m[2] > 0
 end
+
+@testitem "projections in a domain stay off its ends where forward rounds onto them" tags = [:transforms] setup = [EAHelpers] begin
+    using Distributions, ForwardDiff, StatsFuns
+    # `logistic(u)` is 1 beyond u ≈ 37 and `exp(u)` is 0 below u ≈ -745
+    @test 0 < EA.inside(EA.UnitInterval(), -800.0) < EA.inside(EA.UnitInterval(), 40.0) < 1
+    @test EA.inside(EA.Positive(), -800.0) > 0
+    @test EA.inside(EA.UnitInterval(), 0.3) == logistic(0.3)
+    @test ForwardDiff.derivative(u -> EA.inside(EA.UnitInterval(), u), 0.3) ≈ logistic(0.3) * (1 - logistic(0.3))
+
+    # a Bernoulli observation of 0 under a broad prior on the logit: in the unit interval, the
+    # bound's quadrature reaches u ≈ ±200, where log(1 - x) was log(0) and the start was not finite
+    prior = Normal(0.0, 30.0)
+    logp(x) = log1p(-x) + logpdf(prior, logit(x)) - log(x) - log1p(-x)
+    ℓ(u) = -log1pexp(u) + logpdf(prior, u)
+    backend = EA.GaussHermite(32)
+    within = EA.gaussian_variational(logp, 0.5, EA.UnitInterval(); backend)
+    direct = EA.gaussian_variational(ℓ, 0.0; backend)
+    @test within.converged
+    @test mean(within.distribution.gaussian) ≈ mean(direct.distribution) rtol = 1.0e-5
+    @test std(within.distribution.gaussian) ≈ std(direct.distribution) rtol = 1.0e-5
+end
