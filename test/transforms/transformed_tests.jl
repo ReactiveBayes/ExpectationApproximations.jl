@@ -72,4 +72,22 @@ end
     unit = EA.TransformedGaussian(Normal(0.3, 0.7), EA.UnitInterval())
     @test mean(log, unit) ≈ P.expectation(EA.GaussHermite(64), log, unit) rtol = 1.0e-10
     @test mean(x -> log1p(-x), unit) ≈ P.expectation(EA.GaussHermite(64), x -> log1p(-x), unit) rtol = 1.0e-10
+    @test mean(P.mirrorlog, unit) ≈ mean(x -> log1p(-x), unit) rtol = 1.0e-10
+end
+
+@testitem "TransformedGaussian: E[log x] and E[log(1 - x)] stay finite far in a broad Gaussian's tail" tags = [:transforms] setup = [EAHelpers] begin
+    using Distributions
+    # The marginal of `p` in `y ~ Bernoulli(logistic(w * x))` after the first natural-gradient
+    # step, where `1 - logistic(u)` rounds to zero beyond u ≈ 37
+    g = Normal(5.908403902575995, 3.2486830462365375)
+    unit = EA.TransformedGaussian(g, EA.UnitInterval())
+    # the trapezoidal rule on ±12σ, which converges geometrically for a smooth Gaussian integrand
+    grid = range(mean(g) - 12std(g), mean(g) + 12std(g), length = 20001)
+    reference(f) = step(grid) * sum(u -> pdf(g, u) * f(u), grid)
+    # to the accuracy of the 32-point rule on the softplus, as the entropy takes it
+    @test mean(P.mirrorlog, unit) ≈ reference(u -> -log1p(exp(u))) atol = 1.0e-5
+    @test mean(log, unit) ≈ reference(u -> -log1p(exp(-u))) atol = 1.0e-5
+    @test isfinite(mean(P.mirrorlog, EA.TransformedGaussian(Normal(0.0, 40.0), EA.UnitInterval())))
+    @test isfinite(mean(log, EA.TransformedGaussian(Normal(0.0, 40.0), EA.UnitInterval())))
+    @test mean(log, EA.TransformedGaussian(Normal(800.0, 1.0), EA.Positive())) == 800.0
 end

@@ -14,7 +14,7 @@ module ExpectationApproximations
 
 using BayesBase: BayesBase, ExpectationPointSet, ExpectationProductPointSet, FactorizedJoint, PointMass, ExpectationFirstOf, ExpectationExact, ExpectationStochastic, UnsupportedExpectationError,
     ProductOf, LinearizedProductOf, getleft, getright, expectation, prepare_expectation, which_expectation_backend,
-    ContinuousUnivariateLogPdf, ContinuousMultivariateLogPdf
+    ContinuousUnivariateLogPdf, ContinuousMultivariateLogPdf, mirrorlog
 using Compat: @compat
 using Distributions: Distributions, Distribution, UnivariateDistribution, VariateForm, Univariate, Multivariate,
     Continuous, Dirichlet, insupport, logpdf, ContinuousUnivariateDistribution, Normal, MvNormal, AbstractMvNormal, LogNormal,

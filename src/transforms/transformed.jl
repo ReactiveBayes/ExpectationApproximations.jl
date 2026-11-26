@@ -43,6 +43,12 @@ Distributions.var(t::UnivariateTransformed) = last(mean_cov(GaussHermite(32), id
 # `E[f(x)]`, as conjugate rules and energies take it: `mean(log, q)`, `mean(inv, q)`, …
 Distributions.mean(f::F, t::TransformedGaussian) where {F <: Function} = expectation(GaussHermite(32), f, t)
 
+# The logarithms of `x` and `1 - x` in the Gaussian's coordinate, where `log(1 - logistic(u))`
+# would round to `log(0)` far in a broad Gaussian's tail
+Distributions.mean(::typeof(log), t::UnivariateTransformed{<:Distribution, Positive}) = mean(t.gaussian)
+Distributions.mean(::typeof(log), t::UnivariateTransformed{<:Distribution, UnitInterval}) = expectation(GaussHermite(32), u -> -log1pexp(-u), t.gaussian)
+Distributions.mean(::typeof(mirrorlog), t::UnivariateTransformed{<:Distribution, UnitInterval}) = expectation(GaussHermite(32), u -> -log1pexp(u), t.gaussian)
+
 # H[t] = H[g] + E_g[log |J|]: the Gaussian's entropy and the expected log-Jacobian of `forward`
 Distributions.entropy(t::TransformedGaussian) = entropy(t.gaussian) + expectation(GaussHermite(32), u -> logjacobian(t.domain, u), t.gaussian)
 
