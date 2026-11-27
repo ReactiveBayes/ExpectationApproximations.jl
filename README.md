@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/src/assets/logo.svg" alt="ExpectationApproximations.jl logo: a Gaussian drawn as bars over a two-humped density, with three quadrature nodes" width="180">
+</p>
+
 # ExpectationApproximations
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://reactivebayes.github.io/ExpectationApproximations.jl/stable)
